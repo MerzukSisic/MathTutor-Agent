@@ -1,0 +1,110 @@
+﻿@page "/"
+@using AiAgents.MathTutorAgent.Infrastructure
+@using Microsoft.EntityFrameworkCore
+@using Radzen
+@using Radzen.Blazor
+@inject MathTutorDbContext DbContext
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>MathTutor AI - Dashboard</PageTitle>
+
+<RadzenCard>
+    <RadzenText TextStyle="TextStyle.H3" TagName="TagName.H1">🎓 MathTutor AI Agent</RadzenText>
+    <RadzenText TextStyle="TextStyle.Body1">Your personalized math learning companion</RadzenText>
+</RadzenCard>
+
+<RadzenRow Gap="20px" class="mt-4">
+    <RadzenColumn Size="12" SizeMD="6">
+        <RadzenCard>
+            <RadzenText TextStyle="TextStyle.H5">Select Student</RadzenText>
+            @if (students == null)
+            {
+                <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" />
+            }
+            else if (!students.Any())
+            {
+                <RadzenButton Text="Create First Student" Click="CreateDemoStudent" ButtonStyle="ButtonStyle.Primary" />
+            }
+            else
+            {
+                <RadzenDropDown @bind-Value="selectedStudentId" Data="@students" TextProperty="Name" ValueProperty="Id" Style="width: 100%;" />
+                <RadzenButton Text="Start Quiz" Click="StartQuiz" ButtonStyle="ButtonStyle.Success" class="mt-3" Disabled="@(selectedStudentId == 0)" />
+            }
+        </RadzenCard>
+    </RadzenColumn>
+
+    <RadzenColumn Size="12" SizeMD="6">
+        <RadzenCard>
+            <RadzenText TextStyle="TextStyle.H5">Progress Overview</RadzenText>
+            @if (selectedStudentId > 0 && topicStates != null)
+            {
+                @foreach (var state in topicStates)
+                {
+                    <div class="mb-2">
+                        <RadzenText TextStyle="TextStyle.Body2">@state.Topic.Name</RadzenText>
+                        <RadzenProgressBar Value="@state.MasteryScore" Max="100" ShowValue="true" />
+                    </div>
+                }
+            }
+            else
+            {
+                <RadzenText>Select a student to view progress</RadzenText>
+            }
+        </RadzenCard>
+    </RadzenColumn>
+</RadzenRow>
+
+@code {
+    private List<AiAgents.MathTutorAgent.Domain.Entities.Student>? students;
+    private int selectedStudentId;
+    private List<AiAgents.MathTutorAgent.Domain.Entities.StudentTopicState>? topicStates;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadStudents();
+    }
+
+    private async Task LoadStudents()
+    {
+        students = await DbContext.Students.ToListAsync();
+    }
+
+    private async Task CreateDemoStudent()
+    {
+        var student = new AiAgents.MathTutorAgent.Domain.Entities.Student
+        {
+            Name = "Demo Student",
+            Email = "demo@mathtutor.ai"
+        };
+        DbContext.Students.Add(student);
+        await DbContext.SaveChangesAsync();
+        await LoadStudents();
+        selectedStudentId = student.Id;
+        StateHasChanged();
+    }
+
+    private async Task LoadProgress()
+    {
+        if (selectedStudentId > 0)
+        {
+            topicStates = await DbContext.StudentTopicStates
+                .Include(s => s.Topic)
+                .Where(s => s.StudentId == selectedStudentId)
+                .ToListAsync();
+        }
+    }
+
+    private void StartQuiz()
+    {
+        Navigation.NavigateTo($"/quiz/{selectedStudentId}");
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (selectedStudentId > 0)
+        {
+            await LoadProgress();
+        }
+    }
+}

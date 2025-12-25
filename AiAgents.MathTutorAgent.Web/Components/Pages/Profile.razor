@@ -1,0 +1,150 @@
+﻿@page "/profile/{studentId:int}"
+@using AiAgents.MathTutorAgent.Application.DTOs
+@using Radzen
+@using Radzen.Blazor
+@inject HttpClient Http
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+
+<PageTitle>Student Profile - MathTutor AI</PageTitle>
+
+<RadzenCard>
+    <RadzenRow>
+        <RadzenColumn Size="12" SizeMD="8">
+            <RadzenText TextStyle="TextStyle.H3">📊 Student Profile</RadzenText>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="4">
+            <RadzenButton Text="Export PDF" Icon="picture_as_pdf" ButtonStyle="ButtonStyle.Primary" Click="ExportPdf" class="float-end" />
+        </RadzenColumn>
+    </RadzenRow>
+</RadzenCard>
+
+@if (profile == null)
+{
+    <RadzenCard class="mt-4">
+        <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" />
+    </RadzenCard>
+}
+else
+{
+    <RadzenRow Gap="20px" class="mt-4">
+        <RadzenColumn Size="12" SizeMD="3">
+            <RadzenCard>
+                <RadzenText TextStyle="TextStyle.H6">Total Attempts</RadzenText>
+                <RadzenText TextStyle="TextStyle.H3">@profile.TotalAttempts</RadzenText>
+            </RadzenCard>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="3">
+            <RadzenCard>
+                <RadzenText TextStyle="TextStyle.H6">Correct Answers</RadzenText>
+                <RadzenText TextStyle="TextStyle.H3">@profile.CorrectAttempts</RadzenText>
+            </RadzenCard>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="3">
+            <RadzenCard>
+                <RadzenText TextStyle="TextStyle.H6">Accuracy</RadzenText>
+                <RadzenText TextStyle="TextStyle.H3">@profile.AccuracyPercentage.ToString("F1")%</RadzenText>
+            </RadzenCard>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="3">
+            <RadzenCard>
+                <RadzenText TextStyle="TextStyle.H6">Avg Time</RadzenText>
+                <RadzenText TextStyle="TextStyle.H3">@profile.AverageTimeSeconds.ToString("F1")s</RadzenText>
+            </RadzenCard>
+        </RadzenColumn>
+    </RadzenRow>
+
+    <RadzenRow Gap="20px" class="mt-4">
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenCard>
+                <RadzenText TextStyle="TextStyle.H5">Topic Mastery</RadzenText>
+                <canvas id="topicChart" width="400" height="300"></canvas>
+            </RadzenCard>
+        </RadzenColumn>
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenCard>
+                <RadzenText TextStyle="TextStyle.H5">Recent Activity</RadzenText>
+                @foreach (var activity in profile.RecentActivity.Take(5))
+                {
+                    <div class="activity-item mb-2">
+                        <RadzenBadge Text="@(activity.IsCorrect ? "✅" : "❌")" BadgeStyle="@(activity.IsCorrect ? BadgeStyle.Success : BadgeStyle.Danger)" />
+                        <RadzenText TextStyle="TextStyle.Body2" class="ms-2">@activity.QuestionText</RadzenText>
+                        <RadzenText TextStyle="TextStyle.Caption">@activity.Date.ToString("yyyy-MM-dd HH:mm") • @activity.TimeSeconds.ToString("F1")s</RadzenText>
+                    </div>
+                }
+            </RadzenCard>
+        </RadzenColumn>
+    </RadzenRow>
+
+    @if (stats != null && stats.DailyStats.Any())
+    {
+        <RadzenCard class="mt-4">
+            <RadzenText TextStyle="TextStyle.H5">Daily Performance (Last 30 Days)</RadzenText>
+            <canvas id="dailyChart" width="800" height="300"></canvas>
+        </RadzenCard>
+    }
+}
+
+@code {
+    [Parameter]
+    public int StudentId { get; set; }
+
+    private StudentProfileDto? profile;
+    private StudySessionStatsDto? stats;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadProfile();
+        await LoadStats();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && profile != null)
+        {
+            await RenderCharts();
+        }
+    }
+
+    private async Task LoadProfile()
+    {
+        profile = await Http.GetFromJsonAsync<StudentProfileDto>($"/api/student/{StudentId}/profile");
+    }
+
+    private async Task LoadStats()
+    {
+        stats = await Http.GetFromJsonAsync<StudySessionStatsDto>($"/api/student/{StudentId}/stats");
+    }
+
+    private async Task RenderCharts()
+    {
+        if (profile == null) return;
+
+        // Topic Chart
+        var topicLabels = profile.TopicProgress.Select(t => t.TopicName).ToArray();
+        var topicScores = profile.TopicProgress.Select(t => t.MasteryScore).ToArray();
+
+        await JS.InvokeVoidAsync("renderTopicChart", topicLabels, topicScores);
+
+        // Daily Chart
+        if (stats != null && stats.DailyStats.Any())
+        {
+            var dailyLabels = stats.DailyStats.Select(d => d.Date.ToString("MM-dd")).ToArray();
+            var dailyAttempts = stats.DailyStats.Select(d => d.TotalAttempts).ToArray();
+            var dailyCorrect = stats.DailyStats.Select(d => d.CorrectAttempts).ToArray();
+
+            await JS.InvokeVoidAsync("renderDailyChart", dailyLabels, dailyAttempts, dailyCorrect);
+        }
+    }
+
+    private async Task ExportPdf()
+    {
+        var response = await Http.GetAsync($"/api/student/{StudentId}/export-pdf");
+        if (response.IsSuccessStatusCode)
+        {
+            var fileBytes = await response.Content.ReadAsByteArrayAsync();
+            var fileName = $"MathTutor_Report_{StudentId}_{DateTime.Now:yyyyMMdd}.pdf";
+            await JS.InvokeVoidAsync("downloadFile", fileName, Convert.ToBase64String(fileBytes));
+        }
+    }
+}

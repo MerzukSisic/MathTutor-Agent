@@ -1,0 +1,419 @@
+﻿@page "/quiz/{studentId:int}"
+@rendermode InteractiveServer
+@using AiAgents.MathTutorAgent.Application.DTOs
+@using Microsoft.AspNetCore.SignalR.Client
+@inject NavigationManager Navigation
+@inject HttpClient Http
+
+<PageTitle>Quiz - MathTutor AI</PageTitle>
+
+<div class="quiz-container">
+    @if (currentQuestion != null)
+    {
+        <div class="question-card">
+            <div class="question-header">
+                <h2>Question @currentQuestion.Id</h2>
+                <span class="difficulty-badge">Difficulty: @currentQuestion.Difficulty</span>
+            </div>
+
+            <div class="question-body">
+                <p class="question-text">@currentQuestion.QuestionText</p>
+            </div>
+
+            <div class="answer-section">
+                <input type="text" 
+                       class="answer-input" 
+                       @bind="userAnswer" 
+                       placeholder="Enter your answer"
+                       disabled="@isSubmitting" />
+
+                <div class="action-buttons">
+                    <button class="btn-submit" 
+                            @onclick="SubmitAnswer" 
+                            disabled="@(string.IsNullOrWhiteSpace(userAnswer) || isSubmitting)">
+                        @(isSubmitting ? "Submitting..." : "Submit Answer")
+                    </button>
+
+                    <button class="btn-explain" 
+                            @onclick="RequestExplanation"
+                            disabled="@isSubmitting">
+                        Explain
+                    </button>
+
+                    <button class="btn-back" @onclick="GoBack">
+                        Back to Dashboard
+                    </button>
+                </div>
+            </div>
+
+            @if (feedback != null)
+            {
+                <div class="feedback-section @(feedback.IsCorrect ? "correct" : "incorrect")">
+                    <h3>@(feedback.IsCorrect ? "✓ Correct!" : "✗ Incorrect")</h3>
+                    <p>Correct Answer: @feedback.CorrectAnswer</p>
+                    <p>Your Mastery: @feedback.MasteryScore.ToString("F1")%</p>
+                    <p>Decision: @feedback.Decision</p>
+
+                    <button class="btn-next" @onclick="GetNextQuestion">
+                        Next Question
+                    </button>
+                </div>
+            }
+
+            @if (explanation != null)
+            {
+                <div class="explanation-section">
+                    <h3>📚 Explanation</h3>
+                    <p>@explanation.Explanation</p>
+                    
+                    @if (!string.IsNullOrEmpty(explanation.Example))
+                    {
+                        <div class="example-box">
+                            <strong>Example:</strong>
+                            <p>@explanation.Example</p>
+                        </div>
+                    }
+
+                    @if (explanation.Sources?.Any() == true)
+                    {
+                        <div class="sources-section">
+                            <strong>Sources:</strong>
+                            <ul>
+                                @foreach (var source in explanation.Sources)
+                                {
+                                    <li>@source.Title (@source.PageOrTime)</li>
+                                }
+                            </ul>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else if (isLoading)
+    {
+        <div class="loading-spinner">
+            <p>Loading question...</p>
+        </div>
+    }
+    else
+    {
+        <div class="no-question">
+            <p>No questions available. Click below to get started.</p>
+            <button class="btn-primary" @onclick="GetNextQuestion">
+                Get First Question
+            </button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public int StudentId { get; set; }
+
+    private QuestionDto? currentQuestion;
+    private string userAnswer = string.Empty;
+    private FeedbackDto? feedback;
+    private ExplanationDto? explanation;
+    private bool isLoading;
+    private bool isSubmitting;
+    private HubConnection? hubConnection;
+    private DateTime questionStartTime;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await InitializeSignalR();
+        await GetNextQuestion();
+    }
+
+    private async Task InitializeSignalR()
+    {
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/agenthub"))
+            .Build();
+
+        hubConnection.On<MathTickResult>("AgentTick", async (result) =>
+        {
+            if (result.StudentId == StudentId)
+            {
+                await HandleAgentTick(result);
+            }
+        });
+
+        await hubConnection.StartAsync();
+    }
+
+    private async Task HandleAgentTick(MathTickResult result)
+    {
+        switch (result.Outcome)
+        {
+            case TickOutcome.QuestionGenerated:
+                if (result.UiPayload is System.Text.Json.JsonElement jsonElement)
+                {
+                    currentQuestion = System.Text.Json.JsonSerializer.Deserialize<QuestionDto>(
+                        jsonElement.GetRawText(),
+                        new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                }
+                questionStartTime = DateTime.UtcNow;
+                isLoading = false;
+                await InvokeAsync(StateHasChanged);
+                break;
+
+            case TickOutcome.AnswerEvaluated:
+                if (result.UiPayload is System.Text.Json.JsonElement feedbackJson)
+                {
+                    feedback = System.Text.Json.JsonSerializer.Deserialize<FeedbackDto>(
+                        feedbackJson.GetRawText(),
+                        new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                }
+                isSubmitting = false;
+                await InvokeAsync(StateHasChanged);
+                break;
+
+            case TickOutcome.ExplanationReady:
+                if (result.UiPayload is System.Text.Json.JsonElement explanationJson)
+                {
+                    explanation = System.Text.Json.JsonSerializer.Deserialize<ExplanationDto>(
+                        explanationJson.GetRawText(),
+                        new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                }
+                await InvokeAsync(StateHasChanged);
+                break;
+
+            default:
+                break;
+        }
+    }
+
+    private async Task GetNextQuestion()
+    {
+        isLoading = true;
+        feedback = null;
+        explanation = null;
+        userAnswer = string.Empty;
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("/api/agent/next-question", new { StudentId });
+            response.EnsureSuccessStatusCode();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+            isLoading = false;
+        }
+    }
+
+    private async Task SubmitAnswer()
+    {
+        if (string.IsNullOrWhiteSpace(userAnswer) || currentQuestion == null)
+            return;
+
+        isSubmitting = true;
+        var timeMs = (int)(DateTime.UtcNow - questionStartTime).TotalMilliseconds;
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("/api/agent/submit-answer", new
+            {
+                StudentId,
+                QuestionId = currentQuestion.Id,
+                Answer = userAnswer,
+                TimeMs = timeMs
+            });
+            response.EnsureSuccessStatusCode();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+            isSubmitting = false;
+        }
+    }
+
+    private async Task RequestExplanation()
+    {
+        if (currentQuestion == null)
+            return;
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("/api/agent/explain", new
+            {
+                StudentId,
+                QuestionId = currentQuestion.Id,
+                TopicId = currentQuestion.TopicId,
+                ErrorTag = (string?)null
+            });
+            response.EnsureSuccessStatusCode();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection != null)
+        {
+            await hubConnection.DisposeAsync();
+        }
+    }
+
+    // DTOs for deserialization
+    private class FeedbackDto
+    {
+        public bool IsCorrect { get; set; }
+        public string CorrectAnswer { get; set; } = string.Empty;
+        public double MasteryScore { get; set; }
+        public string Decision { get; set; } = string.Empty;
+    }
+}
+
+<style>
+.quiz-container {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 2rem;
+}
+
+.question-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    padding: 2rem;
+}
+
+.question-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.difficulty-badge {
+    background: #4CAF50;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+}
+
+.question-body {
+    margin: 2rem 0;
+}
+
+.question-text {
+    font-size: 1.3rem;
+    line-height: 1.6;
+    color: #333;
+}
+
+.answer-section {
+    margin: 2rem 0;
+}
+
+.answer-input {
+    width: 100%;
+    padding: 1rem;
+    font-size: 1.1rem;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.btn-submit, .btn-explain, .btn-back, .btn-next, .btn-primary {
+    padding: 0.8rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-submit {
+    background: #2196F3;
+    color: white;
+}
+
+.btn-submit:hover:not(:disabled) {
+    background: #1976D2;
+}
+
+.btn-submit:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.btn-explain {
+    background: #FF9800;
+    color: white;
+}
+
+.btn-explain:hover:not(:disabled) {
+    background: #F57C00;
+}
+
+.btn-back {
+    background: #757575;
+    color: white;
+}
+
+.btn-next, .btn-primary {
+    background: #4CAF50;
+    color: white;
+}
+
+.feedback-section {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    border-radius: 8px;
+}
+
+.feedback-section.correct {
+    background: #E8F5E9;
+    border: 2px solid #4CAF50;
+}
+
+.feedback-section.incorrect {
+    background: #FFEBEE;
+    border: 2px solid #f44336;
+}
+
+.explanation-section {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: #FFF9C4;
+    border-radius: 8px;
+    border: 2px solid #FBC02D;
+}
+
+.example-box {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: white;
+    border-radius: 6px;
+}
+
+.sources-section {
+    margin-top: 1rem;
+}
+
+.loading-spinner, .no-question {
+    text-align: center;
+    padding: 3rem;
+}
+</style>
