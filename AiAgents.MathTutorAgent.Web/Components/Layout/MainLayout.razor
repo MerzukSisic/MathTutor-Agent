@@ -1,23 +1,69 @@
-﻿@inherits LayoutComponentBase
+﻿@using Radzen.Blazor
+@inherits LayoutComponentBase
+@inject NavigationManager Navigation
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
-    </div>
-
-    <main>
-        <div class="top-row px-4">
-            <a href="https://github.com/yourusername/mathtutor" target="_blank">About</a>
+<div class="app-container">
+    <!-- Sidebar Navigation -->
+    <aside class="app-sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <span class="logo-icon">🧮</span>
+                <span class="logo-text">MathTutor AI</span>
+            </div>
         </div>
+        <NavMenu />
+    </aside>
 
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
+    <!-- Main Content Area -->
+    <div class="app-main">
+        <!-- Top Bar -->
+        <header class="app-header">
+            <div class="header-content">
+                <h1 class="page-title">@GetCurrentPageTitle()</h1>
+                <div class="header-actions">
+                    <a href="https://github.com/yourusername/mathtutor" target="_blank" class="header-link">
+                        <span class="icon">📖</span>
+                        Documentation
+                    </a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Page Content -->
+        <main class="app-content">
+            <div class="content-wrapper">
+                @Body
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>MathTutor AI Agent © 2025 | Built with .NET 9 & ML.NET</p>
+        </footer>
+    </div>
 </div>
 
+<!-- Error UI -->
 <div id="blazor-error-ui">
-    An unhandled error has occurred.
-    <a href="" class="reload">Reload</a>
-    <a class="dismiss">🗙</a>
+    <div class="error-content">
+        <span class="error-icon">⚠️</span>
+        <span class="error-message">An error occurred</span>
+        <a href="" class="btn-reload">Reload</a>
+        <button class="btn-dismiss">✕</button>
+    </div>
 </div>
+
+@code {
+    private string GetCurrentPageTitle()
+    {
+        var path = Navigation.ToBaseRelativePath(Navigation.Uri).ToLower();
+        return path switch
+        {
+            "" or "dashboard" => "Dashboard",
+            "admin" => "Admin Panel",
+            var p when p.StartsWith("quiz/") => "Practice Quiz",
+            var p when p.StartsWith("profile/") => "Student Profile",
+            _ => "MathTutor AI"
+        };
+    }
+}

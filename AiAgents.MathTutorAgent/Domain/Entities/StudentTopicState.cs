@@ -6,7 +6,7 @@ public class StudentTopicState
     public int StudentId { get; set; }
     public int TopicId { get; set; }
     
-    public double MasteryScore { get; set; } // 0-100
+    public float MasteryScore { get; set; } // 0-100
     public double Confidence { get; set; }   // 0-1
     public double ForgettingRisk { get; set; } // 0-1
     public DateTime LastPracticedUtc { get; set; }

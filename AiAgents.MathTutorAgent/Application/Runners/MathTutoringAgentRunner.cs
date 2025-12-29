@@ -8,38 +8,33 @@ using System.Text.Json;
 
 namespace AiAgents.MathTutorAgent.Application.Runners;
 
-public class MathTutoringAgentRunner : SoftwareAgent<WorkItem, object, MathTickResult, object>
+public class MathTutoringAgentRunner(
+    WorkQueueService queueService,
+    CurriculumService curriculumService,
+    AssessmentService assessmentService,
+    KnowledgeTracingService knowledgeTracingService,
+    RevisionService revisionService,
+    ExplanationService explanationService,
+    ImageIngestionService imageIngestionService,
+    ValidationService validationService,
+    ILogger<MathTutoringAgentRunner> logger)
+    : SoftwareAgent<WorkItem, MathAction, MathTickResult, object>(
+        new WorkQueuePerceptionSource(queueService),
+        new MathTutoringPolicy(),
+        new MathTutoringActuator(curriculumService, assessmentService, knowledgeTracingService, revisionService,
+            explanationService, imageIngestionService, validationService, logger))
 {
-    private readonly WorkQueueService _queueService;
-    private readonly ILogger<MathTutoringAgentRunner> _logger;
-
-    public MathTutoringAgentRunner(
-        WorkQueueService queueService,
-        CurriculumService curriculumService,
-        AssessmentService assessmentService,
-        KnowledgeTracingService knowledgeTracingService,
-        RevisionService revisionService,
-        ExplanationService explanationService,
-        ImageIngestionService imageIngestionService,
-        ILogger<MathTutoringAgentRunner> logger)
-        : base(
-            new WorkQueuePerceptionSource(queueService),
-            new MathTutoringPolicy(),
-            new MathTutoringActuator(curriculumService, assessmentService, knowledgeTracingService, revisionService, explanationService, imageIngestionService, logger))
-    {
-        _queueService = queueService;
-        _logger = logger;
-    }
-
-    // ✅ FIX: Override with correct signature
+    // ✅ PATCH A: StepAsync with proper error handling
     public override async Task<MathTickResult?> StepAsync(CancellationToken cancellationToken)
     {
+        WorkItem? workItem = null;
+        
         try
         {
             // SENSE
-            var workItem = await PerceptionSource.GetNextPerceptAsync(cancellationToken);
+            workItem = await PerceptionSource.GetNextPerceptAsync(cancellationToken);
             if (workItem == null)
-                return null;
+                return null; // NoWork - semantically correct
 
             // THINK
             var action = await Policy.DecideAsync(workItem, cancellationToken);
@@ -47,46 +42,92 @@ public class MathTutoringAgentRunner : SoftwareAgent<WorkItem, object, MathTickR
             // ACT
             var result = await Actuator.ExecuteAsync(action, cancellationToken);
 
-            // Mark done
-            await _queueService.MarkDoneAsync(workItem.Id, JsonSerializer.Serialize(result), cancellationToken);
+            // Mark done (idempotent - only if Processing)
+            await queueService.MarkDoneAsync(workItem.Id, JsonSerializer.Serialize(result), cancellationToken);
 
             return result;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in agent tick");
-            return null;
+            logger.LogError(ex, "Error in agent tick for WorkItem {WorkItemId}", workItem?.Id ?? 0);
+            
+            // CRITICAL: Mark as failed so it doesn't stay stuck in Processing
+            if (workItem != null)
+            {
+                await queueService.MarkFailedAsync(workItem.Id, ex.Message, cancellationToken);
+            }
+
+            // Return Failed outcome (NOT null - null means NoWork)
+            return new MathTickResult
+            {
+                WorkItemId = workItem?.Id ?? 0,
+                Type = workItem?.Type ?? WorkItemType.NextQuestion,
+                StudentId = workItem?.StudentId ?? 0,
+                Outcome = TickOutcome.Failed,
+                UiPayload = new { Error = ex.Message, ErrorType = ex.GetType().Name }
+            };
         }
     }
 }
 
-// ========== PERCEPTION SOURCE ==========
-public class WorkQueuePerceptionSource : IPerceptionSource<WorkItem>
+// ========== ACTION MODEL (Think output) ==========
+public record MathAction(
+    WorkItem WorkItem, 
+    MathActionType Type, 
+    string? Reason = null);
+
+public enum MathActionType
 {
-    private readonly WorkQueueService _queueService;
+    NextQuestion,
+    SubmitAnswer,
+    Explain,
+    UploadImage,
+    RejectInvalid
+}
 
-    public WorkQueuePerceptionSource(WorkQueueService queueService)
-    {
-        _queueService = queueService;
-    }
-
+// ========== PERCEPTION SOURCE ==========
+public class WorkQueuePerceptionSource(WorkQueueService queueService) : IPerceptionSource<WorkItem>
+{
     public async Task<WorkItem?> GetNextPerceptAsync(CancellationToken ct)
     {
-        return await _queueService.DequeueNextAsync(ct);
+        return await queueService.DequeueNextAsync(ct);
     }
 }
 
-// ========== POLICY ==========
-public class MathTutoringPolicy : IPolicy<WorkItem, object>
+// ========== POLICY (THINK - with real logic) ==========
+public class MathTutoringPolicy : IPolicy<WorkItem, MathAction>
 {
-    public Task<object> DecideAsync(WorkItem percept, CancellationToken ct)
+    public Task<MathAction> DecideAsync(WorkItem percept, CancellationToken ct)
     {
-        return Task.FromResult<object>(percept);
+        // GUARD RAILS: Validate payload exists for actions that need it
+        var needsPayload = percept.Type == WorkItemType.SubmitAnswer 
+                        || percept.Type == WorkItemType.Explain 
+                        || percept.Type == WorkItemType.UploadImage;
+
+        if (needsPayload && string.IsNullOrWhiteSpace(percept.PayloadJson))
+        {
+            return Task.FromResult(new MathAction(
+                percept, 
+                MathActionType.RejectInvalid, 
+                "Missing required payload"));
+        }
+
+        // THINK: Map WorkItemType to MathActionType (could add more logic here)
+        var actionType = percept.Type switch
+        {
+            WorkItemType.NextQuestion => MathActionType.NextQuestion,
+            WorkItemType.SubmitAnswer => MathActionType.SubmitAnswer,
+            WorkItemType.Explain => MathActionType.Explain,
+            WorkItemType.UploadImage => MathActionType.UploadImage,
+            _ => MathActionType.RejectInvalid
+        };
+
+        return Task.FromResult(new MathAction(percept, actionType));
     }
 }
 
 // ========== ACTUATOR ==========
-public class MathTutoringActuator : IActuator<object, MathTickResult>
+public class MathTutoringActuator : IActuator<MathAction, MathTickResult>
 {
     private readonly CurriculumService _curriculumService;
     private readonly AssessmentService _assessmentService;
@@ -94,6 +135,7 @@ public class MathTutoringActuator : IActuator<object, MathTickResult>
     private readonly RevisionService _revisionService;
     private readonly ExplanationService _explanationService;
     private readonly ImageIngestionService _imageIngestionService;
+    private readonly ValidationService _validationService;
     private readonly ILogger _logger;
 
     public MathTutoringActuator(
@@ -103,6 +145,7 @@ public class MathTutoringActuator : IActuator<object, MathTickResult>
         RevisionService revisionService,
         ExplanationService explanationService,
         ImageIngestionService imageIngestionService,
+        ValidationService validationService,
         ILogger logger)
     {
         _curriculumService = curriculumService;
@@ -111,20 +154,35 @@ public class MathTutoringActuator : IActuator<object, MathTickResult>
         _revisionService = revisionService;
         _explanationService = explanationService;
         _imageIngestionService = imageIngestionService;
+        _validationService = validationService;
         _logger = logger;
     }
 
-    public async Task<MathTickResult> ExecuteAsync(object action, CancellationToken ct)
+    public async Task<MathTickResult> ExecuteAsync(MathAction action, CancellationToken ct)
     {
-        var workItem = (WorkItem)action;
+        var workItem = action.WorkItem;
 
-        return workItem.Type switch
+        // Handle RejectInvalid from Think layer
+        if (action.Type == MathActionType.RejectInvalid)
         {
-            WorkItemType.NextQuestion => await HandleNextQuestionAsync(workItem, ct),
-            WorkItemType.SubmitAnswer => await HandleSubmitAnswerAsync(workItem, ct),
-            WorkItemType.Explain => await HandleExplainAsync(workItem, ct),
-            WorkItemType.UploadImage => await HandleUploadImageAsync(workItem, ct),
-            _ => throw new InvalidOperationException($"Unknown work item type: {workItem.Type}")
+            _logger.LogWarning("Rejected invalid work item {WorkItemId}: {Reason}", workItem.Id, action.Reason);
+            return new MathTickResult
+            {
+                WorkItemId = workItem.Id,
+                Type = workItem.Type,
+                StudentId = workItem.StudentId,
+                Outcome = TickOutcome.ValidationFailed,
+                UiPayload = new { Error = action.Reason }
+            };
+        }
+
+        return action.Type switch
+        {
+            MathActionType.NextQuestion => await HandleNextQuestionAsync(workItem, ct),
+            MathActionType.SubmitAnswer => await HandleSubmitAnswerAsync(workItem, ct),
+            MathActionType.Explain => await HandleExplainAsync(workItem, ct),
+            MathActionType.UploadImage => await HandleUploadImageAsync(workItem, ct),
+            _ => throw new InvalidOperationException($"Unknown action type: {action.Type}")
         };
     }
 
@@ -190,9 +248,57 @@ public class MathTutoringActuator : IActuator<object, MathTickResult>
 
     private async Task<MathTickResult> HandleSubmitAnswerAsync(WorkItem workItem, CancellationToken ct)
     {
-        var payload = JsonSerializer.Deserialize<SubmitAnswerPayloadDto>(workItem.PayloadJson);
+        SubmitAnswerPayloadDto? payload;
+        
+        try
+        {
+            payload = JsonSerializer.Deserialize<SubmitAnswerPayloadDto>(workItem.PayloadJson);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Failed to deserialize SubmitAnswer payload for WorkItem {WorkItemId}", workItem.Id);
+            return new MathTickResult
+            {
+                WorkItemId = workItem.Id,
+                Type = workItem.Type,
+                StudentId = workItem.StudentId,
+                Outcome = TickOutcome.ValidationFailed,
+                UiPayload = new { Error = "Invalid JSON payload", Details = ex.Message }
+            };
+        }
+
         if (payload == null)
-            throw new InvalidOperationException("Invalid payload");
+        {
+            return new MathTickResult
+            {
+                WorkItemId = workItem.Id,
+                Type = workItem.Type,
+                StudentId = workItem.StudentId,
+                Outcome = TickOutcome.ValidationFailed,
+                UiPayload = new { Error = "Payload is null after deserialization" }
+            };
+        }
+
+        // ✅ VALIDATE INPUT BEFORE PROCESSING
+        var (isValid, errors) = await _validationService.ValidateAsync(payload, ct);
+        if (!isValid)
+        {
+            var errorMessage = string.Join("; ", errors);
+            _logger.LogWarning("Validation failed for WorkItem {WorkItemId}: {Errors}", workItem.Id, errorMessage);
+            
+            return new MathTickResult
+            {
+                WorkItemId = workItem.Id,
+                Type = workItem.Type,
+                StudentId = workItem.StudentId,
+                Outcome = TickOutcome.ValidationFailed,
+                UiPayload = new
+                {
+                    Error = errorMessage,
+                    Errors = errors
+                }
+            };
+        }
 
         var question = await _assessmentService.GetQuestionAsync(payload.QuestionId, ct);
         if (question == null)
@@ -235,9 +341,36 @@ public class MathTutoringActuator : IActuator<object, MathTickResult>
 
     private async Task<MathTickResult> HandleExplainAsync(WorkItem workItem, CancellationToken ct)
     {
-        var payload = JsonSerializer.Deserialize<ExplainPayloadDto>(workItem.PayloadJson);
+        ExplainPayloadDto? payload;
+        
+        try
+        {
+            payload = JsonSerializer.Deserialize<ExplainPayloadDto>(workItem.PayloadJson);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Failed to deserialize Explain payload for WorkItem {WorkItemId}", workItem.Id);
+            return new MathTickResult
+            {
+                WorkItemId = workItem.Id,
+                Type = workItem.Type,
+                StudentId = workItem.StudentId,
+                Outcome = TickOutcome.ValidationFailed,
+                UiPayload = new { Error = "Invalid JSON payload", Details = ex.Message }
+            };
+        }
+
         if (payload == null)
-            throw new InvalidOperationException("Invalid payload");
+        {
+            return new MathTickResult
+            {
+                WorkItemId = workItem.Id,
+                Type = workItem.Type,
+                StudentId = workItem.StudentId,
+                Outcome = TickOutcome.ValidationFailed,
+                UiPayload = new { Error = "Payload is null after deserialization" }
+            };
+        }
 
         var explanation = await _explanationService.RetrieveAndComposeExplanationAsync(
             workItem.StudentId,
@@ -258,11 +391,55 @@ public class MathTutoringActuator : IActuator<object, MathTickResult>
 
     private async Task<MathTickResult> HandleUploadImageAsync(WorkItem workItem, CancellationToken ct)
     {
-        var payload = JsonSerializer.Deserialize<UploadImagePayloadDto>(workItem.PayloadJson);
-        if (payload == null)
-            throw new InvalidOperationException("Invalid payload");
+        UploadImagePayloadDto? payload;
+        
+        try
+        {
+            payload = JsonSerializer.Deserialize<UploadImagePayloadDto>(workItem.PayloadJson);
+        }
+        catch (JsonException ex)
+        {
+            _logger.LogError(ex, "Failed to deserialize UploadImage payload for WorkItem {WorkItemId}", workItem.Id);
+            return new MathTickResult
+            {
+                WorkItemId = workItem.Id,
+                Type = workItem.Type,
+                StudentId = workItem.StudentId,
+                Outcome = TickOutcome.ValidationFailed,
+                UiPayload = new { Error = "Invalid JSON payload", Details = ex.Message }
+            };
+        }
 
-        var imageBytes = Convert.FromBase64String(payload.ImageBase64);
+        if (payload == null)
+        {
+            return new MathTickResult
+            {
+                WorkItemId = workItem.Id,
+                Type = workItem.Type,
+                StudentId = workItem.StudentId,
+                Outcome = TickOutcome.ValidationFailed,
+                UiPayload = new { Error = "Payload is null after deserialization" }
+            };
+        }
+
+        byte[] imageBytes;
+        try
+        {
+            imageBytes = Convert.FromBase64String(payload.ImageBase64);
+        }
+        catch (FormatException ex)
+        {
+            _logger.LogError(ex, "Invalid Base64 string in UploadImage payload for WorkItem {WorkItemId}", workItem.Id);
+            return new MathTickResult
+            {
+                WorkItemId = workItem.Id,
+                Type = workItem.Type,
+                StudentId = workItem.StudentId,
+                Outcome = TickOutcome.ValidationFailed,
+                UiPayload = new { Error = "Invalid Base64 image data", Details = ex.Message }
+            };
+        }
+
         var imageNote = await _imageIngestionService.IngestImageAsync(
             workItem.StudentId,
             imageBytes,

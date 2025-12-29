@@ -10,7 +10,14 @@
     <HeadOutlet />
 </head>
 <body>
-<Routes />
+<Routes @rendermode="InteractiveServer" />
+    
+<!-- ✅ RADZEN KOMPONENTE MORAJU BITI OVDJE! -->
+<RadzenDialog @rendermode="InteractiveServer" />
+<RadzenNotification @rendermode="InteractiveServer" />
+<RadzenContextMenu @rendermode="InteractiveServer" />
+<RadzenTooltip @rendermode="InteractiveServer" />
+    
 <script src="_framework/blazor.web.js"></script>
 <script src="_content/Radzen.Blazor/Radzen.Blazor.js"></script>
 <script src="chart-helper.js"></script>

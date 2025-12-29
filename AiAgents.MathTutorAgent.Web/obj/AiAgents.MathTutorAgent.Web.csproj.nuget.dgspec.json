@@ -1,32 +1,25 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\Merzuk-PC\\MathTutorAgent\\AiAgents.MathTutorAgent.Web\\AiAgents.MathTutorAgent.Web.csproj": {}
+    "/Users/merzuksisic/AI/AiAgents.MathTutorAgent.Web/AiAgents.MathTutorAgent.Web.csproj": {}
   },
   "projects": {
-    "C:\\Users\\Merzuk-PC\\MathTutorAgent\\AiAgents.Core\\AiAgents.Core.csproj": {
+    "/Users/merzuksisic/AI/AiAgents.Core/AiAgents.Core.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Merzuk-PC\\MathTutorAgent\\AiAgents.Core\\AiAgents.Core.csproj",
+        "projectUniqueName": "/Users/merzuksisic/AI/AiAgents.Core/AiAgents.Core.csproj",
         "projectName": "AiAgents.Core",
-        "projectPath": "C:\\Users\\Merzuk-PC\\MathTutorAgent\\AiAgents.Core\\AiAgents.Core.csproj",
-        "packagesPath": "C:\\Users\\Merzuk-PC\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Merzuk-PC\\MathTutorAgent\\AiAgents.Core\\obj\\",
+        "projectPath": "/Users/merzuksisic/AI/AiAgents.Core/AiAgents.Core.csproj",
+        "packagesPath": "/Users/merzuksisic/.nuget/packages/",
+        "outputPath": "/Users/merzuksisic/AI/AiAgents.Core/obj/",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\Merzuk-PC\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "/Users/merzuksisic/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -45,7 +38,7 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "9.0.200"
+        "SdkAnalysisLevel": "9.0.300"
       },
       "frameworks": {
         "net9.0": {
@@ -66,41 +59,34 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.201/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.308/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "C:\\Users\\Merzuk-PC\\MathTutorAgent\\AiAgents.MathTutorAgent.Web\\AiAgents.MathTutorAgent.Web.csproj": {
+    "/Users/merzuksisic/AI/AiAgents.MathTutorAgent.Web/AiAgents.MathTutorAgent.Web.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Merzuk-PC\\MathTutorAgent\\AiAgents.MathTutorAgent.Web\\AiAgents.MathTutorAgent.Web.csproj",
+        "projectUniqueName": "/Users/merzuksisic/AI/AiAgents.MathTutorAgent.Web/AiAgents.MathTutorAgent.Web.csproj",
         "projectName": "AiAgents.MathTutorAgent.Web",
-        "projectPath": "C:\\Users\\Merzuk-PC\\MathTutorAgent\\AiAgents.MathTutorAgent.Web\\AiAgents.MathTutorAgent.Web.csproj",
-        "packagesPath": "C:\\Users\\Merzuk-PC\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Merzuk-PC\\MathTutorAgent\\AiAgents.MathTutorAgent.Web\\obj\\",
+        "projectPath": "/Users/merzuksisic/AI/AiAgents.MathTutorAgent.Web/AiAgents.MathTutorAgent.Web.csproj",
+        "packagesPath": "/Users/merzuksisic/.nuget/packages/",
+        "outputPath": "/Users/merzuksisic/AI/AiAgents.MathTutorAgent.Web/obj/",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\Merzuk-PC\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "/Users/merzuksisic/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "C:\\Users\\Merzuk-PC\\MathTutorAgent\\AiAgents.MathTutorAgent\\AiAgents.MathTutorAgent.csproj": {
-                "projectPath": "C:\\Users\\Merzuk-PC\\MathTutorAgent\\AiAgents.MathTutorAgent\\AiAgents.MathTutorAgent.csproj"
+              "/Users/merzuksisic/AI/AiAgents.MathTutorAgent/AiAgents.MathTutorAgent.csproj": {
+                "projectPath": "/Users/merzuksisic/AI/AiAgents.MathTutorAgent/AiAgents.MathTutorAgent.csproj"
               }
             }
           }
@@ -115,17 +101,39 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "9.0.200"
+        "SdkAnalysisLevel": "9.0.300"
       },
       "frameworks": {
         "net9.0": {
           "targetAlias": "net9.0",
           "dependencies": {
+            "FluentValidation": {
+              "target": "Package",
+              "version": "[11.9.0, )"
+            },
             "FluentValidation.AspNetCore": {
               "target": "Package",
               "version": "[11.3.0, )"
             },
+            "Microsoft.AspNetCore.Components.WebAssembly.Server": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
             "Microsoft.AspNetCore.SignalR.Client": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Microsoft.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[9.0.1, )"
+            },
+            "Microsoft.EntityFrameworkCore.Design": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Microsoft.EntityFrameworkCore.SqlServer": {
               "target": "Package",
               "version": "[9.0.0, )"
             },
@@ -135,13 +143,17 @@
               "target": "Package",
               "version": "[9.0.0, )"
             },
+            "Microsoft.ML": {
+              "target": "Package",
+              "version": "[3.0.1, )"
+            },
             "QuestPDF": {
               "target": "Package",
               "version": "[2024.12.3, )"
             },
             "Radzen.Blazor": {
               "target": "Package",
-              "version": "[5.8.3, )"
+              "version": "[5.8.4, )"
             },
             "Serilog.AspNetCore": {
               "target": "Package",
@@ -175,41 +187,34 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.201/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.308/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "C:\\Users\\Merzuk-PC\\MathTutorAgent\\AiAgents.MathTutorAgent\\AiAgents.MathTutorAgent.csproj": {
+    "/Users/merzuksisic/AI/AiAgents.MathTutorAgent/AiAgents.MathTutorAgent.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\Merzuk-PC\\MathTutorAgent\\AiAgents.MathTutorAgent\\AiAgents.MathTutorAgent.csproj",
+        "projectUniqueName": "/Users/merzuksisic/AI/AiAgents.MathTutorAgent/AiAgents.MathTutorAgent.csproj",
         "projectName": "AiAgents.MathTutorAgent",
-        "projectPath": "C:\\Users\\Merzuk-PC\\MathTutorAgent\\AiAgents.MathTutorAgent\\AiAgents.MathTutorAgent.csproj",
-        "packagesPath": "C:\\Users\\Merzuk-PC\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\Merzuk-PC\\MathTutorAgent\\AiAgents.MathTutorAgent\\obj\\",
+        "projectPath": "/Users/merzuksisic/AI/AiAgents.MathTutorAgent/AiAgents.MathTutorAgent.csproj",
+        "packagesPath": "/Users/merzuksisic/.nuget/packages/",
+        "outputPath": "/Users/merzuksisic/AI/AiAgents.MathTutorAgent/obj/",
         "projectStyle": "PackageReference",
-        "fallbackFolders": [
-          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
-        ],
         "configFilePaths": [
-          "C:\\Users\\Merzuk-PC\\AppData\\Roaming\\NuGet\\NuGet.Config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
-          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
+          "/Users/merzuksisic/.nuget/NuGet/NuGet.Config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
-          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "C:\\Users\\Merzuk-PC\\MathTutorAgent\\AiAgents.Core\\AiAgents.Core.csproj": {
-                "projectPath": "C:\\Users\\Merzuk-PC\\MathTutorAgent\\AiAgents.Core\\AiAgents.Core.csproj"
+              "/Users/merzuksisic/AI/AiAgents.Core/AiAgents.Core.csproj": {
+                "projectPath": "/Users/merzuksisic/AI/AiAgents.Core/AiAgents.Core.csproj"
               }
             }
           }
@@ -224,7 +229,7 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "9.0.200"
+        "SdkAnalysisLevel": "9.0.300"
       },
       "frameworks": {
         "net9.0": {
@@ -232,7 +237,11 @@
           "dependencies": {
             "FluentValidation": {
               "target": "Package",
-              "version": "[11.5.1, )"
+              "version": "[11.9.0, )"
+            },
+            "FluentValidation.DependencyInjectionExtensions": {
+              "target": "Package",
+              "version": "[11.9.0, )"
             },
             "Microsoft.EntityFrameworkCore": {
               "target": "Package",
@@ -248,9 +257,39 @@
               "target": "Package",
               "version": "[9.0.0, )"
             },
+            "Microsoft.EntityFrameworkCore.Tools": {
+              "include": "Runtime, Build, Native, ContentFiles, Analyzers, BuildTransitive",
+              "suppressParent": "All",
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Microsoft.Extensions.Logging.Abstractions": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Microsoft.ML": {
+              "target": "Package",
+              "version": "[3.0.1, )"
+            },
+            "Microsoft.ML.FastTree": {
+              "target": "Package",
+              "version": "[3.0.1, )"
+            },
+            "Microsoft.ML.LightGbm": {
+              "target": "Package",
+              "version": "[3.0.1, )"
+            },
             "QuestPDF": {
               "target": "Package",
-              "version": "[2024.12.0, )"
+              "version": "[2024.12.3, )"
+            },
+            "SciSharp.TensorFlow.Redist": {
+              "target": "Package",
+              "version": "[2.11.0, )"
+            },
+            "System.Text.Json": {
+              "target": "Package",
+              "version": "[9.0.0, )"
             }
           },
           "imports": [
@@ -269,7 +308,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.201/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.308/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

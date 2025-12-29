@@ -1,13 +1,9 @@
 ﻿@page "/admin"
-@using AiAgents.MathTutorAgent.Domain.Entities
-@using Radzen
-@using Radzen.Blazor
 @inject HttpClient Http
 @inject NavigationManager Navigation
-@rendermode InteractiveServer
+@inject DialogService DialogService
 
 <PageTitle>Admin Panel - MathTutor AI</PageTitle>
-
 <RadzenCard>
     <RadzenText TextStyle="TextStyle.H3">👨‍💼 Admin Panel</RadzenText>
 </RadzenCard>
@@ -58,37 +54,10 @@
             </RadzenCard>
         </RadzenTabsItem>
 
-        <RadzenTabsItem Text="Questions">
-            <RadzenCard class="mt-3">
-                <RadzenButton Text="Add New Question" Click="OpenAddQuestionDialog" ButtonStyle="ButtonStyle.Success" Icon="add" class="mb-3" />
-
-                @if (questions == null)
-                {
-                    <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" />
-                }
-                else
-                {
-                    <RadzenDataGrid Data="@questions" TItem="QuestionDto" AllowFiltering="true" AllowSorting="true" AllowPaging="true" PageSize="10">
-                        <Columns>
-                            <RadzenDataGridColumn TItem="QuestionDto" Property="Id" Title="ID" Width="60px" />
-                            <RadzenDataGridColumn TItem="QuestionDto" Property="TopicName" Title="Topic" />
-                            <RadzenDataGridColumn TItem="QuestionDto" Property="Difficulty" Title="Difficulty" Width="100px" />
-                            <RadzenDataGridColumn TItem="QuestionDto" Property="QuestionText" Title="Question" />
-                            <RadzenDataGridColumn TItem="QuestionDto" Property="CorrectAnswer" Title="Answer" Width="150px" />
-                            <RadzenDataGridColumn TItem="QuestionDto" Title="Actions" Width="120px">
-                                <Template Context="question">
-                                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@(() => EditQuestion(question))" />
-                                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Click="@(() => DeleteQuestion(question.Id))" class="ms-1" />
-                                </Template>
-                            </RadzenDataGridColumn>
-                        </Columns>
-                    </RadzenDataGrid>
-                }
-            </RadzenCard>
-        </RadzenTabsItem>
-
         <RadzenTabsItem Text="Students">
             <RadzenCard class="mt-3">
+                <RadzenButton Text="Add New Student" Click="OpenAddStudentDialog" ButtonStyle="ButtonStyle.Success" Icon="add" class="mb-3" />
+
                 @if (students == null)
                 {
                     <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" />
@@ -100,11 +69,43 @@
                             <RadzenDataGridColumn TItem="StudentDto" Property="Id" Title="ID" Width="60px" />
                             <RadzenDataGridColumn TItem="StudentDto" Property="Name" Title="Name" />
                             <RadzenDataGridColumn TItem="StudentDto" Property="Email" Title="Email" />
-                            <RadzenDataGridColumn TItem="StudentDto" Property="TotalAttempts" Title="Total Attempts" Width="130px" />
-                            <RadzenDataGridColumn TItem="StudentDto" Property="CorrectAttempts" Title="Correct" Width="100px" />
+                            <RadzenDataGridColumn TItem="StudentDto" Property="CreatedAt" Title="Created" Width="150px">
+                                <Template Context="student">
+                                    @student.CreatedAt.ToString("yyyy-MM-dd HH:mm")
+                                </Template>
+                            </RadzenDataGridColumn>
                             <RadzenDataGridColumn TItem="StudentDto" Title="Actions" Width="100px">
                                 <Template Context="student">
                                     <RadzenButton Text="Profile" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small" Click="@(() => ViewProfile(student.Id))" />
+                                </Template>
+                            </RadzenDataGridColumn>
+                        </Columns>
+                    </RadzenDataGrid>
+                }
+            </RadzenCard>
+        </RadzenTabsItem>
+
+        <RadzenTabsItem Text="Questions">
+            <RadzenCard class="mt-3">
+                <RadzenButton Text="Add New Question" Click="OpenAddQuestionDialog" ButtonStyle="ButtonStyle.Success" Icon="add" class="mb-3" />
+
+                @if (questions == null)
+                {
+                    <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" />
+                }
+                else
+                {
+                    <RadzenDataGrid Data="@questions" TItem="AdminQuestionDto" AllowFiltering="true" AllowSorting="true" AllowPaging="true" PageSize="10">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="AdminQuestionDto" Property="Id" Title="ID" Width="60px" />
+                            <RadzenDataGridColumn TItem="AdminQuestionDto" Property="TopicName" Title="Topic" />
+                            <RadzenDataGridColumn TItem="AdminQuestionDto" Property="Difficulty" Title="Difficulty" Width="100px" />
+                            <RadzenDataGridColumn TItem="AdminQuestionDto" Property="QuestionText" Title="Question" />
+                            <RadzenDataGridColumn TItem="AdminQuestionDto" Property="CorrectAnswer" Title="Answer" Width="150px" />
+                            <RadzenDataGridColumn TItem="AdminQuestionDto" Title="Actions" Width="120px">
+                                <Template Context="question">
+                                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@(() => EditQuestion(question))" />
+                                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Click="@(() => DeleteQuestion(question.Id))" class="ms-1" />
                                 </Template>
                             </RadzenDataGridColumn>
                         </Columns>
@@ -117,7 +118,7 @@
 
 @code {
     private PerformanceMetricsDto? metrics;
-    private List<QuestionDto>? questions;
+    private List<AdminQuestionDto>? questions;
     private List<StudentDto>? students;
 
     protected override async Task OnInitializedAsync()
@@ -129,25 +130,51 @@
 
     private async Task LoadMetrics()
     {
-        metrics = await Http.GetFromJsonAsync<PerformanceMetricsDto>("/api/admin/performance-metrics");
+        try
+        {
+            metrics = await Http.GetFromJsonAsync<PerformanceMetricsDto>("/api/admin/performance-metrics");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading metrics: {ex.Message}");
+        }
     }
 
     private async Task LoadQuestions()
     {
-        questions = await Http.GetFromJsonAsync<List<QuestionDto>>("/api/admin/questions");
+        try
+        {
+            questions = await Http.GetFromJsonAsync<List<AdminQuestionDto>>("/api/admin/questions");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading questions: {ex.Message}");
+        }
     }
 
     private async Task LoadStudents()
     {
-        students = await Http.GetFromJsonAsync<List<StudentDto>>("/api/admin/students");
+        try
+        {
+            students = await Http.GetFromJsonAsync<List<StudentDto>>("/api/admin/students");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading students: {ex.Message}");
+        }
     }
 
-    private void OpenAddQuestionDialog()
+    private void OpenAddStudentDialog()
+    {
+        Navigation.NavigateTo("/admin/add-student");
+    }
+    
+    private async Task OpenAddQuestionDialog()
     {
         // TODO: Implement dialog
     }
 
-    private void EditQuestion(QuestionDto question)
+    private void EditQuestion(AdminQuestionDto question)
     {
         // TODO: Implement edit dialog
     }
@@ -164,37 +191,5 @@
     private void ViewProfile(int studentId)
     {
         Navigation.NavigateTo($"/profile/{studentId}");
-    }
-
-    private class PerformanceMetricsDto
-    {
-        public int TotalStudents { get; set; }
-        public int TotalQuestions { get; set; }
-        public int TotalAttempts { get; set; }
-        public int TotalWorkItems { get; set; }
-        public int CompletedWorkItems { get; set; }
-        public double AverageProcessingTimeMs { get; set; }
-        public double SuccessRate { get; set; }
-    }
-
-    private class QuestionDto
-    {
-        public int Id { get; set; }
-        public int TopicId { get; set; }
-        public string TopicName { get; set; } = string.Empty;
-        public int Difficulty { get; set; }
-        public string QuestionText { get; set; } = string.Empty;
-        public string CorrectAnswer { get; set; } = string.Empty;
-        public string? SolutionSteps { get; set; }
-    }
-
-    private class StudentDto
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string Email { get; set; } = string.Empty;
-        public DateTime CreatedAt { get; set; }
-        public int TotalAttempts { get; set; }
-        public int CorrectAttempts { get; set; }
     }
 }

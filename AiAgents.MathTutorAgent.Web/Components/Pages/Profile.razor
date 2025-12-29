@@ -1,89 +1,243 @@
 ﻿@page "/profile/{studentId:int}"
-@using AiAgents.MathTutorAgent.Application.DTOs
-@using Radzen
-@using Radzen.Blazor
 @inject HttpClient Http
 @inject IJSRuntime JS
-@rendermode InteractiveServer
+@inject NavigationManager Navigation
 
 <PageTitle>Student Profile - MathTutor AI</PageTitle>
 
-<RadzenCard>
-    <RadzenRow>
-        <RadzenColumn Size="12" SizeMD="8">
-            <RadzenText TextStyle="TextStyle.H3">📊 Student Profile</RadzenText>
-        </RadzenColumn>
-        <RadzenColumn Size="12" SizeMD="4">
-            <RadzenButton Text="Export PDF" Icon="picture_as_pdf" ButtonStyle="ButtonStyle.Primary" Click="ExportPdf" class="float-end" />
-        </RadzenColumn>
-    </RadzenRow>
-</RadzenCard>
-
-@if (profile == null)
-{
-    <RadzenCard class="mt-4">
-        <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" />
-    </RadzenCard>
-}
-else
-{
-    <RadzenRow Gap="20px" class="mt-4">
-        <RadzenColumn Size="12" SizeMD="3">
-            <RadzenCard>
-                <RadzenText TextStyle="TextStyle.H6">Total Attempts</RadzenText>
-                <RadzenText TextStyle="TextStyle.H3">@profile.TotalAttempts</RadzenText>
-            </RadzenCard>
-        </RadzenColumn>
-        <RadzenColumn Size="12" SizeMD="3">
-            <RadzenCard>
-                <RadzenText TextStyle="TextStyle.H6">Correct Answers</RadzenText>
-                <RadzenText TextStyle="TextStyle.H3">@profile.CorrectAttempts</RadzenText>
-            </RadzenCard>
-        </RadzenColumn>
-        <RadzenColumn Size="12" SizeMD="3">
-            <RadzenCard>
-                <RadzenText TextStyle="TextStyle.H6">Accuracy</RadzenText>
-                <RadzenText TextStyle="TextStyle.H3">@profile.AccuracyPercentage.ToString("F1")%</RadzenText>
-            </RadzenCard>
-        </RadzenColumn>
-        <RadzenColumn Size="12" SizeMD="3">
-            <RadzenCard>
-                <RadzenText TextStyle="TextStyle.H6">Avg Time</RadzenText>
-                <RadzenText TextStyle="TextStyle.H3">@profile.AverageTimeSeconds.ToString("F1")s</RadzenText>
-            </RadzenCard>
-        </RadzenColumn>
-    </RadzenRow>
-
-    <RadzenRow Gap="20px" class="mt-4">
-        <RadzenColumn Size="12" SizeMD="6">
-            <RadzenCard>
-                <RadzenText TextStyle="TextStyle.H5">Topic Mastery</RadzenText>
-                <canvas id="topicChart" width="400" height="300"></canvas>
-            </RadzenCard>
-        </RadzenColumn>
-        <RadzenColumn Size="12" SizeMD="6">
-            <RadzenCard>
-                <RadzenText TextStyle="TextStyle.H5">Recent Activity</RadzenText>
-                @foreach (var activity in profile.RecentActivity.Take(5))
-                {
-                    <div class="activity-item mb-2">
-                        <RadzenBadge Text="@(activity.IsCorrect ? "✅" : "❌")" BadgeStyle="@(activity.IsCorrect ? BadgeStyle.Success : BadgeStyle.Danger)" />
-                        <RadzenText TextStyle="TextStyle.Body2" class="ms-2">@activity.QuestionText</RadzenText>
-                        <RadzenText TextStyle="TextStyle.Caption">@activity.Date.ToString("yyyy-MM-dd HH:mm") • @activity.TimeSeconds.ToString("F1")s</RadzenText>
-                    </div>
-                }
-            </RadzenCard>
-        </RadzenColumn>
-    </RadzenRow>
-
-    @if (stats != null && stats.DailyStats.Any())
+<div class="profile-container">
+    @if (profile == null)
     {
-        <RadzenCard class="mt-4">
-            <RadzenText TextStyle="TextStyle.H5">Daily Performance (Last 30 Days)</RadzenText>
-            <canvas id="dailyChart" width="800" height="300"></canvas>
-        </RadzenCard>
+        <div class="loading-container">
+            <div class="spinner-large"></div>
+            <p class="loading-text">Loading profile...</p>
+        </div>
     }
-}
+    else
+    {
+        <!-- Header Section -->
+        <div class="profile-header">
+            <div class="profile-header-content">
+                <div class="profile-avatar-section">
+                    <div class="profile-avatar-large">
+                        @GetInitials(profile.Name)
+                    </div>
+                    <div class="profile-info">
+                        <h1 class="profile-name">@profile.Name</h1>
+                        <p class="profile-email">@profile.Email</p>
+                        <div class="profile-badges">
+                            <span class="badge badge-primary">
+                                <span class="badge-icon">🎯</span>
+                                @profile.AccuracyPercentage.ToString("F1")% Accuracy
+                            </span>
+                            @if (profile.TotalAttempts >= 100)
+                            {
+                                <span class="badge badge-gold">
+                                    <span class="badge-icon">🏆</span>
+                                    Century Club
+                                </span>
+                            }
+                        </div>
+                    </div>
+                </div>
+                <div class="profile-actions">
+                    <button class="btn-icon-primary" @onclick="ExportPdf" title="Export PDF">
+                        <span class="icon">📄</span>
+                        <span class="text">Export PDF</span>
+                    </button>
+                    <button class="btn-icon-secondary" @onclick="BackToDashboard" title="Back">
+                        <span class="icon">←</span>
+                        <span class="text">Dashboard</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="stats-overview">
+            <div class="stat-card-modern">
+                <div class="stat-icon-wrapper stat-blue">
+                    <span class="stat-icon">📝</span>
+                </div>
+                <div class="stat-details">
+                    <p class="stat-label">Total Attempts</p>
+                    <p class="stat-value">@profile.TotalAttempts</p>
+                    <p class="stat-trend">
+                        <span class="trend-indicator">↑</span>
+                        Keep going!
+                    </p>
+                </div>
+            </div>
+
+            <div class="stat-card-modern">
+                <div class="stat-icon-wrapper stat-green">
+                    <span class="stat-icon">✅</span>
+                </div>
+                <div class="stat-details">
+                    <p class="stat-label">Correct Answers</p>
+                    <p class="stat-value">@profile.CorrectAttempts</p>
+                    <p class="stat-trend">
+                        <span class="trend-indicator">✓</span>
+                        @((profile.CorrectAttempts * 100.0 / Math.Max(profile.TotalAttempts, 1)).ToString("F1"))%
+                    </p>
+                </div>
+            </div>
+
+            <div class="stat-card-modern">
+                <div class="stat-icon-wrapper stat-purple">
+                    <span class="stat-icon">⚡</span>
+                </div>
+                <div class="stat-details">
+                    <p class="stat-label">Avg Response Time</p>
+                    <p class="stat-value">@profile.AverageTimeSeconds.ToString("F1")s</p>
+                    <p class="stat-trend">
+                        <span class="trend-indicator">⏱️</span>
+                        Per question
+                    </p>
+                </div>
+            </div>
+
+            <div class="stat-card-modern">
+                <div class="stat-icon-wrapper stat-orange">
+                    <span class="stat-icon">🎯</span>
+                </div>
+                <div class="stat-details">
+                    <p class="stat-label">Overall Accuracy</p>
+                    <p class="stat-value">@profile.AccuracyPercentage.ToString("F1")%</p>
+                    <p class="stat-trend">
+                        <span class="trend-indicator">📈</span>
+                        @GetAccuracyStatus(profile.AccuracyPercentage)
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <div class="content-grid">
+            <!-- Topic Mastery -->
+            <div class="content-card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <span class="title-icon">📊</span>
+                        Topic Mastery
+                    </h3>
+                </div>
+                <div class="card-body">
+                    @if (profile.TopicProgress.Any())
+                    {
+                        <div class="topic-progress-list">
+                            @foreach (var topic in profile.TopicProgress.OrderByDescending(t => t.MasteryScore).Take(10))
+                            {
+                                <div class="topic-item">
+                                    <div class="topic-header">
+                                        <span class="topic-name">@topic.TopicName</span>
+                                        <span class="topic-score">@topic.MasteryScore.ToString("F0")%</span>
+                                    </div>
+                                    <div class="topic-progress-bar">
+                                        <div class="progress-fill" style="width: @topic.MasteryScore%">
+                                            <div class="progress-glow"></div>
+                                        </div>
+                                    </div>
+                                    <div class="topic-meta">
+                                        <span class="confidence-indicator">
+                                            @GetConfidenceIcon(topic.Confidence) 
+                                            @((topic.Confidence * 100).ToString("F0"))% confidence
+                                        </span>
+                                        <span class="last-practiced">
+                                            Last: @GetRelativeTime(topic.LastPracticed)
+                                        </span>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                        
+                        <!-- Chart -->
+                        <div class="chart-container">
+                            <canvas id="topicChart"></canvas>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="empty-state-small">
+                            <span class="empty-icon">📚</span>
+                            <p>No topics mastered yet</p>
+                            <p class="empty-subtitle">Start solving questions to see your progress</p>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Recent Activity Feed -->
+            <div class="content-card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <span class="title-icon">⚡</span>
+                        Recent Activity
+                    </h3>
+                </div>
+                <div class="card-body">
+                    @if (profile.RecentActivity.Any())
+                    {
+                        <div class="activity-feed">
+                            @foreach (var activity in profile.RecentActivity.Take(10))
+                            {
+                                <div class="activity-card @(activity.IsCorrect ? "activity-success" : "activity-error")">
+                                    <div class="activity-indicator">
+                                        @if (activity.IsCorrect)
+                                        {
+                                            <span class="activity-icon success">✓</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="activity-icon error">✗</span>
+                                        }
+                                    </div>
+                                    <div class="activity-content">
+                                        <p class="activity-question">@activity.QuestionText</p>
+                                        <div class="activity-meta">
+                                            <span class="activity-time">
+                                                🕒 @activity.TimeSeconds.ToString("F1")s
+                                            </span>
+                                            <span class="activity-date">
+                                                @GetRelativeTime(activity.Date)
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="empty-state-small">
+                            <span class="empty-icon">📝</span>
+                            <p>No activity yet</p>
+                            <p class="empty-subtitle">Start solving questions to build your history</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily Performance Chart -->
+        @if (stats != null && stats.DailyStats.Any())
+        {
+            <div class="content-card chart-card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <span class="title-icon">📈</span>
+                        Daily Performance (Last 30 Days)
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container-large">
+                        <canvas id="dailyChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        }
+    }
+</div>
 
 @code {
     [Parameter]
@@ -108,43 +262,643 @@ else
 
     private async Task LoadProfile()
     {
-        profile = await Http.GetFromJsonAsync<StudentProfileDto>($"/api/student/{StudentId}/profile");
+        try
+        {
+            profile = await Http.GetFromJsonAsync<StudentProfileDto>($"/api/student/{StudentId}/profile");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading profile: {ex.Message}");
+        }
     }
 
     private async Task LoadStats()
     {
-        stats = await Http.GetFromJsonAsync<StudySessionStatsDto>($"/api/student/{StudentId}/stats");
+        try
+        {
+            var fromDate = DateTime.UtcNow.AddDays(-30);
+            var toDate = DateTime.UtcNow;
+            stats = await Http.GetFromJsonAsync<StudySessionStatsDto>(
+                $"/api/student/{StudentId}/stats?from={fromDate:yyyy-MM-dd}&to={toDate:yyyy-MM-dd}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading stats: {ex.Message}");
+        }
     }
 
     private async Task RenderCharts()
     {
         if (profile == null) return;
 
-        // Topic Chart
-        var topicLabels = profile.TopicProgress.Select(t => t.TopicName).ToArray();
-        var topicScores = profile.TopicProgress.Select(t => t.MasteryScore).ToArray();
-
-        await JS.InvokeVoidAsync("renderTopicChart", topicLabels, topicScores);
-
-        // Daily Chart
-        if (stats != null && stats.DailyStats.Any())
+        try
         {
-            var dailyLabels = stats.DailyStats.Select(d => d.Date.ToString("MM-dd")).ToArray();
-            var dailyAttempts = stats.DailyStats.Select(d => d.TotalAttempts).ToArray();
-            var dailyCorrect = stats.DailyStats.Select(d => d.CorrectAttempts).ToArray();
+            await Task.Delay(100); // Give DOM time to render
 
-            await JS.InvokeVoidAsync("renderDailyChart", dailyLabels, dailyAttempts, dailyCorrect);
+            if (profile.TopicProgress.Any())
+            {
+                var topicLabels = profile.TopicProgress.Select(t => t.TopicName).ToArray();
+                var topicScores = profile.TopicProgress.Select(t => t.MasteryScore).ToArray();
+                await JS.InvokeVoidAsync("renderTopicChart", topicLabels, topicScores);
+            }
+
+            if (stats != null && stats.DailyStats.Any())
+            {
+                var dailyLabels = stats.DailyStats.Select(d => d.Date.ToString("MMM dd")).ToArray();
+                var dailyAttempts = stats.DailyStats.Select(d => d.TotalAttempts).ToArray();
+                var dailyCorrect = stats.DailyStats.Select(d => d.CorrectAttempts).ToArray();
+                await JS.InvokeVoidAsync("renderDailyChart", dailyLabels, dailyAttempts, dailyCorrect);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error rendering charts: {ex.Message}");
         }
     }
 
     private async Task ExportPdf()
     {
-        var response = await Http.GetAsync($"/api/student/{StudentId}/export-pdf");
-        if (response.IsSuccessStatusCode)
+        try
         {
-            var fileBytes = await response.Content.ReadAsByteArrayAsync();
-            var fileName = $"MathTutor_Report_{StudentId}_{DateTime.Now:yyyyMMdd}.pdf";
-            await JS.InvokeVoidAsync("downloadFile", fileName, Convert.ToBase64String(fileBytes));
+            var response = await Http.GetAsync($"/api/student/{StudentId}/export-pdf");
+            if (response.IsSuccessStatusCode)
+            {
+                var fileBytes = await response.Content.ReadAsByteArrayAsync();
+                var fileName = $"MathTutor_Report_{StudentId}_{DateTime.Now:yyyyMMdd}.pdf";
+                await JS.InvokeVoidAsync("downloadFile", fileName, Convert.ToBase64String(fileBytes));
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error exporting PDF: {ex.Message}");
         }
     }
+
+    private void BackToDashboard()
+    {
+        Navigation.NavigateTo("/");
+    }
+
+    private string GetInitials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        return parts.Length > 0 ? parts[0][..Math.Min(2, parts[0].Length)].ToUpper() : "??";
+    }
+
+    private string GetConfidenceIcon(double confidence)
+    {
+        return confidence switch
+        {
+            >= 0.8 => "🔥",
+            >= 0.6 => "✨",
+            >= 0.4 => "💫",
+            _ => "🌱"
+        };
+    }
+
+    private string GetAccuracyStatus(double accuracy)
+    {
+        return accuracy switch
+        {
+            >= 90 => "Excellent!",
+            >= 75 => "Very Good",
+            >= 60 => "Good",
+            >= 50 => "Keep Practicing",
+            _ => "More Practice Needed"
+        };
+    }
+
+    private string GetRelativeTime(DateTime date)
+    {
+        var span = DateTime.UtcNow - date;
+        
+        if (span.TotalMinutes < 1) return "just now";
+        if (span.TotalMinutes < 60) return $"{(int)span.TotalMinutes}m ago";
+        if (span.TotalHours < 24) return $"{(int)span.TotalHours}h ago";
+        if (span.TotalDays < 7) return $"{(int)span.TotalDays}d ago";
+        if (span.TotalDays < 30) return $"{(int)(span.TotalDays / 7)}w ago";
+        
+        return date.ToString("MMM dd, yyyy");
+    }
 }
+<style>
+    /* Profile Container */
+.profile-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 2rem;
+    animation: fadeIn 0.4s ease-in;
+}
+
+@@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Loading State */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+    gap: 1.5rem;
+}
+
+.spinner-large {
+    width: 60px;
+    height: 60px;
+    border: 4px solid #f3f4f6;
+    border-top-color: #3b82f6;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+.loading-text {
+    font-size: 1.125rem;
+    color: #6b7280;
+    font-weight: 500;
+}
+
+/* Profile Header */
+.profile-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 20px;
+    padding: 2.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
+}
+
+.profile-header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 2rem;
+}
+
+.profile-avatar-section {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.profile-avatar-large {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: white;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    border: 4px solid rgba(255, 255, 255, 0.3);
+}
+
+.profile-info {
+    color: white;
+}
+
+.profile-name {
+    font-size: 2rem;
+    font-weight: 700;
+    margin: 0;
+    margin-bottom: 0.25rem;
+}
+
+.profile-email {
+    font-size: 1rem;
+    margin: 0;
+    opacity: 0.9;
+    margin-bottom: 0.75rem;
+}
+
+.profile-badges {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1rem;
+    border-radius: 50px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.badge-gold {
+    background: linear-gradient(135deg, #fbbf24, #f59e0b);
+    border-color: #fbbf24;
+}
+
+.badge-icon {
+    font-size: 1rem;
+}
+
+/* Profile Actions */
+.profile-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.btn-icon-primary,
+.btn-icon-secondary {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.btn-icon-primary {
+    background: white;
+    color: #667eea;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn-icon-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.btn-icon-secondary {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.btn-icon-secondary:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Stats Overview */
+.stats-overview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card-modern {
+    background: white;
+    border-radius: 16px;
+    padding: 1.75rem;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+    border: 1px solid #f3f4f6;
+}
+
+.stat-card-modern:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+}
+
+.stat-icon-wrapper {
+    width: 60px;
+    height: 60px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+}
+
+.stat-blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
+.stat-green { background: linear-gradient(135deg, #10b981, #059669); }
+.stat-purple { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
+.stat-orange { background: linear-gradient(135deg, #f59e0b, #d97706); }
+
+.stat-details {
+    flex: 1;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    color: #6b7280;
+    margin: 0 0 0.25rem 0;
+    font-weight: 500;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #111827;
+    margin: 0 0 0.25rem 0;
+}
+
+.stat-trend {
+    font-size: 0.8125rem;
+    color: #10b981;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.trend-indicator {
+    font-weight: 600;
+}
+
+/* Content Grid */
+.content-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+/* Content Cards */
+.content-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    border: 1px solid #f3f4f6;
+    overflow: hidden;
+}
+
+.card-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid #f3f4f6;
+    background: linear-gradient(to bottom, #fafafa, #ffffff);
+}
+
+.card-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #111827;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.title-icon {
+    font-size: 1.5rem;
+}
+
+.card-body {
+    padding: 1.5rem;
+}
+
+/* Topic Progress List */
+.topic-progress-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.topic-item {
+    padding: 1rem;
+    background: #f9fafb;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+    transition: all 0.2s ease;
+}
+
+.topic-item:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+}
+
+.topic-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.topic-name {
+    font-weight: 600;
+    color: #111827;
+    font-size: 0.95rem;
+}
+
+.topic-score {
+    font-weight: 700;
+    color: #3b82f6;
+    font-size: 1.1rem;
+}
+
+.topic-progress-bar {
+    height: 8px;
+    background: #e5e7eb;
+    border-radius: 50px;
+    overflow: hidden;
+    position: relative;
+    margin-bottom: 0.75rem;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+    border-radius: 50px;
+    transition: width 0.6s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-glow {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.topic-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8125rem;
+    color: #6b7280;
+}
+
+.confidence-indicator {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+/* Activity Feed */
+.activity-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.activity-card {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 12px;
+    border: 1px solid;
+    transition: all 0.2s ease;
+}
+
+.activity-success {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.activity-success:hover {
+    background: #dcfce7;
+}
+
+.activity-error {
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
+.activity-error:hover {
+    background: #fee2e2;
+}
+
+.activity-indicator {
+    flex-shrink: 0;
+}
+
+.activity-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.activity-icon.success {
+    background: #10b981;
+    color: white;
+}
+
+.activity-icon.error {
+    background: #ef4444;
+    color: white;
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-question {
+    margin: 0 0 0.5rem 0;
+    font-weight: 500;
+    color: #111827;
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+.activity-meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.8125rem;
+    color: #6b7280;
+}
+
+/* Charts */
+.chart-container {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: #f9fafb;
+    border-radius: 12px;
+}
+
+.chart-card {
+    grid-column: 1 / -1;
+}
+
+.chart-container-large {
+    padding: 1.5rem;
+    background: #f9fafb;
+    border-radius: 12px;
+}
+
+/* Empty States */
+.empty-state-small {
+    text-align: center;
+    padding: 3rem 1rem;
+}
+
+.empty-icon {
+    font-size: 4rem;
+    display: block;
+    margin-bottom: 1rem;
+    opacity: 0.6;
+}
+
+.empty-state-small p {
+    margin: 0.5rem 0;
+    color: #6b7280;
+}
+
+.empty-subtitle {
+    font-size: 0.875rem;
+    color: #9ca3af;
+}
+
+/* Responsive */
+@@media (max-width: 768px) {
+    .profile-container {
+        padding: 1rem;
+    }
+
+    .profile-header {
+        padding: 1.5rem;
+    }
+
+    .profile-header-content {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .profile-avatar-large {
+        width: 80px;
+        height: 80px;
+        font-size: 2rem;
+    }
+
+    .profile-name {
+        font-size: 1.5rem;
+    }
+
+    .stats-overview {
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    }
+
+    .stat-value {
+        font-size: 1.5rem;
+    }
+
+    .content-grid {
+        grid-template-columns: 1fr;
+    }
+    }
+    </style>

@@ -1,4 +1,5 @@
 ﻿using AiAgents.MathTutorAgent.Application.DTOs;
+using AiAgents.MathTutorAgent.Domain.Enums;
 using AiAgents.MathTutorAgent.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -96,6 +97,34 @@ public class StudentProfileService(MathTutorDbContext context)
             ToDate = to,
             DailyStats = groupedByDate,
             TopicStats = groupedByTopic
+        };
+    }
+    public async Task<DashboardStatsDto> GetDashboardStatsAsync(CancellationToken ct = default)
+    {
+        // Total Students
+        var totalStudents = await context.Students.CountAsync(ct);
+
+        // Active Sessions - studenti koji imaju aktivne work items
+        var activeSessions = await context.WorkItems
+            .Where(w => w.Status == WorkStatus.Processing || w.Status == WorkStatus.Queued)
+            .Select(w => w.StudentId)
+            .Distinct()
+            .CountAsync(ct);
+
+        // Questions Completed - svi tačno odgovoreni pokušaji (svi studenti)
+        var questionsCompleted = await context.Attempts
+            .CountAsync(a => a.IsCorrect, ct);
+
+        // Agent Status - da li ima aktivnih work items
+        var hasActiveWork = await context.WorkItems
+            .AnyAsync(w => w.Status == WorkStatus.Processing, ct);
+
+        return new DashboardStatsDto
+        {
+            TotalStudents = totalStudents,
+            ActiveSessions = activeSessions,
+            QuestionsCompleted = questionsCompleted,
+            AgentStatus = hasActiveWork ? "Processing" : "Online"
         };
     }
 }

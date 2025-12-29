@@ -17,7 +17,7 @@ namespace AiAgents.MathTutorAgent.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "9.0.0")
+                .HasAnnotation("ProductVersion", "9.0.1")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
@@ -265,8 +265,8 @@ namespace AiAgents.MathTutorAgent.Migrations
                     b.Property<DateTime>("LastPracticedUtc")
                         .HasColumnType("datetime2");
 
-                    b.Property<double>("MasteryScore")
-                        .HasColumnType("float");
+                    b.Property<float>("MasteryScore")
+                        .HasColumnType("real");
 
                     b.Property<int>("StudentId")
                         .HasColumnType("int");

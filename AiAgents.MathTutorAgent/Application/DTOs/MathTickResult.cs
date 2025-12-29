@@ -25,6 +25,7 @@ public enum TickOutcome
     ImageIndexed,
     NoTopicsAvailable,
     NoQuestionsAvailable,
+    ValidationFailed,
     Failed
 }
 

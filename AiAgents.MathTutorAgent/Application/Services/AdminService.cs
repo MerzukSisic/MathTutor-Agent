@@ -133,14 +133,13 @@ public class AdminService
         var totalQuestions = await _context.Questions.CountAsync(ct);
         var totalAttempts = await _context.Attempts.CountAsync(ct);
 
-        var workItemStats = await _context.WorkItems
-            .GroupBy(w => w.Status)
-            .Select(g => new { Status = g.Key, Count = g.Count() })
-            .ToListAsync(ct);
+        var totalWorkItems = await _context.WorkItems.CountAsync(ct);
+        var completedWorkItems = await _context.WorkItems
+            .CountAsync(w => w.Status == Domain.Enums.WorkStatus.Done, ct);
 
-        var successCount = workItemStats.FirstOrDefault(s => s.Status == Domain.Enums.WorkStatus.Done)?.Count ?? 0;
-        var totalWorkItems = workItemStats.Sum(s => s.Count);
-        var successRate = totalWorkItems > 0 ? (double)successCount / totalWorkItems * 100 : 0;
+        var successRate = totalWorkItems > 0 
+            ? (double)completedWorkItems / totalWorkItems * 100 
+            : 0;
 
         var avgProcessingTime = await _context.WorkItems
             .Where(w => w.ProcessedAt != null)
@@ -152,8 +151,33 @@ public class AdminService
             TotalStudents = totalStudents,
             TotalQuestions = totalQuestions,
             TotalAttempts = totalAttempts,
-            WorkItemSuccessRate = successRate,
+            TotalWorkItems = totalWorkItems,
+            CompletedWorkItems = completedWorkItems,
+            SuccessRate = successRate,
             AverageProcessingTimeMs = avgProcessingTime
         };
     }
+    // DODAJ U AdminService.cs (na kraju klase):
+
+    public async Task<StudentDto> CreateStudentAsync(string name, string email, CancellationToken ct = default)
+    {
+        var student = new Student
+        {
+            Name = name,
+            Email = email,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Students.Add(student);
+        await _context.SaveChangesAsync(ct);
+
+        return new StudentDto
+        {
+            Id = student.Id,
+            Name = student.Name,
+            Email = student.Email,
+            CreatedAt = student.CreatedAt
+        };
+    }
+    
 }

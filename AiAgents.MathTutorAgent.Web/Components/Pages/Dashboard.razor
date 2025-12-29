@@ -1,110 +1,188 @@
 ﻿@page "/"
-@using AiAgents.MathTutorAgent.Infrastructure
-@using Microsoft.EntityFrameworkCore
-@using Radzen
-@using Radzen.Blazor
-@inject MathTutorDbContext DbContext
+@inject HttpClient Http
 @inject NavigationManager Navigation
-@rendermode InteractiveServer
 
-<PageTitle>MathTutor AI - Dashboard</PageTitle>
+<PageTitle>Dashboard - MathTutor AI</PageTitle>
 
-<RadzenCard>
-    <RadzenText TextStyle="TextStyle.H3" TagName="TagName.H1">🎓 MathTutor AI Agent</RadzenText>
-    <RadzenText TextStyle="TextStyle.Body1">Your personalized math learning companion</RadzenText>
-</RadzenCard>
+<div class="dashboard">
+    <!-- Welcome Section -->
+    <div class="welcome-card">
+        <div class="welcome-content">
+            <h2>Welcome to MathTutor AI</h2>
+            <p>Track your learning progress and master mathematics step by step</p>
+        </div>
+        <button class="btn-primary" @onclick="StartNewQuiz">
+            <span class="btn-icon">🚀</span>
+            Start Learning
+        </button>
+    </div>
 
-<RadzenRow Gap="20px" class="mt-4">
-    <RadzenColumn Size="12" SizeMD="6">
-        <RadzenCard>
-            <RadzenText TextStyle="TextStyle.H5">Select Student</RadzenText>
-            @if (students == null)
-            {
-                <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" />
-            }
-            else if (!students.Any())
-            {
-                <RadzenButton Text="Create First Student" Click="CreateDemoStudent" ButtonStyle="ButtonStyle.Primary" />
-            }
-            else
-            {
-                <RadzenDropDown @bind-Value="selectedStudentId" Data="@students" TextProperty="Name" ValueProperty="Id" Style="width: 100%;" />
-                <RadzenButton Text="Start Quiz" Click="StartQuiz" ButtonStyle="ButtonStyle.Success" class="mt-3" Disabled="@(selectedStudentId == 0)" />
-            }
-        </RadzenCard>
-    </RadzenColumn>
+    <!-- Students Grid -->
+    <div class="students-section">
+        <div class="section-header">
+            <h3>Select Student</h3>
+            <button class="btn-secondary" @onclick="RefreshAll">
+                <span>🔄</span>
+                Refresh
+            </button>
+        </div>
 
-    <RadzenColumn Size="12" SizeMD="6">
-        <RadzenCard>
-            <RadzenText TextStyle="TextStyle.H5">Progress Overview</RadzenText>
-            @if (selectedStudentId > 0 && topicStates != null)
-            {
-                @foreach (var state in topicStates)
+        @if (isLoading)
+        {
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>Loading students...</p>
+            </div>
+        }
+        else if (students?.Any() == true)
+        {
+            <div class="students-grid">
+                @foreach (var student in students)
                 {
-                    <div class="mb-2">
-                        <RadzenText TextStyle="TextStyle.Body2">@state.Topic.Name</RadzenText>
-                        <RadzenProgressBar Value="@state.MasteryScore" Max="100" ShowValue="true" />
+                    <div class="student-card" @onclick="() => ViewStudentProfile(student.Id)">
+                        <div class="student-avatar">
+                            @GetInitials(student.Name)
+                        </div>
+                        <div class="student-info">
+                            <h4>@student.Name</h4>
+                            <p class="student-email">@student.Email</p>
+                            <p class="student-date">Member since @student.CreatedAt.ToString("MMM dd, yyyy")</p>
+                        </div>
+                        <div class="student-actions">
+                            <button class="btn-action" @onclick:stopPropagation="true" @onclick="() => StartQuizForStudent(student.Id)">
+                                Start Quiz
+                            </button>
+                        </div>
                     </div>
                 }
-            }
-            else
-            {
-                <RadzenText>Select a student to view progress</RadzenText>
-            }
-        </RadzenCard>
-    </RadzenColumn>
-</RadzenRow>
+            </div>
+        }
+        else
+        {
+            <div class="empty-state">
+                <span class="empty-icon">👥</span>
+                <p>No students found</p>
+                <button class="btn-secondary" @onclick="OpenAddStudentDialog">Add Students</button>
+            </div>
+        }
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">📚</div>
+            <div class="stat-content">
+                <p class="stat-label">Total Students</p>
+                <p class="stat-value">@(dashboardStats?.TotalStudents ?? 0)</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-content">
+                <p class="stat-label">Active Sessions</p>
+                <p class="stat-value">@(dashboardStats?.ActiveSessions ?? 0)</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">🎯</div>
+            <div class="stat-content">
+                <p class="stat-label">Questions Completed</p>
+                <p class="stat-value">@(dashboardStats?.QuestionsCompleted ?? 0)</p>
+            </div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">⚡</div>
+            <div class="stat-content">
+                <p class="stat-label">Agent Status</p>
+                <p class="stat-value @GetStatusClass()">
+                    @(dashboardStats?.AgentStatus ?? "Loading...")
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
 
 @code {
-    private List<AiAgents.MathTutorAgent.Domain.Entities.Student>? students;
-    private int selectedStudentId;
-    private List<AiAgents.MathTutorAgent.Domain.Entities.StudentTopicState>? topicStates;
+    private List<StudentDto>? students;
+    private DashboardStatsDto? dashboardStats;
+    private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadStudents();
+        await LoadData();
     }
 
-    private async Task LoadStudents()
+    private async Task LoadData()
     {
-        students = await DbContext.Students.ToListAsync();
-    }
-
-    private async Task CreateDemoStudent()
-    {
-        var student = new AiAgents.MathTutorAgent.Domain.Entities.Student
+        try
         {
-            Name = "Demo Student",
-            Email = "demo@mathtutor.ai"
+            isLoading = true;
+            
+            // Load both students and stats in parallel
+            var studentsTask = Http.GetFromJsonAsync<List<StudentDto>>("/api/admin/students");
+            var statsTask = Http.GetFromJsonAsync<DashboardStatsDto>("/api/admin/dashboard/stats");
+            
+            await Task.WhenAll(studentsTask, statsTask);
+            
+            students = await studentsTask;
+            dashboardStats = await statsTask;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading data: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task RefreshAll()
+    {
+        await LoadData();
+    }
+
+    private void StartNewQuiz()
+    {
+        if (students?.Any() == true)
+        {
+            Navigation.NavigateTo($"/quiz/{students.First().Id}");
+        }
+    }
+
+    private void StartQuizForStudent(int studentId)
+    {
+        Navigation.NavigateTo($"/quiz/{studentId}");
+    }
+
+    private void ViewStudentProfile(int studentId)
+    {
+        Navigation.NavigateTo($"/profile/{studentId}");
+    }
+
+    private string GetInitials(string name)
+    {
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length >= 2)
+            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
+        return parts.Length > 0 ? parts[0][..Math.Min(2, parts[0].Length)].ToUpper() : "??";
+    }
+    
+    private void OpenAddStudentDialog()
+    {
+        Navigation.NavigateTo("/admin/add-student");
+    }
+
+    private string GetStatusClass()
+    {
+        return dashboardStats?.AgentStatus switch
+        {
+            "Processing" => "status-processing",
+            "Online" => "status-online",
+            _ => "status-offline"
         };
-        DbContext.Students.Add(student);
-        await DbContext.SaveChangesAsync();
-        await LoadStudents();
-        selectedStudentId = student.Id;
-        StateHasChanged();
-    }
-
-    private async Task LoadProgress()
-    {
-        if (selectedStudentId > 0)
-        {
-            topicStates = await DbContext.StudentTopicStates
-                .Include(s => s.Topic)
-                .Where(s => s.StudentId == selectedStudentId)
-                .ToListAsync();
-        }
-    }
-
-    private void StartQuiz()
-    {
-        Navigation.NavigateTo($"/quiz/{selectedStudentId}");
-    }
-
-    protected override async Task OnParametersSetAsync()
-    {
-        if (selectedStudentId > 0)
-        {
-            await LoadProgress();
-        }
     }
 }

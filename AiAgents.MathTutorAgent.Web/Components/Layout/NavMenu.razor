@@ -1,47 +1,59 @@
 ﻿@implements IDisposable
-@inject NavigationManager NavigationManager
+@inject NavigationManager Navigation
 
-<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">🎓 MathTutor AI</a>
+<nav class="sidebar-nav">
+    <div class="nav-section">
+        <span class="nav-section-title">Main</span>
+        
+        <NavLink class="nav-item" href="" Match="NavLinkMatch.All">
+            <span class="nav-icon">📊</span>
+            <span class="nav-text">Dashboard</span>
+        </NavLink>
     </div>
-</div>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+    <div class="nav-section">
+        <span class="nav-section-title">Management</span>
+        
+        <NavLink class="nav-item" href="/admin">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-text">Admin Panel</span>
+        </NavLink>
+    </div>
 
-<div class="nav-scrollable">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Dashboard
-            </NavLink>
+    <div class="nav-section">
+        <span class="nav-section-title">Resources</span>
+        
+        <a class="nav-item" href="https://docs.claude.ai" target="_blank">
+            <span class="nav-icon">📚</span>
+            <span class="nav-text">Documentation</span>
+            <span class="nav-badge">New</span>
+        </a>
+    </div>
+
+    <!-- Status Indicator -->
+    <div class="nav-footer">
+        <div class="status-indicator @(isConnected ? "connected" : "disconnected")">
+            <span class="status-dot"></span>
+            <span class="status-text">@(isConnected ? "Agent Online" : "Agent Offline")</span>
         </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="admin">
-                <span class="bi bi-gear-fill-nav-menu" aria-hidden="true"></span> Admin Panel
-            </NavLink>
-        </div>
-    </nav>
-</div>
+    </div>
+</nav>
 
 @code {
-    private string? currentUrl;
+    private bool isConnected = true;
 
     protected override void OnInitialized()
     {
-        currentUrl = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
-        NavigationManager.LocationChanged += OnLocationChanged;
+        Navigation.LocationChanged += OnLocationChanged;
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        currentUrl = NavigationManager.ToBaseRelativePath(e.Location);
         StateHasChanged();
     }
 
     public void Dispose()
     {
-        NavigationManager.LocationChanged -= OnLocationChanged;
+        Navigation.LocationChanged -= OnLocationChanged;
     }
 }

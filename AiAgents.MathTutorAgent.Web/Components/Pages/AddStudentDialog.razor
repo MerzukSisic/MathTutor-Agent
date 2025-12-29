@@ -1,0 +1,292 @@
+@page "/admin/add-student"
+@using AiAgents.MathTutorAgent.Application.DTOs
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Add Student - MathTutor AI</PageTitle>
+
+<div class="add-student-container">
+    <div class="add-student-card">
+        <div class="card-header">
+            <h2>➕ Add New Student</h2>
+            <button class="btn-back" @onclick="GoBack">
+                ← Back to Admin
+            </button>
+        </div>
+
+        <div class="form-section">
+            <div class="form-group">
+                <label for="name">Student Name</label>
+                <input 
+                    id="name"
+                    type="text" 
+                    class="form-input" 
+                    @bind="name" 
+                    placeholder="Enter full name"
+                    disabled="@isSubmitting" />
+                @if (showNameError)
+                {
+                    <span class="error-text">Name is required</span>
+                }
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input 
+                    id="email"
+                    type="email" 
+                    class="form-input" 
+                    @bind="email" 
+                    placeholder="student@example.com"
+                    disabled="@isSubmitting" />
+                @if (showEmailError)
+                {
+                    <span class="error-text">Valid email is required</span>
+                }
+            </div>
+
+            @if (!string.IsNullOrEmpty(errorMessage))
+            {
+                <div class="alert alert-danger">
+                    ❌ @errorMessage
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(successMessage))
+            {
+                <div class="alert alert-success">
+                    ✅ @successMessage
+                </div>
+            }
+
+            <div class="form-actions">
+                <button 
+                    class="btn-cancel" 
+                    @onclick="GoBack"
+                    disabled="@isSubmitting">
+                    Cancel
+                </button>
+                <button 
+                    class="btn-submit" 
+                    @onclick="CreateStudent"
+                    disabled="@(isSubmitting || !IsValid())">
+                    @(isSubmitting ? "Creating..." : "Create Student")
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string name = string.Empty;
+    private string email = string.Empty;
+    private bool isSubmitting = false;
+    private bool showNameError = false;
+    private bool showEmailError = false;
+    private string errorMessage = string.Empty;
+    private string successMessage = string.Empty;
+
+    private bool IsValid()
+    {
+        return !string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(email) && email.Contains("@");
+    }
+
+    private async Task CreateStudent()
+    {
+        // Reset errors
+        showNameError = false;
+        showEmailError = false;
+        errorMessage = string.Empty;
+        successMessage = string.Empty;
+
+        // Validate
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            showNameError = true;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(email) || !email.Contains("@"))
+        {
+            showEmailError = true;
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            var request = new { Name = name.Trim(), Email = email.Trim() };
+            var response = await Http.PostAsJsonAsync("/api/admin/students", request);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                successMessage = "Student created successfully! Redirecting...";
+                await Task.Delay(1500); // Show success message
+                Navigation.NavigateTo("/admin");
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                errorMessage = $"Failed to create student: {response.StatusCode}";
+                Console.WriteLine($"Error: {errorContent}");
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+            Console.WriteLine($"Exception: {ex}");
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/admin");
+    }
+}
+
+<style>
+.add-student-container {
+    max-width: 600px;
+    margin: 2rem auto;
+    padding: 2rem;
+}
+
+.add-student-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    padding: 2rem;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid #f0f0f0;
+}
+
+.card-header h2 {
+    margin: 0;
+    color: #333;
+}
+
+.form-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-weight: 600;
+    color: #555;
+    font-size: 0.95rem;
+}
+
+.form-input {
+    padding: 0.75rem 1rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+    transition: all 0.3s;
+}
+
+.form-input:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.form-input:disabled {
+    background: #f5f5f5;
+    cursor: not-allowed;
+}
+
+.error-text {
+    color: #ef4444;
+    font-size: 0.875rem;
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: 8px;
+    font-size: 0.95rem;
+}
+
+.alert-danger {
+    background: #fee;
+    color: #c00;
+    border: 1px solid #fcc;
+}
+
+.alert-success {
+    background: #efe;
+    color: #0a0;
+    border: 1px solid #cfc;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.btn-submit, .btn-cancel, .btn-back {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-submit {
+    flex: 1;
+    background: #6366f1;
+    color: white;
+}
+
+.btn-submit:hover:not(:disabled) {
+    background: #4f46e5;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(99, 102, 241, 0.3);
+}
+
+.btn-submit:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.btn-cancel {
+    background: #f3f4f6;
+    color: #555;
+}
+
+.btn-cancel:hover:not(:disabled) {
+    background: #e5e7eb;
+}
+
+.btn-back {
+    background: transparent;
+    color: #6366f1;
+    padding: 0.5rem 1rem;
+}
+
+.btn-back:hover {
+    background: #f3f4f6;
+}
+</style>

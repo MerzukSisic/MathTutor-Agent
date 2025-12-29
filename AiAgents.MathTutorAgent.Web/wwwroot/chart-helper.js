@@ -1,5 +1,9 @@
-﻿window.renderTopicChart = (labels, scores) => {
-    const ctx = document.getElementById('topicChart').getContext('2d');
+﻿// Chart.js functions for MathTutor AI
+
+window.renderTopicChart = function(labels, scores) {
+    const ctx = document.getElementById('topicChart');
+    if (!ctx) return;
+
     new Chart(ctx, {
         type: 'bar',
         data: {
@@ -7,8 +11,8 @@
             datasets: [{
                 label: 'Mastery Score',
                 data: scores,
-                backgroundColor: 'rgba(99, 102, 241, 0.6)',
-                borderColor: 'rgba(99, 102, 241, 1)',
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
                 borderWidth: 1
             }]
         },
@@ -24,8 +28,10 @@
     });
 };
 
-window.renderDailyChart = (labels, totalAttempts, correctAttempts) => {
-    const ctx = document.getElementById('dailyChart').getContext('2d');
+window.renderDailyChart = function(labels, totalAttempts, correctAttempts) {
+    const ctx = document.getElementById('dailyChart');
+    if (!ctx) return;
+
     new Chart(ctx, {
         type: 'line',
         data: {
@@ -34,16 +40,16 @@ window.renderDailyChart = (labels, totalAttempts, correctAttempts) => {
                 {
                     label: 'Total Attempts',
                     data: totalAttempts,
-                    borderColor: 'rgba(99, 102, 241, 1)',
-                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                    fill: true
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    tension: 0.1
                 },
                 {
                     label: 'Correct Attempts',
                     data: correctAttempts,
-                    borderColor: 'rgba(16, 185, 129, 1)',
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    fill: true
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                    tension: 0.1
                 }
             ]
         },
@@ -58,9 +64,9 @@ window.renderDailyChart = (labels, totalAttempts, correctAttempts) => {
     });
 };
 
-window.downloadFile = (fileName, base64Data) => {
+window.downloadFile = function(fileName, base64Content) {
     const link = document.createElement('a');
-    link.href = 'data:application/pdf;base64,' + base64Data;
+    link.href = 'data:application/pdf;base64,' + base64Content;
     link.download = fileName;
     link.click();
 };

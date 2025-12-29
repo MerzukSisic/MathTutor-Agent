@@ -1,18 +1,23 @@
 ﻿using AiAgents.MathTutorAgent.Domain.Entities;
 using AiAgents.MathTutorAgent.Domain.Enums;
 using AiAgents.MathTutorAgent.Infrastructure;
+using AiAgents.MathTutorAgent.ML.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace AiAgents.MathTutorAgent.Application.Services;
 
-public class KnowledgeTracingService(MathTutorDbContext context)
+public class KnowledgeTracingService(
+    MathTutorDbContext context,
+    KnowledgeTracingMlService mlService)
 {
+    private readonly MathTutorDbContext _context = context;
+
     public async Task UpdateTopicStateAsync(int studentId, Attempt attempt, CancellationToken ct = default)
     {
-        var question = await context.Questions.FindAsync(new object[] { attempt.QuestionId }, ct);
+        var question = await _context.Questions.FindAsync(new object[] { attempt.QuestionId }, ct);
         if (question == null) return;
 
-        var state = await context.StudentTopicStates
+        var state = await _context.StudentTopicStates
             .FirstOrDefaultAsync(s => s.StudentId == studentId && s.TopicId == question.TopicId, ct);
 
         if (state == null)
@@ -26,34 +31,55 @@ public class KnowledgeTracingService(MathTutorDbContext context)
                 ForgettingRisk = 0,
                 LastPracticedUtc = DateTime.UtcNow
             };
-            context.StudentTopicStates.Add(state);
+            _context.StudentTopicStates.Add(state);
         }
 
-        // ✅ FIX: Calculate forgetting risk BEFORE updating LastPracticedUtc
+        // Calculate ML features
+        float previousMastery = state.MasteryScore;
         var previousLastPracticed = state.LastPracticedUtc;
-        var now = DateTime.UtcNow;
-        var daysSinceLastPractice = (now - previousLastPracticed).TotalDays;
-        
-        // Update mastery score (simplified ELO-like)
-        if (attempt.IsCorrect)
+        var daysSince = (DateTime.UtcNow - previousLastPracticed).TotalDays;
+
+        var recentAttempts = await _context.Attempts
+            .Where(a => a.StudentId == studentId && a.Question.TopicId == question.TopicId)
+            .OrderByDescending(a => a.CreatedAt)
+            .Take(10)
+            .ToListAsync(ct);
+
+        var recentAccuracy = recentAttempts.Any()
+            ? recentAttempts.Count(a => a.IsCorrect) / (float)recentAttempts.Count
+            : (attempt.IsCorrect ? 1f : 0f);
+
+        var avgTime = recentAttempts.Any()
+            ? recentAttempts.Average(a => a.TimeMs)
+            : attempt.TimeMs;
+
+        var consecutiveCorrect = 0;
+        var consecutiveIncorrect = 0;
+        foreach (var a in recentAttempts)
         {
-            state.MasteryScore = Math.Min(100, state.MasteryScore + 10);
-            state.Confidence = Math.Min(1.0, state.Confidence + 0.05);
-        }
-        else
-        {
-            state.MasteryScore = Math.Max(0, state.MasteryScore - 5);
-            state.Confidence = Math.Max(0.0, state.Confidence - 0.05);
+            if (a.IsCorrect) consecutiveCorrect++;
+            else { consecutiveIncorrect++; break; }
         }
 
-        // Calculate forgetting risk based on time elapsed
-        state.ForgettingRisk = Math.Min(1.0, daysSinceLastPractice / 7.0); // 7 days = full risk
+        // ✅ USE ML MODEL TO PREDICT NEW MASTERY
+        var predictedMastery = mlService.PredictMasteryChange(
+            topicDifficulty: question.Difficulty,
+            currentMastery: previousMastery,
+            recentAccuracy: recentAccuracy,
+            avgTimeMs: (float)avgTime,
+            daysSinceLastPractice: (float)daysSince,
+            totalAttempts: recentAttempts.Count + 1,
+            consecutiveCorrect: consecutiveCorrect,
+            consecutiveIncorrect: consecutiveIncorrect);
 
-        // NOW update LastPracticedUtc
-        state.LastPracticedUtc = now;
+        state.MasteryScore = predictedMastery;
+        state.Confidence = Math.Min(1.0, recentAttempts.Count / 10.0);
+        state.ForgettingRisk = Math.Min(1.0, daysSince / 7.0);
+        state.LastPracticedUtc = DateTime.UtcNow;
 
-        await context.SaveChangesAsync(ct);
+        await _context.SaveChangesAsync(ct);
     }
+
 
     public async Task<double> GetMasteryScoreAsync(int studentId, int topicId, CancellationToken ct = default)
     {
