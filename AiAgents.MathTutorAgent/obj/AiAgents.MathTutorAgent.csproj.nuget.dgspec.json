@@ -1,25 +1,32 @@
 {
   "format": 1,
   "restore": {
-    "/Users/merzuksisic/AI/AiAgents.MathTutorAgent/AiAgents.MathTutorAgent.csproj": {}
+    "C:\\Users\\Merzuk-PC\\Desktop\\AI\\AiAgents.MathTutorAgent\\AiAgents.MathTutorAgent.csproj": {}
   },
   "projects": {
-    "/Users/merzuksisic/AI/AiAgents.Core/AiAgents.Core.csproj": {
+    "C:\\Users\\Merzuk-PC\\Desktop\\AI\\AiAgents.Core\\AiAgents.Core.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/merzuksisic/AI/AiAgents.Core/AiAgents.Core.csproj",
+        "projectUniqueName": "C:\\Users\\Merzuk-PC\\Desktop\\AI\\AiAgents.Core\\AiAgents.Core.csproj",
         "projectName": "AiAgents.Core",
-        "projectPath": "/Users/merzuksisic/AI/AiAgents.Core/AiAgents.Core.csproj",
-        "packagesPath": "/Users/merzuksisic/.nuget/packages/",
-        "outputPath": "/Users/merzuksisic/AI/AiAgents.Core/obj/",
+        "projectPath": "C:\\Users\\Merzuk-PC\\Desktop\\AI\\AiAgents.Core\\AiAgents.Core.csproj",
+        "packagesPath": "C:\\Users\\Merzuk-PC\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Merzuk-PC\\Desktop\\AI\\AiAgents.Core\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
         "configFilePaths": [
-          "/Users/merzuksisic/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\Merzuk-PC\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -38,7 +45,7 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "9.0.300"
+        "SdkAnalysisLevel": "9.0.200"
       },
       "frameworks": {
         "net9.0": {
@@ -59,34 +66,41 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.308/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.201/PortableRuntimeIdentifierGraph.json"
         }
       }
     },
-    "/Users/merzuksisic/AI/AiAgents.MathTutorAgent/AiAgents.MathTutorAgent.csproj": {
+    "C:\\Users\\Merzuk-PC\\Desktop\\AI\\AiAgents.MathTutorAgent\\AiAgents.MathTutorAgent.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "/Users/merzuksisic/AI/AiAgents.MathTutorAgent/AiAgents.MathTutorAgent.csproj",
+        "projectUniqueName": "C:\\Users\\Merzuk-PC\\Desktop\\AI\\AiAgents.MathTutorAgent\\AiAgents.MathTutorAgent.csproj",
         "projectName": "AiAgents.MathTutorAgent",
-        "projectPath": "/Users/merzuksisic/AI/AiAgents.MathTutorAgent/AiAgents.MathTutorAgent.csproj",
-        "packagesPath": "/Users/merzuksisic/.nuget/packages/",
-        "outputPath": "/Users/merzuksisic/AI/AiAgents.MathTutorAgent/obj/",
+        "projectPath": "C:\\Users\\Merzuk-PC\\Desktop\\AI\\AiAgents.MathTutorAgent\\AiAgents.MathTutorAgent.csproj",
+        "packagesPath": "C:\\Users\\Merzuk-PC\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Merzuk-PC\\Desktop\\AI\\AiAgents.MathTutorAgent\\obj\\",
         "projectStyle": "PackageReference",
+        "fallbackFolders": [
+          "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
+        ],
         "configFilePaths": [
-          "/Users/merzuksisic/.nuget/NuGet/NuGet.Config"
+          "C:\\Users\\Merzuk-PC\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
+          "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
         "originalTargetFrameworks": [
           "net9.0"
         ],
         "sources": {
+          "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
+          "C:\\Program Files\\dotnet\\library-packs": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
           "net9.0": {
             "targetAlias": "net9.0",
             "projectReferences": {
-              "/Users/merzuksisic/AI/AiAgents.Core/AiAgents.Core.csproj": {
-                "projectPath": "/Users/merzuksisic/AI/AiAgents.Core/AiAgents.Core.csproj"
+              "C:\\Users\\Merzuk-PC\\Desktop\\AI\\AiAgents.Core\\AiAgents.Core.csproj": {
+                "projectPath": "C:\\Users\\Merzuk-PC\\Desktop\\AI\\AiAgents.Core\\AiAgents.Core.csproj"
               }
             }
           }
@@ -101,7 +115,7 @@
           "auditLevel": "low",
           "auditMode": "direct"
         },
-        "SdkAnalysisLevel": "9.0.300"
+        "SdkAnalysisLevel": "9.0.200"
       },
       "frameworks": {
         "net9.0": {
@@ -180,7 +194,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/9.0.308/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.201/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

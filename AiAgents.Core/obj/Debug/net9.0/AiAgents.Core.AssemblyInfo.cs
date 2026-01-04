@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AiAgents.Core")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+65e49ede71334966b28c95d4eb45255c4bdaf13d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+41cf9e03387b2ccef080b0318ec8f60263122c23")]
 [assembly: System.Reflection.AssemblyProductAttribute("AiAgents.Core")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AiAgents.Core")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
