@@ -1,0 +1,164 @@
+﻿# ==============================================
+# MathTutor AI Agent - .gitignore
+# ==============================================
+
+# ========== IDE & Editor ==========
+.vs/
+.vscode/
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.sln.iml
+*.swp
+*~
+
+# ========== Build Results ==========
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+
+# ========== .NET Core ==========
+project.lock.json
+project.fragment.lock.json
+artifacts/
+*.dll
+*.exe
+*.pdb
+*.cache
+
+# ========== Logs ==========
+logs/
+*.log
+*.vspscc
+*.vssscc
+
+# ========== Database Files ==========
+*.mdf
+*.ldf
+*.ndf
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# ========== Application Specific ==========
+
+# Sensitive configuration
+appsettings.Development.json
+appsettings.*.json
+!appsettings.json
+config.json
+
+# User uploads
+wwwroot/uploads/
+wwwroot/images/
+
+# ML Models (uncomment if too large to commit)
+# MLModels/*.zip
+
+# Migrations (keep them - professor needs to see)
+# Migrations/
+
+# ========== Rider ==========
+.idea/
+*.sln.iml
+_ReSharper*/
+*.DotSettings.user
+
+# ========== Visual Studio ==========
+.vs/
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# ========== ReSharper ==========
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# ========== NuGet ==========
+*.nupkg
+*.snupkg
+**/[Pp]ackages/*
+!**/[Pp]ackages/build/
+*.nuget.props
+*.nuget.targets
+
+# ========== Test Results ==========
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+*.trx
+
+# ========== Coverage Reports ==========
+coverage*.json
+coverage*.xml
+coverage*.info
+*.coverage
+*.coveragexml
+
+# ========== Publish Profiles ==========
+*.pubxml
+*.publishproj
+PublishScripts/
+
+# ========== Azure ==========
+local.settings.json
+*.azurePubxml
+
+# ========== Node (if using npm) ==========
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# ========== OS Generated ==========
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ========== Temporary Files ==========
+*.tmp
+*.temp
+*.bak
+*.backup
+*.swp
+*~
+
+# ========== Package Files ==========
+*.nupkg
+*.snupkg
+
+# ========== Entity Framework ==========
+# Keep Migrations - professor needs them!
+# Migrations/
+
+# ========== Documentation (keep these) ==========
+# *.docx
+# *.pdf
+
+# ========== Specific to your project ==========
+
+# GitHub folder (usually auto-generated)
+.github/
+
+# Git index issues
+.git/index
+
+# Other
+*.stackdump
