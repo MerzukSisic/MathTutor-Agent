@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("AiAgents.MathTutorAgent.Web")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+28b19fa88ccb5ab4fa100f54c5d337be898fb388")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+65e49ede71334966b28c95d4eb45255c4bdaf13d")]
 [assembly: System.Reflection.AssemblyProductAttribute("AiAgents.MathTutorAgent.Web")]
 [assembly: System.Reflection.AssemblyTitleAttribute("AiAgents.MathTutorAgent.Web")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

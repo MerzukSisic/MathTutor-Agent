@@ -5,19 +5,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AiAgents.MathTutorAgent.Application.Services;
 
-public class WorkQueueService
+public class WorkQueueService(MathTutorDbContext context)
 {
-    private readonly MathTutorDbContext _context;
-
-    public WorkQueueService(MathTutorDbContext context)
-    {
-        _context = context;
-    }
-
     public async Task<int> EnqueueAsync(WorkItem workItem, CancellationToken ct = default)
     {
-        _context.WorkItems.Add(workItem);
-        await _context.SaveChangesAsync(ct);
+        context.WorkItems.Add(workItem);
+        await context.SaveChangesAsync(ct);
         return workItem.Id;
     }
 
@@ -28,7 +21,7 @@ public class WorkQueueService
     {
         // ✅ FIX: Use CTE with UPDLOCK/READPAST for proper atomic claim
         // ORDER BY must be in the subquery/CTE, not after OUTPUT
-        var results = await _context.WorkItems
+        var results = await context.WorkItems
             .FromSqlRaw(@"
                 ;WITH NextItem AS (
                     SELECT TOP(1) *
@@ -51,7 +44,7 @@ public class WorkQueueService
     /// </summary>
     public async Task MarkDoneAsync(int workItemId, string resultJson, CancellationToken ct = default)
     {
-        var workItem = await _context.WorkItems.FindAsync(new object[] { workItemId }, ct);
+        var workItem = await context.WorkItems.FindAsync(new object[] { workItemId }, ct);
         if (workItem == null)
             return;
 
@@ -65,7 +58,7 @@ public class WorkQueueService
         workItem.Status = WorkStatus.Done;
         workItem.ResultJson = resultJson;
         workItem.ProcessedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync(ct);
+        await context.SaveChangesAsync(ct);
     }
 
     /// <summary>
@@ -73,7 +66,7 @@ public class WorkQueueService
     /// </summary>
     public async Task MarkFailedAsync(int workItemId, string error, CancellationToken ct = default)
     {
-        var workItem = await _context.WorkItems.FindAsync(new object[] { workItemId }, ct);
+        var workItem = await context.WorkItems.FindAsync(new object[] { workItemId }, ct);
         if (workItem == null)
             return;
 
@@ -88,11 +81,11 @@ public class WorkQueueService
         workItem.Status = WorkStatus.Failed;
         workItem.ResultJson = error;
         workItem.ProcessedAt = DateTime.UtcNow;
-        await _context.SaveChangesAsync(ct);
+        await context.SaveChangesAsync(ct);
     }
 
     public async Task<WorkItem?> GetWorkItemAsync(int workItemId, CancellationToken ct = default)
     {
-        return await _context.WorkItems.FindAsync(new object[] { workItemId }, ct);
+        return await context.WorkItems.FindAsync(new object[] { workItemId }, ct);
     }
 }

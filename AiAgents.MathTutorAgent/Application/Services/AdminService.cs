@@ -5,19 +5,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AiAgents.MathTutorAgent.Application.Services;
 
-public class AdminService
+public class AdminService(MathTutorDbContext context)
 {
-    private readonly MathTutorDbContext _context;
-
-    public AdminService(MathTutorDbContext context)
-    {
-        _context = context;
-    }
-
     // ========== QUESTIONS ==========
     public async Task<List<AdminQuestionDto>> GetAllQuestionsAsync(CancellationToken ct = default)
     {
-        return await _context.Questions
+        return await context.Questions
             .Include(q => q.Topic)
             .Select(q => new AdminQuestionDto
             {
@@ -43,10 +36,10 @@ public class AdminService
             CommonMistakes = dto.CommonMistakes ?? new List<string>()
         };
 
-        _context.Questions.Add(question);
-        await _context.SaveChangesAsync(ct);
+        context.Questions.Add(question);
+        await context.SaveChangesAsync(ct);
 
-        await _context.Entry(question).Reference(q => q.Topic).LoadAsync(ct);
+        await context.Entry(question).Reference(q => q.Topic).LoadAsync(ct);
 
         return new AdminQuestionDto
         {
@@ -61,7 +54,7 @@ public class AdminService
 
     public async Task<AdminQuestionDto> UpdateQuestionAsync(int id, CreateQuestionDto dto, CancellationToken ct = default)
     {
-        var question = await _context.Questions
+        var question = await context.Questions
             .Include(q => q.Topic)
             .FirstOrDefaultAsync(q => q.Id == id, ct);
 
@@ -75,7 +68,7 @@ public class AdminService
         question.SolutionSteps = dto.SolutionSteps;
         question.CommonMistakes = dto.CommonMistakes ?? new List<string>();
 
-        await _context.SaveChangesAsync(ct);
+        await context.SaveChangesAsync(ct);
 
         return new AdminQuestionDto
         {
@@ -90,18 +83,18 @@ public class AdminService
 
     public async Task DeleteQuestionAsync(int id, CancellationToken ct = default)
     {
-        var question = await _context.Questions.FindAsync(new object[] { id }, ct);
+        var question = await context.Questions.FindAsync(new object[] { id }, ct);
         if (question == null)
             throw new InvalidOperationException($"Question {id} not found");
 
-        _context.Questions.Remove(question);
-        await _context.SaveChangesAsync(ct);
+        context.Questions.Remove(question);
+        await context.SaveChangesAsync(ct);
     }
 
     // ========== TOPICS ==========
     public async Task<List<TopicDto>> GetAllTopicsAsync(CancellationToken ct = default)
     {
-        return await _context.Topics
+        return await context.Topics
             .Select(t => new TopicDto
             {
                 Id = t.Id,
@@ -115,7 +108,7 @@ public class AdminService
     // ========== STUDENTS ==========
     public async Task<List<StudentDto>> GetAllStudentsAsync(CancellationToken ct = default)
     {
-        return await _context.Students
+        return await context.Students
             .Select(s => new StudentDto
             {
                 Id = s.Id,
@@ -129,19 +122,19 @@ public class AdminService
     // ========== METRICS ==========
     public async Task<PerformanceMetricsDto> GetPerformanceMetricsAsync(CancellationToken ct = default)
     {
-        var totalStudents = await _context.Students.CountAsync(ct);
-        var totalQuestions = await _context.Questions.CountAsync(ct);
-        var totalAttempts = await _context.Attempts.CountAsync(ct);
+        var totalStudents = await context.Students.CountAsync(ct);
+        var totalQuestions = await context.Questions.CountAsync(ct);
+        var totalAttempts = await context.Attempts.CountAsync(ct);
 
-        var totalWorkItems = await _context.WorkItems.CountAsync(ct);
-        var completedWorkItems = await _context.WorkItems
+        var totalWorkItems = await context.WorkItems.CountAsync(ct);
+        var completedWorkItems = await context.WorkItems
             .CountAsync(w => w.Status == Domain.Enums.WorkStatus.Done, ct);
 
         var successRate = totalWorkItems > 0 
             ? (double)completedWorkItems / totalWorkItems * 100 
             : 0;
 
-        var avgProcessingTime = await _context.WorkItems
+        var avgProcessingTime = await context.WorkItems
             .Where(w => w.ProcessedAt != null)
             .Select(w => EF.Functions.DateDiffMillisecond(w.CreatedAt, w.ProcessedAt!.Value))
             .AverageAsync(ct);
@@ -168,8 +161,8 @@ public class AdminService
             CreatedAt = DateTime.UtcNow
         };
 
-        _context.Students.Add(student);
-        await _context.SaveChangesAsync(ct);
+        context.Students.Add(student);
+        await context.SaveChangesAsync(ct);
 
         return new StudentDto
         {
