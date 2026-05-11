@@ -1,0 +1,105 @@
+@page "/register"
+@attribute [AllowAnonymous]
+@using System.Text.Json
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+
+<PageTitle>Register - MathTutor AI</PageTitle>
+
+<div class="auth-page">
+    <div class="auth-card">
+        <h1>Create Account</h1>
+        <p>Register and start adaptive math practice.</p>
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="auth-alert error">@errorMessage</div>
+        }
+
+        <label>
+            Full Name
+            <input class="auth-input" @bind="fullName" autocomplete="name" />
+        </label>
+
+        <label>
+            Email
+            <input class="auth-input" type="email" @bind="email" autocomplete="username" />
+        </label>
+
+        <label>
+            Password
+            <input class="auth-input" type="password" @bind="password" autocomplete="new-password" />
+        </label>
+
+        <button class="auth-btn" @onclick="RegisterAsync" disabled="@isSubmitting">
+            @(isSubmitting ? "Creating..." : "Create Account")
+        </button>
+
+        <p class="auth-meta">Already have an account? <a href="/login">Sign in</a></p>
+    </div>
+</div>
+
+@code {
+    private string fullName = string.Empty;
+    private string email = string.Empty;
+    private string password = string.Empty;
+    private string? errorMessage;
+    private bool isSubmitting;
+
+    private async Task RegisterAsync()
+    {
+        errorMessage = null;
+
+        if (string.IsNullOrWhiteSpace(fullName) || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        {
+            errorMessage = "All fields are required.";
+            return;
+        }
+
+        if (password.Length < 6)
+        {
+            errorMessage = "Password must be at least 6 characters.";
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            var result = await JS.InvokeAsync<JsonElement>("authFetch", "/api/auth/register",
+                new { fullName, email, password });
+
+            var ok = result.GetProperty("ok").GetBoolean();
+            if (!ok)
+            {
+                string? msg = null;
+                if (result.TryGetProperty("data", out var data) && data.ValueKind != JsonValueKind.Null)
+                {
+                    data.TryGetProperty("message", out var msgEl);
+                    msg = msgEl.ValueKind == JsonValueKind.String ? msgEl.GetString() : null;
+                }
+                errorMessage = string.IsNullOrWhiteSpace(msg) ? "Registration failed. Try another email." : msg;
+                return;
+            }
+
+            AuthUserDto? user = null;
+            if (result.TryGetProperty("data", out var authData) && authData.ValueKind != JsonValueKind.Null
+                && authData.TryGetProperty("user", out var userEl) && userEl.ValueKind != JsonValueKind.Null)
+            {
+                user = JsonSerializer.Deserialize<AuthUserDto>(userEl.GetRawText(),
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+
+            var destination = user?.StudentId is int studentId ? $"/quiz/{studentId}" : "/";
+            Navigation.NavigateTo(destination, forceLoad: true);
+        }
+        catch
+        {
+            errorMessage = "Registration failed. Please try again.";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

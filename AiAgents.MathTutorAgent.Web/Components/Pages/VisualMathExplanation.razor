@@ -1,0 +1,220 @@
+@using System.Text.RegularExpressions
+
+@if (model != null)
+{
+    <div class="visual-explain">
+        <h4>🎨 Visual Explanation</h4>
+
+        <div class="ve-equation">
+            <span class="ve-chip">@model.A</span>
+            <span class="ve-op">@model.OperatorText</span>
+            <span class="ve-chip">@model.B</span>
+            <span class="ve-op">=</span>
+            <span class="ve-chip answer">@model.Result</span>
+        </div>
+
+        @if (model.Operator == '+')
+        {
+            <div class="ve-block">
+                <p>Join two groups of apples, then count all apples together.</p>
+                <div class="ve-group-wrap">
+                    <div class="ve-group">
+                        <strong>Group A (@model.A)</strong>
+                        <div class="ve-items">
+                            @for (var i = 0; i < model.A; i++)
+                            {
+                                <span class="ve-item">🍎</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="ve-group">
+                        <strong>Group B (@model.B)</strong>
+                        <div class="ve-items">
+                            @for (var i = 0; i < model.B; i++)
+                            {
+                                <span class="ve-item">🍎</span>
+                            }
+                        </div>
+                    </div>
+                    <div class="ve-group answer">
+                        <strong>Total (@model.Result)</strong>
+                        <div class="ve-items">
+                            @for (var i = 0; i < model.Result; i++)
+                            {
+                                <span class="ve-item">🍎</span>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        }
+        else if (model.Operator == '-')
+        {
+            <div class="ve-block">
+                <p>Start with all apples, remove some, then count what remains.</p>
+                <div class="ve-group">
+                    <strong>Start with @model.A apples</strong>
+                    <div class="ve-items subtraction">
+                        @for (var i = 0; i < model.A; i++)
+                        {
+                            var removed = i < model.B;
+                            <span class="ve-item @(removed ? "removed" : "remaining")">🍎</span>
+                        }
+                    </div>
+                </div>
+
+                <div class="ve-steps">
+                    <strong>Count down:</strong>
+                    @for (var i = 0; i <= model.B; i++)
+                    {
+                        <span class="ve-step">@(model.A - i)</span>
+                        @if (i < model.B)
+                        {
+                            <span class="ve-arrow">→</span>
+                        }
+                    }
+                </div>
+            </div>
+        }
+        else if (model.Operator == '*')
+        {
+            <div class="ve-block">
+                <p>Multiplication means repeated groups.</p>
+                <div class="ve-group">
+                    <strong>@model.B groups, each with @model.A apples</strong>
+                    <div class="ve-rows">
+                        @for (var row = 0; row < model.B; row++)
+                        {
+                            <div class="ve-row">
+                                @for (var col = 0; col < model.A; col++)
+                                {
+                                    <span class="ve-item">🍎</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+        else if (model.Operator == '/')
+        {
+            <div class="ve-block">
+                <p>Division means sharing equally into groups.</p>
+                <div class="ve-group">
+                    <strong>@model.A apples shared into @model.B equal groups</strong>
+                    <div class="ve-group-wrap">
+                        @for (var group = 0; group < model.B; group++)
+                        {
+                            <div class="ve-group small">
+                                <span class="ve-group-label">Group @(group + 1)</span>
+                                <div class="ve-items">
+                                    @for (var i = 0; i < model.Result; i++)
+                                    {
+                                        <span class="ve-item">🍎</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string? QuestionText { get; set; }
+
+    private VisualModel? model;
+
+    protected override void OnParametersSet()
+    {
+        model = TryBuildModel(QuestionText);
+    }
+
+    private static VisualModel? TryBuildModel(string? questionText)
+    {
+        if (string.IsNullOrWhiteSpace(questionText))
+        {
+            return null;
+        }
+
+        var match = Regex.Match(questionText, @"(?<!\d)(\d+)\s*([+\-xX*÷/×])\s*(\d+)");
+        if (!match.Success)
+        {
+            return null;
+        }
+
+        var a = int.Parse(match.Groups[1].Value);
+        var rawOp = match.Groups[2].Value;
+        var b = int.Parse(match.Groups[3].Value);
+
+        var op = rawOp switch
+        {
+            "x" or "X" or "×" => '*',
+            "÷" => '/',
+            _ => rawOp[0]
+        };
+
+        if (a < 0 || b < 0)
+        {
+            return null;
+        }
+
+        if (op == '-' && a < b)
+        {
+            return null;
+        }
+
+        if (op == '/' && (b == 0 || a % b != 0))
+        {
+            return null;
+        }
+
+        var result = op switch
+        {
+            '+' => a + b,
+            '-' => a - b,
+            '*' => a * b,
+            '/' => a / b,
+            _ => -1
+        };
+
+        if (result < 0)
+        {
+            return null;
+        }
+
+        if (op == '+' && result > 24)
+        {
+            return null;
+        }
+
+        if (op == '-' && a > 24)
+        {
+            return null;
+        }
+
+        if (op == '*' && (a > 8 || b > 8 || result > 40))
+        {
+            return null;
+        }
+
+        if (op == '/' && (a > 40 || b > 10 || result > 10))
+        {
+            return null;
+        }
+
+        return new VisualModel(a, b, op, result);
+    }
+
+    private sealed record VisualModel(int A, int B, char Operator, int Result)
+    {
+        public string OperatorText => Operator switch
+        {
+            '*' => "×",
+            '/' => "÷",
+            _ => Operator.ToString()
+        };
+    }
+}

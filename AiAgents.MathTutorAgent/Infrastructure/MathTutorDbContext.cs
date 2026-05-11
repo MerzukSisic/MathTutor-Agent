@@ -17,6 +17,7 @@ public class MathTutorDbContext(DbContextOptions<MathTutorDbContext> options) : 
     public DbSet<ImageNote> ImageNotes => Set<ImageNote>();
     public DbSet<WorkItem> WorkItems => Set<WorkItem>();
     public DbSet<SystemSettings> SystemSettings => Set<SystemSettings>();
+    public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -34,6 +35,16 @@ public class MathTutorDbContext(DbContextOptions<MathTutorDbContext> options) : 
             .WithMany(t => t.Prerequisites)
             .HasForeignKey(e => e.DependentTopicId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<UserAccount>()
+            .HasIndex(u => u.Email)
+            .IsUnique();
+
+        modelBuilder.Entity<UserAccount>()
+            .HasOne(u => u.Student)
+            .WithMany()
+            .HasForeignKey(u => u.StudentId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         // SystemSettings - single row
         modelBuilder.Entity<SystemSettings>()

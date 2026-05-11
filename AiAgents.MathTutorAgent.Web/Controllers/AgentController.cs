@@ -1,18 +1,26 @@
 ﻿using AiAgents.MathTutorAgent.Application.Services;
 using AiAgents.MathTutorAgent.Domain.Entities;
 using AiAgents.MathTutorAgent.Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Security.Claims;
 
 namespace AiAgents.MathTutorAgent.Web.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class AgentController(WorkQueueService queueService) : ControllerBase
 {
     [HttpPost("next-question")]
     public async Task<IActionResult> NextQuestion([FromBody] NextQuestionRequest request, CancellationToken ct)
     {
+        if (!CanAccessStudent(request.StudentId))
+        {
+            return Forbid();
+        }
+
         var workItem = new WorkItem
         {
             StudentId = request.StudentId,
@@ -29,11 +37,17 @@ public class AgentController(WorkQueueService queueService) : ControllerBase
     [HttpPost("submit-answer")]
     public async Task<IActionResult> SubmitAnswer([FromBody] SubmitAnswerRequest request, CancellationToken ct)
     {
+        if (!CanAccessStudent(request.StudentId))
+        {
+            return Forbid();
+        }
+
         var payload = new
         {
             QuestionId = request.QuestionId,
             Answer = request.Answer,
-            TimeMs = request.TimeMs
+            TimeMs = request.TimeMs,
+            TimedOut = request.TimedOut
         };
 
         var workItem = new WorkItem
@@ -52,6 +66,11 @@ public class AgentController(WorkQueueService queueService) : ControllerBase
     [HttpPost("explain")]
     public async Task<IActionResult> Explain([FromBody] ExplainRequest request, CancellationToken ct)
     {
+        if (!CanAccessStudent(request.StudentId))
+        {
+            return Forbid();
+        }
+
         var payload = new
         {
             QuestionId = request.QuestionId,
@@ -75,6 +94,11 @@ public class AgentController(WorkQueueService queueService) : ControllerBase
     [HttpPost("upload-image")]
     public async Task<IActionResult> UploadImage([FromForm] IFormFile file, [FromForm] int studentId, CancellationToken ct)
     {
+        if (!CanAccessStudent(studentId))
+        {
+            return Forbid();
+        }
+
         if (file == null || file.Length == 0)
             return BadRequest("No file uploaded");
 
@@ -101,9 +125,20 @@ public class AgentController(WorkQueueService queueService) : ControllerBase
         var workItemId = await queueService.EnqueueAsync(workItem, ct);
         return Ok(new { WorkItemId = workItemId });
     }
+
+    private bool CanAccessStudent(int studentId)
+    {
+        if (User.IsInRole(UserRoles.Admin))
+        {
+            return true;
+        }
+
+        var claimValue = User.FindFirstValue("student_id");
+        return int.TryParse(claimValue, out var currentStudentId) && currentStudentId == studentId;
+    }
 }
 
 // Request DTOs
 public record NextQuestionRequest(int StudentId);
-public record SubmitAnswerRequest(int StudentId, int QuestionId, string Answer, int TimeMs);
+public record SubmitAnswerRequest(int StudentId, int QuestionId, string Answer, int TimeMs, bool TimedOut = false);
 public record ExplainRequest(int StudentId, int? QuestionId, int? TopicId, string? ErrorTag);

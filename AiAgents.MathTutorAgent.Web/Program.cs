@@ -8,13 +8,19 @@ using AiAgents.MathTutorAgent.ML.Services;
 using AiAgents.MathTutorAgent.Web.BackgroundServices;
 using AiAgents.MathTutorAgent.Web.Hubs;
 using AiAgents.MathTutorAgent.Web.Middleware;
+using AiAgents.MathTutorAgent.Web.Services;
 using FluentValidation;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components;
 using Microsoft.EntityFrameworkCore;
 using Radzen;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+var configuredDbProvider = builder.Configuration["DatabaseProvider"];
+var databaseProvider = string.IsNullOrWhiteSpace(configuredDbProvider)
+    ? (OperatingSystem.IsWindows() ? "SqlServer" : "Sqlite")
+    : configuredDbProvider.Trim();
 
 // ========== LOGGING ==========
 Log.Logger = new LoggerConfiguration()
@@ -29,10 +35,50 @@ builder.Host.UseSerilog();
 // ========== WEB COMPONENTS ==========
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddCascadingAuthenticationState();
 
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddRadzenComponents();
+builder.Services.AddHttpContextAccessor();
+
+builder.Services
+    .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/login";
+        options.AccessDeniedPath = "/login";
+        options.Cookie.Name = "MathTutor.Auth";
+        options.SlidingExpiration = true;
+        options.ExpireTimeSpan = TimeSpan.FromDays(14);
+        options.Events = new CookieAuthenticationEvents
+        {
+            OnRedirectToLogin = context =>
+            {
+                if (context.Request.Path.StartsWithSegments("/api"))
+                {
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    return Task.CompletedTask;
+                }
+
+                context.Response.Redirect(context.RedirectUri);
+                return Task.CompletedTask;
+            },
+            OnRedirectToAccessDenied = context =>
+            {
+                if (context.Request.Path.StartsWithSegments("/api"))
+                {
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    return Task.CompletedTask;
+                }
+
+                context.Response.Redirect(context.RedirectUri);
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<DialogService>();
 builder.Services.AddScoped<NotificationService>();
@@ -44,25 +90,49 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped(sp =>
 {
     var navigationManager = sp.GetRequiredService<NavigationManager>();
-    return new HttpClient
+    var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+    var client = new HttpClient { BaseAddress = new Uri(navigationManager.BaseUri) };
+
+    // Forward the browser's auth cookie so server-side HttpClient calls pass auth checks.
+    var cookieHeader = httpContextAccessor.HttpContext?.Request.Headers.Cookie.ToString();
+    if (!string.IsNullOrEmpty(cookieHeader))
     {
-        BaseAddress = new Uri(navigationManager.BaseUri)
-    };
+        client.DefaultRequestHeaders.Add("Cookie", cookieHeader);
+    }
+
+    return client;
 });
 
 // ========== DATABASE ==========
 builder.Services.AddDbContext<MathTutorDbContext>(options =>
 {
-    options.UseSqlServer(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        sqlOptions =>
-        {
-            sqlOptions.EnableRetryOnFailure(
-                maxRetryCount: 5,
-                maxRetryDelay: TimeSpan.FromSeconds(30),
-                errorNumbersToAdd: null);
-            sqlOptions.CommandTimeout(60);
-        });
+    if (databaseProvider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
+    {
+        var sqlServerConnectionString = builder.Configuration.GetConnectionString("SqlServerConnection")
+            ?? builder.Configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("SQL Server connection string not found. Configure ConnectionStrings:SqlServerConnection or ConnectionStrings:DefaultConnection.");
+
+        options.UseSqlServer(
+            sqlServerConnectionString,
+            sqlOptions =>
+            {
+                sqlOptions.EnableRetryOnFailure(
+                    maxRetryCount: 5,
+                    maxRetryDelay: TimeSpan.FromSeconds(30),
+                    errorNumbersToAdd: null);
+                sqlOptions.CommandTimeout(60);
+            });
+    }
+    else if (databaseProvider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
+    {
+        var sqliteConnectionString = builder.Configuration.GetConnectionString("SqliteConnection")
+            ?? "Data Source=mathtutor.db";
+        options.UseSqlite(sqliteConnectionString);
+    }
+    else
+    {
+        throw new InvalidOperationException($"Unsupported DatabaseProvider '{databaseProvider}'. Use 'SqlServer' or 'Sqlite'.");
+    }
     
     // Log SQL queries in development
     if (builder.Environment.IsDevelopment())
@@ -84,15 +154,25 @@ builder.Services.AddSingleton<MlModelTrainer>();
 builder.Services.AddScoped<WorkQueueService>();
 builder.Services.AddScoped<CurriculumService>();
 builder.Services.AddScoped<AssessmentService>();
+builder.Services.AddScoped<QuestionGenerationService>();
+builder.Services.AddScoped<QuestionDifficultyAdvisorService>();
+builder.Services.AddScoped<QuestionSelectionService>();
+builder.Services.AddScoped<QuestionTimeLimitService>();
 builder.Services.AddScoped<KnowledgeTracingService>();
 builder.Services.AddScoped<RevisionService>();
 builder.Services.AddScoped<ExplanationService>();
 builder.Services.AddScoped<ImageIngestionService>();
 builder.Services.AddScoped<StudentProfileService>();
+builder.Services.AddScoped<StudentInsightsCalculatorService>();
 builder.Services.AddScoped<PdfExportService>();
 builder.Services.AddScoped<AdminService>();
 builder.Services.AddScoped<ValidationService>();
+builder.Services.AddScoped<MlTrainingDatasetBuilderService>();
 builder.Services.AddScoped<MlTrainingService>();
+builder.Services.AddScoped<PasswordHashingService>();
+builder.Services.AddScoped<AuthService>();
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
+builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 
 // ========== AGENT RUNNER ==========
 builder.Services.AddScoped<MathTutoringAgentRunner>();
@@ -148,9 +228,34 @@ await using (var scope = app.Services.CreateAsyncScope())
     try
     {
         var context = scope.ServiceProvider.GetRequiredService<MathTutorDbContext>();
-        
-        Log.Information("📦 Applying database migrations...");
-        await context.Database.MigrateAsync();
+
+        if (context.Database.IsSqlite())
+        {
+            Log.Information("📦 Creating SQLite database schema...");
+            await context.Database.EnsureCreatedAsync();
+            await context.Database.ExecuteSqlRawAsync("""
+                CREATE TABLE IF NOT EXISTS "UserAccounts" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_UserAccounts" PRIMARY KEY AUTOINCREMENT,
+                    "FullName" TEXT NOT NULL,
+                    "Email" TEXT NOT NULL,
+                    "PasswordHash" TEXT NOT NULL,
+                    "Role" TEXT NOT NULL,
+                    "EmailConfirmed" INTEGER NOT NULL,
+                    "CreatedAt" TEXT NOT NULL,
+                    "StudentId" INTEGER NULL,
+                    CONSTRAINT "FK_UserAccounts_Students_StudentId"
+                        FOREIGN KEY ("StudentId") REFERENCES "Students" ("Id")
+                        ON DELETE SET NULL
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS "IX_UserAccounts_Email" ON "UserAccounts" ("Email");
+                CREATE INDEX IF NOT EXISTS "IX_UserAccounts_StudentId" ON "UserAccounts" ("StudentId");
+                """);
+        }
+        else
+        {
+            Log.Information("📦 Applying database migrations...");
+            await context.Database.MigrateAsync();
+        }
         
         Log.Information("🌱 Seeding database...");
         await DatabaseSeeder.SeedAsync(context);
@@ -181,6 +286,8 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 app.UseCors(); // If CORS is needed
+app.UseAuthentication();
+app.UseAuthorization();
 
 // ========== ROUTING ==========
 app.MapHub<AgentHub>("/agenthub");
@@ -194,10 +301,11 @@ app.MapRazorComponents<AiAgents.MathTutorAgent.Web.Components.App>()
 Log.Information("═══════════════════════════════════════════");
 Log.Information("🚀 MathTutor AI Agent Started Successfully!");
 Log.Information("═══════════════════════════════════════════");
-Log.Information("📍 Dashboard:    https://localhost:7152/");
-Log.Information("📍 Admin Panel:  https://localhost:7152/admin");
-Log.Information("📍 API Docs:     https://localhost:7152/swagger (if enabled)");
-Log.Information("📍 SignalR Hub:  https://localhost:7152/agenthub");
+Log.Information("📍 HTTP profile:  http://localhost:5297/");
+Log.Information("📍 HTTPS profile: https://localhost:7152/");
+Log.Information("📍 Admin Panel:   /admin");
+Log.Information("📍 API Docs:      /swagger (if enabled)");
+Log.Information("📍 SignalR Hub:   /agenthub");
 Log.Information("═══════════════════════════════════════════");
 Log.Information("💡 Train ML Models: POST /api/admin/train-ml-models");
 Log.Information("💡 Environment: {Environment}", app.Environment.EnvironmentName);

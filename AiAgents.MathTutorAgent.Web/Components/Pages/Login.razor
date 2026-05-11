@@ -1,0 +1,127 @@
+@page "/login"
+@attribute [AllowAnonymous]
+@using Microsoft.AspNetCore.WebUtilities
+@using System.Text.Json
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+
+<PageTitle>Login - MathTutor AI</PageTitle>
+
+<div class="auth-page">
+    <div class="auth-card">
+        <h1>Sign In</h1>
+        <p>Continue your MathTutor learning journey.</p>
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="auth-alert error">@errorMessage</div>
+        }
+
+        <label>
+            Email
+            <input class="auth-input" type="email" @bind="email" autocomplete="username" />
+        </label>
+
+        <label>
+            Password
+            <input class="auth-input" type="password" @bind="password" autocomplete="current-password" />
+        </label>
+
+        <button class="auth-btn" @onclick="LoginAsync" disabled="@isSubmitting">
+            @(isSubmitting ? "Signing in..." : "Sign In")
+        </button>
+
+        <p class="auth-meta">No account yet? <a href="/register">Create one</a></p>
+        <p class="auth-hint">Default admin: <code>admin@mathtutor.local</code> / <code>Admin123!</code></p>
+    </div>
+</div>
+
+@code {
+    private string email = string.Empty;
+    private string password = string.Empty;
+    private string? errorMessage;
+    private bool isSubmitting;
+
+    private async Task LoginAsync()
+    {
+        errorMessage = null;
+
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        {
+            errorMessage = "Please enter both email and password.";
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            var result = await JS.InvokeAsync<JsonElement>("authFetch", "/api/auth/login",
+                new { email, password });
+
+            var ok = result.GetProperty("ok").GetBoolean();
+            if (!ok)
+            {
+                string? msg = null;
+                if (result.TryGetProperty("data", out var data) && data.ValueKind != JsonValueKind.Null)
+                {
+                    data.TryGetProperty("message", out var msgEl);
+                    msg = msgEl.ValueKind == JsonValueKind.String ? msgEl.GetString() : null;
+                }
+                errorMessage = string.IsNullOrWhiteSpace(msg) ? "Invalid email or password." : msg;
+                return;
+            }
+
+            AuthUserDto? user = null;
+            if (result.TryGetProperty("data", out var authData) && authData.ValueKind != JsonValueKind.Null
+                && authData.TryGetProperty("user", out var userEl) && userEl.ValueKind != JsonValueKind.Null)
+            {
+                user = JsonSerializer.Deserialize<AuthUserDto>(userEl.GetRawText(),
+                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
+
+            var returnUrl = GetReturnUrl();
+            var destination = string.IsNullOrWhiteSpace(returnUrl) ? GetDefaultRoute(user) : returnUrl;
+            Navigation.NavigateTo(destination, forceLoad: true);
+        }
+        catch
+        {
+            errorMessage = "Login failed. Please try again.";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private string GetReturnUrl()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("returnUrl", out var returnUrl) && !string.IsNullOrWhiteSpace(returnUrl))
+        {
+            var value = returnUrl.ToString();
+            if (value.StartsWith('/') && !value.StartsWith("//"))
+            {
+                return value;
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private static string GetDefaultRoute(AuthUserDto? user)
+    {
+        if (user == null)
+        {
+            return "/";
+        }
+
+        if (string.Equals(user.Role, UserRoles.Admin, StringComparison.OrdinalIgnoreCase))
+        {
+            return "/";
+        }
+
+        return user.StudentId.HasValue ? $"/quiz/{user.StudentId.Value}" : "/";
+    }
+}

@@ -1,16 +1,20 @@
 ﻿using AiAgents.MathTutorAgent.Domain.Entities;
-using AiAgents.MathTutorAgent.Domain.Enums;
 using AiAgents.MathTutorAgent.Infrastructure;
 using AiAgents.MathTutorAgent.ML.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace AiAgents.MathTutorAgent.Application.Services;
 
-public class KnowledgeTracingService(
-    MathTutorDbContext context,
-    KnowledgeTracingMlService mlService)
+public class KnowledgeTracingService
 {
-    private readonly MathTutorDbContext _context = context;
+    private readonly MathTutorDbContext _context;
+    private readonly KnowledgeTracingMlService _mlService;
+
+    public KnowledgeTracingService(MathTutorDbContext context, KnowledgeTracingMlService mlService)
+    {
+        _context = context;
+        _mlService = mlService;
+    }
 
     public async Task UpdateTopicStateAsync(int studentId, Attempt attempt, CancellationToken ct = default)
     {
@@ -62,13 +66,13 @@ public class KnowledgeTracingService(
         }
 
         // ✅ USE ML MODEL TO PREDICT NEW MASTERY
-        var predictedMastery = mlService.PredictMasteryChange(
+        var predictedMastery = _mlService.PredictMasteryChange(
             topicDifficulty: question.Difficulty,
             currentMastery: previousMastery,
             recentAccuracy: recentAccuracy,
             avgTimeMs: (float)avgTime,
             daysSinceLastPractice: (float)daysSince,
-            totalAttempts: recentAttempts.Count + 1,
+            totalAttempts: recentAttempts.Count,
             consecutiveCorrect: consecutiveCorrect,
             consecutiveIncorrect: consecutiveIncorrect);
 
@@ -83,7 +87,7 @@ public class KnowledgeTracingService(
 
     public async Task<double> GetMasteryScoreAsync(int studentId, int topicId, CancellationToken ct = default)
     {
-        var state = await context.StudentTopicStates
+        var state = await _context.StudentTopicStates
             .FirstOrDefaultAsync(s => s.StudentId == studentId && s.TopicId == topicId, ct);
 
         return state?.MasteryScore ?? 0;
@@ -91,7 +95,7 @@ public class KnowledgeTracingService(
 
     public async Task<StudentTopicState?> GetTopicStateAsync(int studentId, int topicId, CancellationToken ct = default)
     {
-        return await context.StudentTopicStates
+        return await _context.StudentTopicStates
             .FirstOrDefaultAsync(s => s.StudentId == studentId && s.TopicId == topicId, ct);
     }
 }

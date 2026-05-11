@@ -30,6 +30,9 @@ public class RevisionService(MathTutorDbContext context)
 
     public async Task UpdateScheduleAsync(int studentId, int topicId, CancellationToken ct = default)
     {
+        var settings = await context.SystemSettings.AsNoTracking().FirstOrDefaultAsync(ct);
+        var intervalDays = settings?.RevisionIntervalDays ?? 7;
+
         var schedule = await context.RevisionScheduleItems
             .FirstOrDefaultAsync(r => r.StudentId == studentId && r.TopicId == topicId, ct);
 
@@ -39,13 +42,13 @@ public class RevisionService(MathTutorDbContext context)
             {
                 StudentId = studentId,
                 TopicId = topicId,
-                NextDueUtc = DateTime.UtcNow.AddDays(7)
+                NextDueUtc = DateTime.UtcNow.AddDays(intervalDays)
             };
             context.RevisionScheduleItems.Add(schedule);
         }
         else
         {
-            schedule.NextDueUtc = DateTime.UtcNow.AddDays(7);
+            schedule.NextDueUtc = DateTime.UtcNow.AddDays(intervalDays);
         }
 
         await context.SaveChangesAsync(ct);

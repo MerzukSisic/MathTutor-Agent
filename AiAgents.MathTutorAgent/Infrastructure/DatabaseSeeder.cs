@@ -1,4 +1,5 @@
-﻿using AiAgents.MathTutorAgent.Domain.Entities;
+﻿using AiAgents.MathTutorAgent.Application.Services;
+using AiAgents.MathTutorAgent.Domain.Entities;
 using AiAgents.MathTutorAgent.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
@@ -9,7 +10,11 @@ public static class DatabaseSeeder
     public static async Task SeedAsync(MathTutorDbContext context)
     {
         if (await context.Topics.AnyAsync())
-            return; // Already seeded
+        {
+            await EnsureExpandedCurriculumAsync(context);
+            await EnsureDefaultAdminAccountAsync(context);
+            return; // Core already seeded, only enrichment needed.
+        }
 
         // ========== TOPICS (20+ covering full curriculum) ==========
         var topics = new List<Topic>
@@ -382,6 +387,170 @@ public static class DatabaseSeeder
             new KnowledgeChunk { DocumentId = documents[3].Id, PageNumber = 2, ChunkText = "Pythagorean theorem: In a right triangle, a² + b² = c², where c is the hypotenuse.", Tags = new List<string> { "Pythagorean", "Geometry", "Triangles" } },
             new KnowledgeChunk { DocumentId = documents[3].Id, PageNumber = 3, ChunkText = "Area of a rectangle is length × width. Perimeter is 2(length + width).", Tags = new List<string> { "Area", "Perimeter", "Geometry" } }
         );
+        await context.SaveChangesAsync();
+
+        await EnsureExpandedCurriculumAsync(context);
+        await EnsureDefaultAdminAccountAsync(context);
+    }
+
+    private static async Task EnsureExpandedCurriculumAsync(MathTutorDbContext context)
+    {
+        var existingTopics = await context.Topics.ToListAsync();
+
+        Topic EnsureTopic(string name, MathArea area, int band, string description)
+        {
+            var found = existingTopics.FirstOrDefault(t => t.Name == name);
+            if (found != null)
+            {
+                return found;
+            }
+
+            var topic = new Topic
+            {
+                Name = name,
+                Area = area,
+                DifficultyBand = band,
+                Description = description
+            };
+
+            context.Topics.Add(topic);
+            existingTopics.Add(topic);
+            return topic;
+        }
+
+        var orderOps = EnsureTopic(
+            "Order of Operations",
+            MathArea.PreAlgebra,
+            2,
+            "Parentheses, multiplication/division, addition/subtraction order");
+
+        var ratios = EnsureTopic(
+            "Ratios and Proportions",
+            MathArea.PreAlgebra,
+            3,
+            "Equivalent ratios and proportions");
+
+        var directProof = EnsureTopic(
+            "Direct Proof Basics",
+            MathArea.Proofs,
+            4,
+            "Building proofs from givens to conclusion");
+
+        var contradiction = EnsureTopic(
+            "Proof by Contradiction Intro",
+            MathArea.Proofs,
+            5,
+            "Assume opposite and derive contradiction");
+
+        await context.SaveChangesAsync();
+
+        var existingEdges = await context.TopicEdges
+            .Select(e => new { e.PrerequisiteTopicId, e.DependentTopicId })
+            .ToListAsync();
+
+        void EnsureEdge(int prerequisiteId, int dependentId)
+        {
+            if (existingEdges.Any(e => e.PrerequisiteTopicId == prerequisiteId && e.DependentTopicId == dependentId))
+            {
+                return;
+            }
+
+            context.TopicEdges.Add(new TopicEdge
+            {
+                PrerequisiteTopicId = prerequisiteId,
+                DependentTopicId = dependentId
+            });
+
+            existingEdges.Add(new { PrerequisiteTopicId = prerequisiteId, DependentTopicId = dependentId });
+        }
+
+        var fractions = existingTopics.FirstOrDefault(t => t.Name == "Fractions");
+        var linearEq = existingTopics.FirstOrDefault(t => t.Name == "Linear Equations");
+        var propositionalLogic = existingTopics.FirstOrDefault(t => t.Name == "Propositional Logic");
+
+        if (fractions != null)
+        {
+            EnsureEdge(fractions.Id, ratios.Id);
+        }
+
+        if (ratios.Id > 0 && linearEq != null)
+        {
+            EnsureEdge(ratios.Id, linearEq.Id);
+        }
+
+        if (propositionalLogic != null)
+        {
+            EnsureEdge(propositionalLogic.Id, directProof.Id);
+        }
+
+        EnsureEdge(directProof.Id, contradiction.Id);
+
+        await context.SaveChangesAsync();
+
+        var existingQuestions = await context.Questions
+            .Select(q => new { q.TopicId, q.QuestionText })
+            .ToListAsync();
+
+        void EnsureQuestion(int topicId, int difficulty, string text, string answer, List<string> mistakes)
+        {
+            if (existingQuestions.Any(q => q.TopicId == topicId && q.QuestionText == text))
+            {
+                return;
+            }
+
+            context.Questions.Add(new Question
+            {
+                TopicId = topicId,
+                Difficulty = difficulty,
+                QuestionText = text,
+                CorrectAnswer = answer,
+                CommonMistakes = mistakes
+            });
+
+            existingQuestions.Add(new { TopicId = topicId, QuestionText = text });
+        }
+
+        EnsureQuestion(orderOps.Id, 2, "Evaluate: 7 + 3 × 4", "19", new List<string> { "40", "28" });
+        EnsureQuestion(orderOps.Id, 2, "Evaluate: (7 + 3) × 4", "40", new List<string> { "19", "28" });
+        EnsureQuestion(orderOps.Id, 3, "Evaluate: 18 ÷ 3 + 2 × 5", "16", new List<string> { "50", "13" });
+        EnsureQuestion(orderOps.Id, 3, "Evaluate: 6 + (12 ÷ 3) × 2", "14", new List<string> { "12", "10" });
+
+        EnsureQuestion(ratios.Id, 3, "Complete: 2:3 = 10:x", "15", new List<string> { "12", "13" });
+        EnsureQuestion(ratios.Id, 3, "If 4 pens cost 12 KM, how much do 10 pens cost?", "30", new List<string> { "24", "28" });
+        EnsureQuestion(ratios.Id, 4, "Complete: 5:8 = x:40", "25", new List<string> { "20", "32" });
+        EnsureQuestion(ratios.Id, 4, "If 3 workers finish a task in 12h, how long for 6 workers (same speed)?", "6", new List<string> { "24", "9" });
+
+        EnsureQuestion(directProof.Id, 4, "If n is even, can n be written as 2k for some integer k?", "Yes", new List<string> { "No" });
+        EnsureQuestion(directProof.Id, 4, "Given a|b and b|c, does a|c hold?", "Yes", new List<string> { "No" });
+        EnsureQuestion(directProof.Id, 4, "If m and n are odd, is m+n even?", "Yes", new List<string> { "No" });
+
+        EnsureQuestion(contradiction.Id, 5, "In proof by contradiction, do we assume the negation of the claim first?", "Yes", new List<string> { "No" });
+        EnsureQuestion(contradiction.Id, 5, "Can contradiction method prove irrationality statements?", "Yes", new List<string> { "No" });
+        EnsureQuestion(contradiction.Id, 5, "If assumption leads to impossibility, is original claim true?", "Yes", new List<string> { "No" });
+
+        await context.SaveChangesAsync();
+    }
+
+    private static async Task EnsureDefaultAdminAccountAsync(MathTutorDbContext context)
+    {
+        var adminEmail = "admin@mathtutor.local";
+        if (await context.UserAccounts.AnyAsync(u => u.Email == adminEmail))
+        {
+            return;
+        }
+
+        var passwordHashingService = new PasswordHashingService();
+        var admin = new UserAccount
+        {
+            FullName = "MathTutor Admin",
+            Email = adminEmail,
+            PasswordHash = passwordHashingService.HashPassword("Admin123!"),
+            Role = UserRoles.Admin,
+            EmailConfirmed = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        context.UserAccounts.Add(admin);
         await context.SaveChangesAsync();
     }
 }

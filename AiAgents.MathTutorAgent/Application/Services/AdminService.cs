@@ -55,7 +55,6 @@ public class AdminService(MathTutorDbContext context)
     public async Task<AdminQuestionDto> UpdateQuestionAsync(int id, CreateQuestionDto dto, CancellationToken ct = default)
     {
         var question = await context.Questions
-            .Include(q => q.Topic)
             .FirstOrDefaultAsync(q => q.Id == id, ct);
 
         if (question == null)
@@ -70,11 +69,16 @@ public class AdminService(MathTutorDbContext context)
 
         await context.SaveChangesAsync(ct);
 
+        var topicName = await context.Topics
+            .Where(t => t.Id == question.TopicId)
+            .Select(t => t.Name)
+            .FirstOrDefaultAsync(ct) ?? string.Empty;
+
         return new AdminQuestionDto
         {
             Id = question.Id,
             TopicId = question.TopicId,
-            TopicName = question.Topic.Name,
+            TopicName = topicName,
             Difficulty = question.Difficulty,
             QuestionText = question.QuestionText,
             CorrectAnswer = question.CorrectAnswer
@@ -134,10 +138,14 @@ public class AdminService(MathTutorDbContext context)
             ? (double)completedWorkItems / totalWorkItems * 100 
             : 0;
 
-        var avgProcessingTime = await context.WorkItems
+        var processedItems = await context.WorkItems
             .Where(w => w.ProcessedAt != null)
-            .Select(w => EF.Functions.DateDiffMillisecond(w.CreatedAt, w.ProcessedAt!.Value))
-            .AverageAsync(ct);
+            .Select(w => new { w.CreatedAt, ProcessedAt = w.ProcessedAt!.Value })
+            .ToListAsync(ct);
+
+        var avgProcessingTime = processedItems.Count > 0
+            ? processedItems.Average(w => (w.ProcessedAt - w.CreatedAt).TotalMilliseconds)
+            : 0;
 
         return new PerformanceMetricsDto
         {
@@ -150,8 +158,6 @@ public class AdminService(MathTutorDbContext context)
             AverageProcessingTimeMs = avgProcessingTime
         };
     }
-    // DODAJ U AdminService.cs (na kraju klase):
-
     public async Task<StudentDto> CreateStudentAsync(string name, string email, CancellationToken ct = default)
     {
         var student = new Student

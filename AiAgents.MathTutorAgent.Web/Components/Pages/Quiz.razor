@@ -1,4 +1,5 @@
 ﻿@page "/quiz/{studentId:int}"
+@attribute [Authorize]
 @using Microsoft.AspNetCore.SignalR.Client
 @inject NavigationManager Navigation
 @inject HttpClient Http
@@ -21,13 +22,117 @@
 
             <div class="question-header">
                 <h2>Question @currentQuestion.Id</h2>
-                <span class="difficulty-badge difficulty-@currentQuestion.Difficulty">
-                    Difficulty: @currentQuestion.Difficulty
-                </span>
+                <div class="question-badges">
+                    @if (!string.IsNullOrWhiteSpace(currentQuestion.AreaName))
+                    {
+                        <span class="area-badge">@currentQuestion.AreaName</span>
+                    }
+                    <span class="difficulty-badge difficulty-@currentQuestion.Difficulty">
+                        Difficulty: @currentQuestion.Difficulty
+                    </span>
+                    <span class="timer-badge @(remainingSeconds <= 10 ? "timer-warning" : string.Empty)">
+                        ⏱️ @remainingSeconds s left
+                    </span>
+                </div>
+            </div>
+
+            <div class="timer-track" role="progressbar" aria-valuemin="0" aria-valuemax="@timeLimitSeconds" aria-valuenow="@remainingSeconds">
+                <div class="timer-fill @(remainingSeconds <= 10 ? "critical" : string.Empty)"
+                     style="width:@($"{TimeProgressPercent:F1}%")"></div>
+            </div>
+            <div class="timer-meta">
+                <span>Limit: @timeLimitSeconds s</span>
+                <span class="timer-hint">@GetTimerHint()</span>
             </div>
 
             <div class="question-body">
                 <p class="question-text">@currentQuestion.QuestionText</p>
+                <AreaVisualGuide AreaName="@currentQuestion.AreaName"
+                                 TopicName="@currentQuestion.TopicName"
+                                 QuestionText="@currentQuestion.QuestionText" />
+
+                @if (visualPractice != null)
+                {
+                    <div class="visual-practice">
+                        <h4>🎮 Mini Practice</h4>
+
+                        @if (visualPractice.Mode == "addition")
+                        {
+                            <div class="crossmath-strip">
+                                <span class="math-tile">@visualPractice.A</span>
+                                <span class="math-op">+</span>
+                                <span class="math-tile">@visualPractice.B</span>
+                                <span class="math-op">=</span>
+                                <span class="math-tile answer">@GetVisualResult()</span>
+                            </div>
+                            <p>Drag apples to the answer basket and count them.</p>
+                            <div class="apple-playground">
+                                <div class="apple-source">
+                                    <strong>Group A (@visualPractice.SourceA left)</strong>
+                                    <div class="apple-row">
+                                        @for (var i = 0; i < visualPractice.SourceA; i++)
+                                        {
+                                            <span class="apple"
+                                                  draggable="true"
+                                                  @ondragstart="@BeginAppleDragA">🍎</span>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="apple-source">
+                                    <strong>Group B (@visualPractice.SourceB left)</strong>
+                                    <div class="apple-row">
+                                        @for (var i = 0; i < visualPractice.SourceB; i++)
+                                        {
+                                            <span class="apple"
+                                                  draggable="true"
+                                                  @ondragstart="@BeginAppleDragB">🍎</span>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="apple-target"
+                                     @ondragover:preventDefault
+                                     @ondrop="DropAppleToAnswer">
+                                    <strong>Answer Basket</strong>
+                                    <p>Apples dropped: @visualPractice.Dropped</p>
+                                </div>
+                            </div>
+                        }
+                        else if (visualPractice.Mode == "subtraction")
+                        {
+                            <div class="crossmath-strip">
+                                <span class="math-tile">@visualPractice.A</span>
+                                <span class="math-op">-</span>
+                                <span class="math-tile">@visualPractice.B</span>
+                                <span class="math-op">=</span>
+                                <span class="math-tile answer">@GetVisualResult()</span>
+                            </div>
+                            <p>Drag apples away to subtract, then count what remains.</p>
+                            <div class="apple-playground">
+                                <div class="apple-source">
+                                    <strong>Start Basket (@visualPractice.Remaining left)</strong>
+                                    <div class="apple-row">
+                                        @for (var i = 0; i < visualPractice.Remaining; i++)
+                                        {
+                                            <span class="apple"
+                                                  draggable="true"
+                                                  @ondragstart="@BeginAppleDragMain">🍎</span>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="apple-target remove"
+                                     @ondragover:preventDefault
+                                     @ondrop="DropAppleToRemove">
+                                    <strong>Remove Basket</strong>
+                                    <p>Removed: @visualPractice.Removed / @visualPractice.B</p>
+                                </div>
+                            </div>
+                        }
+
+                        <button class="btn-use-visual" @onclick="ApplyVisualResult">
+                            Use Visual Result (@GetVisualResult())
+                        </button>
+                    </div>
+                }
             </div>
 
             <div class="answer-section">
@@ -41,7 +146,7 @@
 
                 <div class="action-buttons">
                     <button class="btn-submit"
-                            @onclick="SubmitAnswer"
+                            @onclick="() => SubmitAnswer(false)"
                             disabled="@(string.IsNullOrWhiteSpace(userAnswer) || isSubmitting || isLoading)">
                         @if (isSubmitting)
                         {
@@ -69,8 +174,9 @@
             @if (feedback != null)
             {
                 <div class="feedback-section @(feedback.IsCorrect ? "correct" : "incorrect")">
-                    <h3>@(feedback.IsCorrect ? "✓ Correct!" : "✗ Incorrect")</h3>
+                    <h3>@(feedback.IsTimedOut ? "⏰ Time is up!" : feedback.IsCorrect ? "✓ Correct!" : "✗ Incorrect")</h3>
                     <p><strong>Correct Answer:</strong> @feedback.CorrectAnswer</p>
+                    <p><strong>Time:</strong> @feedback.TimeSpentSeconds.ToString("F1")s / @feedback.TimeLimitSeconds s</p>
                     <p><strong>Your Mastery:</strong> @feedback.MasteryScore.ToString("F1")%</p>
                     <p><strong>Decision:</strong>
                         <span class="decision-badge decision-@feedback.Decision.ToLower()">
@@ -89,6 +195,11 @@
                 <div class="explanation-section">
                     <h3>📚 Explanation</h3>
                     <p>@explanation.Explanation</p>
+
+                    @if (currentQuestion != null)
+                    {
+                        <VisualMathExplanation QuestionText="@currentQuestion.QuestionText" />
+                    }
 
                     @if (!string.IsNullOrEmpty(explanation.Example))
                     {
@@ -131,559 +242,3 @@
         </div>
     }
 </div>
-
-@code {
-    [Parameter] public int StudentId { get; set; }
-
-    private QuestionDto? currentQuestion;
-    private string userAnswer = string.Empty;
-    private FeedbackDto? feedback;
-    private ExplanationDto? explanation;
-    private bool isLoading;
-    private bool isSubmitting;
-    private HubConnection? hubConnection;
-    private DateTime questionStartTime;
-
-    protected override async Task OnInitializedAsync()
-    {
-        await InitializeSignalR();
-        await GetNextQuestion();
-    }
-
-    private async Task InitializeSignalR()
-    {
-        hubConnection = new HubConnectionBuilder()
-            .WithUrl(Navigation.ToAbsoluteUri("/agenthub"))
-            .Build();
-
-        hubConnection.On<MathTickResult>("AgentTick", async (result) =>
-        {
-            if (result.StudentId == StudentId)
-            {
-                await HandleAgentTick(result);
-            }
-        });
-
-        await hubConnection.StartAsync();
-    }
-
-    private async Task HandleAgentTick(MathTickResult result)
-    {
-        switch (result.Outcome)
-        {
-            case TickOutcome.QuestionGenerated:
-                if (result.UiPayload is System.Text.Json.JsonElement jsonElement)
-                {
-                    currentQuestion = System.Text.Json.JsonSerializer.Deserialize<QuestionDto>(
-                        jsonElement.GetRawText(),
-                        new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                }
-
-                questionStartTime = DateTime.UtcNow;
-                isLoading = false;
-                await InvokeAsync(StateHasChanged);
-                break;
-
-            case TickOutcome.AnswerEvaluated:
-                if (result.UiPayload is System.Text.Json.JsonElement feedbackJson)
-                {
-                    feedback = System.Text.Json.JsonSerializer.Deserialize<FeedbackDto>(
-                        feedbackJson.GetRawText(),
-                        new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                }
-
-                isSubmitting = false;
-                await InvokeAsync(StateHasChanged);
-                break;
-
-            case TickOutcome.ExplanationReady:
-                if (result.UiPayload is System.Text.Json.JsonElement explanationJson)
-                {
-                    explanation = System.Text.Json.JsonSerializer.Deserialize<ExplanationDto>(
-                        explanationJson.GetRawText(),
-                        new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                }
-
-                await InvokeAsync(StateHasChanged);
-                break;
-
-            default:
-                break;
-        }
-    }
-
-    private async Task GetNextQuestion()
-    {
-        isLoading = true;
-        feedback = null;
-        explanation = null;
-        userAnswer = string.Empty;
-
-        try
-        {
-            var response = await Http.PostAsJsonAsync("/api/agent/next-question", new { StudentId });
-            response.EnsureSuccessStatusCode();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error: {ex.Message}");
-            isLoading = false;
-        }
-    }
-
-    private async Task SubmitAnswer()
-    {
-        if (string.IsNullOrWhiteSpace(userAnswer) || currentQuestion == null || isSubmitting)
-            return;
-
-        isSubmitting = true;
-        var timeMs = (int)(DateTime.UtcNow - questionStartTime).TotalMilliseconds;
-
-        try
-        {
-            var response = await Http.PostAsJsonAsync("/api/agent/submit-answer", new
-            {
-                StudentId,
-                QuestionId = currentQuestion.Id,
-                Answer = userAnswer.Trim(),
-                TimeMs = timeMs
-            });
-            response.EnsureSuccessStatusCode();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error: {ex.Message}");
-            isSubmitting = false;
-        }
-    }
-
-    private async Task RequestExplanation()
-    {
-        if (currentQuestion == null)
-            return;
-
-        try
-        {
-            var response = await Http.PostAsJsonAsync("/api/agent/explain", new
-            {
-                StudentId,
-                QuestionId = currentQuestion.Id,
-                TopicId = currentQuestion.TopicId,
-                ErrorTag = (string?)null
-            });
-            response.EnsureSuccessStatusCode();
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error: {ex.Message}");
-        }
-    }
-
-    // ✅ Handle Enter key press
-    private async Task HandleKeyPress(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(userAnswer) && !isSubmitting && !isLoading)
-        {
-            await SubmitAnswer();
-        }
-    }
-
-    private void GoBack()
-    {
-        Navigation.NavigateTo("/");
-    }
-
-    public async ValueTask DisposeAsync()
-    {
-        if (hubConnection != null)
-        {
-            await hubConnection.DisposeAsync();
-        }
-    }
-
-    // DTOs for deserialization
-    private class FeedbackDto
-    {
-        public bool IsCorrect { get; set; }
-        public string CorrectAnswer { get; set; } = string.Empty;
-        public double MasteryScore { get; set; }
-        public string Decision { get; set; } = string.Empty;
-    }
-
-}
-
-<style>
-    /* ========== CONTAINER ========== */
-    .quiz-container {
-        max-width: 800px;
-        margin: 2rem auto;
-        padding: 2rem;
-    }
-
-    /* ========== QUESTION CARD ========== */
-    .question-card {
-        position: relative;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        padding: 2rem;
-    }
-
-    /* ========== LOADING OVERLAY ========== */
-    .loading-overlay {
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(255, 255, 255, 0.95);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        z-index: 1000;
-        border-radius: 12px;
-    }
-
-    .loading-overlay p {
-        margin-top: 1rem;
-        font-size: 1.1rem;
-        color: #666;
-        font-weight: 500;
-    }
-
-    /* ========== SPINNERS ========== */
-    .spinner, .spinner-large {
-        width: 60px;
-        height: 60px;
-        border: 6px solid #f3f3f3;
-        border-top: 6px solid #2196F3;
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
-    }
-
-    .spinner-large {
-        width: 80px;
-        height: 80px;
-        border-width: 8px;
-    }
-
-    .spinner-small {
-        display: inline-block;
-        width: 16px;
-        height: 16px;
-        border: 3px solid #ffffff;
-        border-top: 3px solid transparent;
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
-        margin-right: 0.5rem;
-    }
-
-    @@keyframes spin {
-        0% {
-            transform: rotate(0deg);
-        }
-        100% {
-            transform: rotate(360deg);
-        }
-    }
-
-    /* ========== LOADING CONTAINER ========== */
-    .loading-container {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        padding: 4rem;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-
-    .loading-container p {
-        margin-top: 1.5rem;
-        font-size: 1.2rem;
-        color: #666;
-    }
-
-    /* ========== QUESTION HEADER ========== */
-    .question-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 1.5rem;
-        padding-bottom: 1rem;
-        border-bottom: 2px solid #f0f0f0;
-    }
-
-    .question-header h2 {
-        margin: 0;
-        color: #333;
-    }
-
-    .difficulty-badge {
-        padding: 0.5rem 1rem;
-        border-radius: 20px;
-        font-size: 0.9rem;
-        font-weight: 600;
-        color: white;
-    }
-
-    .difficulty-1 {
-        background: #4CAF50;
-    }
-
-    .difficulty-2 {
-        background: #8BC34A;
-    }
-
-    .difficulty-3 {
-        background: #FF9800;
-    }
-
-    .difficulty-4 {
-        background: #FF5722;
-    }
-
-    .difficulty-5 {
-        background: #F44336;
-    }
-
-    /* ========== QUESTION BODY ========== */
-    .question-body {
-        margin: 2rem 0;
-    }
-
-    .question-text {
-        font-size: 1.3rem;
-        line-height: 1.6;
-        color: #333;
-        font-weight: 500;
-    }
-
-    /* ========== ANSWER SECTION ========== */
-    .answer-section {
-        margin: 2rem 0;
-    }
-
-    .answer-input {
-        width: 100%;
-        padding: 1rem;
-        font-size: 1.1rem;
-        border: 2px solid #ddd;
-        border-radius: 8px;
-        margin-bottom: 1rem;
-        transition: all 0.3s;
-    }
-
-    .answer-input:focus {
-        outline: none;
-        border-color: #2196F3;
-        box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.1);
-    }
-
-    .answer-input:disabled {
-        background: #f5f5f5;
-        cursor: not-allowed;
-        opacity: 0.6;
-    }
-
-    /* ========== ACTION BUTTONS ========== */
-    .action-buttons {
-        display: flex;
-        gap: 1rem;
-        flex-wrap: wrap;
-    }
-
-    .btn-submit, .btn-explain, .btn-back, .btn-next, .btn-primary {
-        padding: 0.8rem 1.5rem;
-        border: none;
-        border-radius: 8px;
-        font-size: 1rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .btn-submit {
-        background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
-        color: white;
-        box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
-    }
-
-    .btn-submit:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
-    }
-
-    .btn-submit:disabled {
-        background: #ccc;
-        cursor: not-allowed;
-        opacity: 0.6;
-        transform: none;
-        box-shadow: none;
-    }
-
-    .btn-explain {
-        background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
-        color: white;
-        box-shadow: 0 2px 8px rgba(255, 152, 0, 0.3);
-    }
-
-    .btn-explain:hover:not(:disabled) {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
-    }
-
-    .btn-explain:disabled {
-        opacity: 0.6;
-        cursor: not-allowed;
-    }
-
-    .btn-back {
-        background: #757575;
-        color: white;
-    }
-
-    .btn-back:hover {
-        background: #616161;
-        transform: translateY(-2px);
-    }
-
-    .btn-next, .btn-primary {
-        background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-        color: white;
-        box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
-    }
-
-    .btn-next:hover, .btn-primary:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
-    }
-
-    /* ========== FEEDBACK SECTION ========== */
-    .feedback-section {
-        margin-top: 2rem;
-        padding: 1.5rem;
-        border-radius: 8px;
-        animation: slideIn 0.3s ease-out;
-    }
-
-    @@keyframes slideIn {
-        from {
-            opacity: 0;
-            transform: translateY(20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .feedback-section.correct {
-        background: linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 100%);
-        border: 2px solid #4CAF50;
-    }
-
-    .feedback-section.incorrect {
-        background: linear-gradient(135deg, #FFEBEE 0%, #FFCDD2 100%);
-        border: 2px solid #f44336;
-    }
-
-    .feedback-section h3 {
-        margin-top: 0;
-        font-size: 1.5rem;
-    }
-
-    .decision-badge {
-        display: inline-block;
-        padding: 0.3rem 0.8rem;
-        border-radius: 12px;
-        font-size: 0.9rem;
-        font-weight: 600;
-        color: white;
-    }
-
-    .decision-advance {
-        background: #4CAF50;
-    }
-
-    .decision-review {
-        background: #FF9800;
-    }
-
-    .decision-remediate {
-        background: #F44336;
-    }
-
-    /* ========== EXPLANATION SECTION ========== */
-    .explanation-section {
-        margin-top: 2rem;
-        padding: 1.5rem;
-        background: linear-gradient(135deg, #FFF9C4 0%, #FFF59D 100%);
-        border-radius: 8px;
-        border: 2px solid #FBC02D;
-        animation: slideIn 0.3s ease-out;
-    }
-
-    .example-box {
-        margin-top: 1rem;
-        padding: 1rem;
-        background: white;
-        border-radius: 6px;
-        border-left: 4px solid #FBC02D;
-    }
-
-    .sources-section {
-        margin-top: 1rem;
-        padding: 1rem;
-        background: rgba(255, 255, 255, 0.5);
-        border-radius: 6px;
-    }
-
-    .sources-section ul {
-        margin: 0.5rem 0 0 0;
-        padding-left: 1.5rem;
-    }
-
-    /* ========== NO QUESTION ========== */
-    .no-question {
-        text-align: center;
-        padding: 3rem;
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-
-    .no-question p {
-        font-size: 1.2rem;
-        color: #666;
-        margin-bottom: 1.5rem;
-    }
-
-    /* ========== RESPONSIVE ========== */
-    @@media (max-width: 768px) {
-        .quiz-container {
-            padding: 1rem;
-        }
-
-        .question-card {
-            padding: 1.5rem;
-        }
-
-        .question-text {
-            font-size: 1.1rem;
-        }
-
-        .action-buttons {
-            flex-direction: column;
-        }
-
-        .action-buttons button {
-            width: 100%;
-        }
-    }
-</style>

@@ -1,0 +1,158 @@
+@page "/admin/add-question"
+@attribute [Authorize(Roles = UserRoles.Admin)]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Add Question - MathTutor AI</PageTitle>
+
+<div class="qform-shell">
+    <div class="qform-card">
+        <div class="qform-header">
+            <div>
+                <h2>➕ Add New Question</h2>
+                <p>Create fresh content for students with topic and difficulty mapping.</p>
+            </div>
+            <button class="qbtn ghost" @onclick="GoBack">← Back</button>
+        </div>
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="q-alert error">@errorMessage</div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(successMessage))
+        {
+            <div class="q-alert success">@successMessage</div>
+        }
+
+        <div class="qform-grid">
+            <label>
+                Topic
+                <select class="qinput" @bind="topicId" disabled="@isSubmitting">
+                    <option value="0">Select topic</option>
+                    @foreach (var topic in topics)
+                    {
+                        <option value="@topic.Id">@topic.Name (@topic.Area)</option>
+                    }
+                </select>
+            </label>
+
+            <label>
+                Difficulty (1-5)
+                <select class="qinput" @bind="difficulty" disabled="@isSubmitting">
+                    @for (var i = 1; i <= 5; i++)
+                    {
+                        <option value="@i">@i</option>
+                    }
+                </select>
+            </label>
+
+            <label class="full">
+                Question text
+                <textarea class="qinput" rows="4" @bind="questionText" disabled="@isSubmitting" placeholder="Example: What is 17 + 26?"></textarea>
+            </label>
+
+            <label class="full">
+                Correct answer
+                <input class="qinput" @bind="correctAnswer" disabled="@isSubmitting" placeholder="Example: 43" />
+            </label>
+
+            <label class="full">
+                Solution steps (optional)
+                <textarea class="qinput" rows="3" @bind="solutionSteps" disabled="@isSubmitting" placeholder="Step-by-step explanation"></textarea>
+            </label>
+
+            <label class="full">
+                Common mistakes (optional, comma separated)
+                <input class="qinput" @bind="commonMistakesRaw" disabled="@isSubmitting" placeholder="42, 44" />
+            </label>
+        </div>
+
+        <div class="qform-actions">
+            <button class="qbtn ghost" @onclick="GoBack" disabled="@isSubmitting">Cancel</button>
+            <button class="qbtn primary" @onclick="CreateQuestion" disabled="@(isSubmitting || !IsValid())">
+                @(isSubmitting ? "Creating..." : "Create Question")
+            </button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private List<TopicDto> topics = new();
+    private int topicId;
+    private int difficulty = 1;
+    private string questionText = string.Empty;
+    private string correctAnswer = string.Empty;
+    private string? solutionSteps;
+    private string commonMistakesRaw = string.Empty;
+
+    private bool isSubmitting;
+    private string? errorMessage;
+    private string? successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            topics = await Http.GetFromJsonAsync<List<TopicDto>>("/api/admin/topics") ?? new();
+        }
+        catch
+        {
+            errorMessage = "Failed to load topics. Please refresh.";
+        }
+    }
+
+    private bool IsValid()
+        => topicId > 0 && !string.IsNullOrWhiteSpace(questionText) && !string.IsNullOrWhiteSpace(correctAnswer);
+
+    private async Task CreateQuestion()
+    {
+        errorMessage = null;
+        successMessage = null;
+
+        if (!IsValid())
+        {
+            errorMessage = "Please fill all required fields.";
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            var dto = new CreateQuestionDto
+            {
+                TopicId = topicId,
+                Difficulty = difficulty,
+                QuestionText = questionText.Trim(),
+                CorrectAnswer = correctAnswer.Trim(),
+                SolutionSteps = string.IsNullOrWhiteSpace(solutionSteps) ? null : solutionSteps.Trim(),
+                CommonMistakes = ParseMistakes(commonMistakesRaw)
+            };
+
+            var response = await Http.PostAsJsonAsync("/api/admin/questions", dto);
+            if (!response.IsSuccessStatusCode)
+            {
+                errorMessage = $"Failed to create question ({response.StatusCode}).";
+                return;
+            }
+
+            successMessage = "Question created successfully. Redirecting...";
+            await Task.Delay(800);
+            Navigation.NavigateTo("/admin?status=question-created");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private static List<string> ParseMistakes(string raw)
+        => raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
+    private void GoBack() => Navigation.NavigateTo("/admin");
+}

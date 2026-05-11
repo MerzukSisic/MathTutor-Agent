@@ -1,0 +1,29 @@
+@page "/logout"
+@attribute [Authorize]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Logout - MathTutor AI</PageTitle>
+
+<div class="auth-page">
+    <div class="auth-card">
+        <h1>Signing out...</h1>
+        <p>Please wait.</p>
+    </div>
+</div>
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await Http.PostAsync("/api/auth/logout", null);
+        }
+        catch
+        {
+            // ignore
+        }
+
+        Navigation.NavigateTo("/login", forceLoad: true);
+    }
+}

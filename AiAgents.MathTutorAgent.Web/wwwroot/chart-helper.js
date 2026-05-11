@@ -70,3 +70,17 @@ window.downloadFile = function(fileName, base64Content) {
     link.download = fileName;
     link.click();
 };
+
+// Makes auth API calls from the browser so the cookie lands in the browser's jar
+window.authFetch = async function(url, body) {
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body)
+    });
+    const text = await response.text();
+    let data = null;
+    try { data = JSON.parse(text); } catch {}
+    return { ok: response.ok, status: response.status, data };
+};

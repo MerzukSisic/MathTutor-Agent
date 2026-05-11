@@ -1,4 +1,5 @@
 ﻿@page "/"
+@attribute [Authorize(Roles = UserRoles.Admin)]
 @inject HttpClient Http
 @inject NavigationManager Navigation
 
@@ -21,10 +22,13 @@
     <div class="students-section">
         <div class="section-header">
             <h3>Select Student</h3>
-            <button class="btn-secondary" @onclick="RefreshAll">
-                <span>🔄</span>
-                Refresh
-            </button>
+            <div class="section-actions">
+                <input class="student-search" @bind="studentFilter" @bind:event="oninput" placeholder="Search student..." />
+                <button class="btn-secondary" @onclick="RefreshAll">
+                    <span>🔄</span>
+                    Refresh
+                </button>
+            </div>
         </div>
 
         @if (isLoading)
@@ -34,10 +38,11 @@
                 <p>Loading students...</p>
             </div>
         }
-        else if (students?.Any() == true)
+        else if (FilteredStudents.Any())
         {
+            <p class="students-meta">Showing @FilteredStudents.Count / @(students?.Count ?? 0) students</p>
             <div class="students-grid">
-                @foreach (var student in students)
+                @foreach (var student in FilteredStudents)
                 {
                     <div class="student-card" @onclick="() => ViewStudentProfile(student.Id)">
                         <div class="student-avatar">
@@ -109,6 +114,15 @@
     private List<StudentDto>? students;
     private DashboardStatsDto? dashboardStats;
     private bool isLoading = true;
+    private string studentFilter = string.Empty;
+
+    private List<StudentDto> FilteredStudents
+        => students?
+            .Where(s => string.IsNullOrWhiteSpace(studentFilter)
+                || s.Name.Contains(studentFilter, StringComparison.OrdinalIgnoreCase)
+                || s.Email.Contains(studentFilter, StringComparison.OrdinalIgnoreCase))
+            .ToList()
+            ?? new List<StudentDto>();
 
     protected override async Task OnInitializedAsync()
     {

@@ -1,47 +1,61 @@
 ﻿@using Radzen.Blazor
 @inherits LayoutComponentBase
 @inject NavigationManager Navigation
+@implements IDisposable
 
-<div class="app-container">
-    <!-- Sidebar Navigation -->
-    <aside class="app-sidebar">
-        <div class="sidebar-header">
-            <div class="logo">
-                <span class="logo-icon">🧮</span>
-                <span class="logo-text">MathTutor AI</span>
-            </div>
-        </div>
-        <NavMenu />
-    </aside>
+@if (IsAuthRoute)
+{
+    <main class="auth-layout-main">
+        @Body
+    </main>
+}
+else
+{
+    <div class="app-container @(isSidebarOpen ? "sidebar-open" : string.Empty)">
+        <div class="sidebar-overlay" @onclick="CloseSidebar"></div>
 
-    <!-- Main Content Area -->
-    <div class="app-main">
-        <!-- Top Bar -->
-        <header class="app-header">
-            <div class="header-content">
-                <h1 class="page-title">@GetCurrentPageTitle()</h1>
-                <div class="header-actions">
-                    <a href="https://matematiranje.in.rs/" target="_blank" class="header-link">
-                        <span class="icon">📖</span>
-                        Documentation
-                    </a>
+        <!-- Sidebar Navigation -->
+        <aside class="app-sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <span class="logo-icon">🧮</span>
+                    <span class="logo-text">MathTutor AI</span>
                 </div>
             </div>
-        </header>
+            <NavMenu />
+        </aside>
 
-        <!-- Page Content -->
-        <main class="app-content">
-            <div class="content-wrapper">
-                @Body
-            </div>
-        </main>
+        <!-- Main Content Area -->
+        <div class="app-main">
+            <!-- Top Bar -->
+            <header class="app-header">
+                <div class="header-content">
+                    <div class="header-left">
+                        <button class="menu-toggle" @onclick="ToggleSidebar" aria-label="Toggle menu">☰</button>
+                        <h1 class="page-title">@GetCurrentPageTitle()</h1>
+                    </div>
+                    <div class="header-actions">
+                        <a href="https://matematiranje.in.rs/" target="_blank" class="header-link">
+                            <span class="icon">📖</span><span class="label">Documentation</span>
+                        </a>
+                    </div>
+                </div>
+            </header>
 
-        <!-- Footer -->
-        <footer class="app-footer">
-            <p>MathTutor AI Agent © 2025 | Built with .NET 9 & ML.NET</p>
-        </footer>
+            <!-- Page Content -->
+            <main class="app-content">
+                <div class="content-wrapper">
+                    @Body
+                </div>
+            </main>
+
+            <!-- Footer -->
+            <footer class="app-footer">
+                <p>MathTutor AI Agent © 2025 | Built with .NET 9 & ML.NET</p>
+            </footer>
+        </div>
     </div>
-</div>
+}
 
 <!-- Error UI -->
 <div id="blazor-error-ui">
@@ -54,16 +68,56 @@
 </div>
 
 @code {
+    private bool isSidebarOpen;
+    private bool IsAuthRoute => IsAuthPath();
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        isSidebarOpen = false;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ToggleSidebar()
+    {
+        isSidebarOpen = !isSidebarOpen;
+    }
+
+    private void CloseSidebar()
+    {
+        isSidebarOpen = false;
+    }
+
     private string GetCurrentPageTitle()
     {
-        var path = Navigation.ToBaseRelativePath(Navigation.Uri).ToLower();
+        var path = Navigation.ToAbsoluteUri(Navigation.Uri).AbsolutePath.Trim('/').ToLowerInvariant();
         return path switch
         {
             "" or "dashboard" => "Dashboard",
             "admin" => "Admin Panel",
+            "admin/add-student" => "Add Student",
+            "admin/add-question" => "Add Question",
             var p when p.StartsWith("quiz/") => "Practice Quiz",
             var p when p.StartsWith("profile/") => "Student Profile",
+            var p when p.StartsWith("admin/edit-question/") => "Edit Question",
+            "login" => "Sign In",
+            "register" => "Register",
             _ => "MathTutor AI"
         };
+    }
+
+    private bool IsAuthPath()
+    {
+        var path = Navigation.ToAbsoluteUri(Navigation.Uri).AbsolutePath.Trim('/').ToLowerInvariant();
+        return path is "login" or "register";
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
     }
 }

@@ -1,0 +1,135 @@
+.visual-explain {
+    margin-top: 0.9rem;
+    border: 1px dashed #7dd3fc;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #f0f9ff, #ecfeff);
+    padding: 0.85rem;
+}
+
+.visual-explain h4 {
+    margin: 0 0 0.55rem;
+    color: #0f766e;
+}
+
+.ve-equation {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.55rem;
+}
+
+.ve-chip {
+    min-width: 40px;
+    text-align: center;
+    border-radius: 10px;
+    border: 1px solid #a5f3fc;
+    background: #fff;
+    padding: 0.35rem 0.5rem;
+    font-weight: 800;
+}
+
+.ve-chip.answer {
+    border-color: #86efac;
+    background: #ecfdf5;
+    color: #166534;
+}
+
+.ve-op {
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.ve-block p {
+    margin: 0 0 0.5rem;
+    color: #334155;
+    font-weight: 600;
+}
+
+.ve-group-wrap {
+    display: grid;
+    gap: 0.55rem;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.ve-group {
+    border: 1px solid #bae6fd;
+    border-radius: 12px;
+    background: #fff;
+    padding: 0.55rem;
+}
+
+.ve-group.answer {
+    border-color: #86efac;
+    background: #f0fdf4;
+}
+
+.ve-group.small {
+    min-width: 140px;
+}
+
+.ve-group-label {
+    display: block;
+    margin-bottom: 0.2rem;
+    font-weight: 700;
+    color: #0f766e;
+}
+
+.ve-items {
+    margin-top: 0.3rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.18rem;
+}
+
+.ve-item {
+    font-size: 1.1rem;
+    user-select: none;
+}
+
+.ve-items.subtraction .ve-item.removed {
+    opacity: 0.32;
+    filter: grayscale(100%);
+    text-decoration: line-through;
+}
+
+.ve-items.subtraction .ve-item.remaining {
+    filter: saturate(1.2);
+}
+
+.ve-steps {
+    margin-top: 0.6rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    flex-wrap: wrap;
+    color: #334155;
+}
+
+.ve-step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    background: #dbeafe;
+    color: #0f172a;
+    font-weight: 800;
+}
+
+.ve-arrow {
+    color: #0e7490;
+    font-weight: 800;
+}
+
+.ve-rows {
+    display: grid;
+    gap: 0.35rem;
+    margin-top: 0.3rem;
+}
+
+.ve-row {
+    display: flex;
+    gap: 0.18rem;
+}

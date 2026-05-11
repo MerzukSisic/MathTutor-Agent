@@ -1,0 +1,17 @@
+@inject NavigationManager Navigation
+
+<div class="auth-redirect">Redirecting to login...</div>
+
+@code {
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        var relative = Navigation.ToBaseRelativePath(Navigation.Uri);
+        var returnUrl = Uri.EscapeDataString(string.IsNullOrWhiteSpace(relative) ? "/" : $"/{relative}");
+        Navigation.NavigateTo($"/login?returnUrl={returnUrl}", forceLoad: false);
+    }
+}

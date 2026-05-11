@@ -1,128 +1,195 @@
 ﻿@page "/admin"
+@attribute [Authorize(Roles = UserRoles.Admin)]
+@using Microsoft.AspNetCore.WebUtilities
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject DialogService DialogService
+@inject IJSRuntime JS
 
 <PageTitle>Admin Panel - MathTutor AI</PageTitle>
-<RadzenCard>
-    <RadzenText TextStyle="TextStyle.H3">👨‍💼 Admin Panel</RadzenText>
-</RadzenCard>
+<div class="admin-shell">
+    <div class="admin-hero">
+        <div>
+            <h2>👨‍💼 Admin Panel</h2>
+            <p>Manage students, question bank, and monitor agent performance in real time.</p>
+        </div>
+        <div class="admin-hero-actions">
+            <button type="button" class="hero-cta hero-cta-student" @onclick="OpenAddStudentDialog">
+                <span>👤</span>
+                <span>Add Student</span>
+            </button>
+            <button type="button" class="hero-cta hero-cta-question" @onclick="OpenAddQuestionDialog">
+                <span>🧩</span>
+                <span>Add Question</span>
+            </button>
+        </div>
+    </div>
 
-<RadzenTabs class="mt-4">
-    <Tabs>
-        <RadzenTabsItem Text="Performance Metrics">
-            <RadzenCard class="mt-3">
-                @if (metrics == null)
-                {
-                    <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" />
-                }
-                else
-                {
-                    <RadzenRow Gap="20px">
-                        <RadzenColumn Size="12" SizeMD="3">
-                            <RadzenCard>
-                                <RadzenText TextStyle="TextStyle.H6">Total Students</RadzenText>
-                                <RadzenText TextStyle="TextStyle.H3">@metrics.TotalStudents</RadzenText>
-                            </RadzenCard>
-                        </RadzenColumn>
-                        <RadzenColumn Size="12" SizeMD="3">
-                            <RadzenCard>
-                                <RadzenText TextStyle="TextStyle.H6">Total Questions</RadzenText>
-                                <RadzenText TextStyle="TextStyle.H3">@metrics.TotalQuestions</RadzenText>
-                            </RadzenCard>
-                        </RadzenColumn>
-                        <RadzenColumn Size="12" SizeMD="3">
-                            <RadzenCard>
-                                <RadzenText TextStyle="TextStyle.H6">Total Attempts</RadzenText>
-                                <RadzenText TextStyle="TextStyle.H3">@metrics.TotalAttempts</RadzenText>
-                            </RadzenCard>
-                        </RadzenColumn>
-                        <RadzenColumn Size="12" SizeMD="3">
-                            <RadzenCard>
-                                <RadzenText TextStyle="TextStyle.H6">Success Rate</RadzenText>
-                                <RadzenText TextStyle="TextStyle.H3">@metrics.SuccessRate.ToString("F1")%</RadzenText>
-                            </RadzenCard>
-                        </RadzenColumn>
-                    </RadzenRow>
+    @if (!string.IsNullOrWhiteSpace(flashMessage))
+    {
+        <div class="admin-flash @(flashIsError ? "error" : "success")">
+            @flashMessage
+        </div>
+    }
+</div>
 
-                    <RadzenCard class="mt-4">
-                        <RadzenText TextStyle="TextStyle.H6">Agent Performance</RadzenText>
-                        <RadzenText>Completed Work Items: @metrics.CompletedWorkItems / @metrics.TotalWorkItems</RadzenText>
-                        <RadzenText>Average Processing Time: @metrics.AverageProcessingTimeMs.ToString("F0") ms</RadzenText>
-                    </RadzenCard>
-                }
-            </RadzenCard>
-        </RadzenTabsItem>
+<div class="admin-tabs-wrap">
+    <RadzenTabs class="admin-tabs">
+        <Tabs>
+            <RadzenTabsItem Text="Performance Metrics">
+                <div class="admin-panel-card">
+                    @if (metrics == null)
+                    {
+                        <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" />
+                    }
+                    else
+                    {
+                        <div class="metrics-grid">
+                            <article class="metric-tile">
+                                <span class="metric-icon">👨‍🎓</span>
+                                <p class="metric-label">Total Students</p>
+                                <p class="metric-value">@metrics.TotalStudents</p>
+                            </article>
+                            <article class="metric-tile">
+                                <span class="metric-icon">🧩</span>
+                                <p class="metric-label">Total Questions</p>
+                                <p class="metric-value">@metrics.TotalQuestions</p>
+                            </article>
+                            <article class="metric-tile">
+                                <span class="metric-icon">📝</span>
+                                <p class="metric-label">Total Attempts</p>
+                                <p class="metric-value">@metrics.TotalAttempts</p>
+                            </article>
+                            <article class="metric-tile">
+                                <span class="metric-icon">🎯</span>
+                                <p class="metric-label">Success Rate</p>
+                                <p class="metric-value">@metrics.SuccessRate.ToString("F1")%</p>
+                            </article>
+                        </div>
 
-        <RadzenTabsItem Text="Students">
-            <RadzenCard class="mt-3">
-                <RadzenButton Text="Add New Student" Click="OpenAddStudentDialog" ButtonStyle="ButtonStyle.Success" Icon="add" class="mb-3" />
+                        <section class="agent-perf-card">
+                            <div class="agent-perf-head">
+                                <h4>Agent Performance</h4>
+                                <span>@metrics.CompletedWorkItems / @metrics.TotalWorkItems completed</span>
+                            </div>
+                            <div class="perf-progress">
+                                <div class="perf-progress-fill" style="width:@GetCompletionRatePercent()"></div>
+                            </div>
+                            <p class="perf-meta">Average Processing Time: @metrics.AverageProcessingTimeMs.ToString("F0") ms</p>
+                        </section>
+                    }
+                </div>
+            </RadzenTabsItem>
 
-                @if (students == null)
-                {
-                    <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" />
-                }
-                else
-                {
-                    <RadzenDataGrid Data="@students" TItem="StudentDto" AllowFiltering="true" AllowSorting="true" AllowPaging="true" PageSize="10">
-                        <Columns>
-                            <RadzenDataGridColumn TItem="StudentDto" Property="Id" Title="ID" Width="60px" />
-                            <RadzenDataGridColumn TItem="StudentDto" Property="Name" Title="Name" />
-                            <RadzenDataGridColumn TItem="StudentDto" Property="Email" Title="Email" />
-                            <RadzenDataGridColumn TItem="StudentDto" Property="CreatedAt" Title="Created" Width="150px">
-                                <Template Context="student">
-                                    @student.CreatedAt.ToString("yyyy-MM-dd HH:mm")
-                                </Template>
-                            </RadzenDataGridColumn>
-                            <RadzenDataGridColumn TItem="StudentDto" Title="Actions" Width="100px">
-                                <Template Context="student">
-                                    <RadzenButton Text="Profile" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small" Click="@(() => ViewProfile(student.Id))" />
-                                </Template>
-                            </RadzenDataGridColumn>
-                        </Columns>
-                    </RadzenDataGrid>
-                }
-            </RadzenCard>
-        </RadzenTabsItem>
+            <RadzenTabsItem Text="Students">
+                <div class="admin-panel-card">
+                    <div class="panel-toolbar">
+                        <div>
+                            <h4>Students</h4>
+                            <p>View, filter and jump to detailed progress profiles.</p>
+                        </div>
+                        <RadzenButton Text="Add New Student" Click="OpenAddStudentDialog" ButtonStyle="ButtonStyle.Success" Icon="add" class="panel-add-btn panel-add-student" />
+                    </div>
 
-        <RadzenTabsItem Text="Questions">
-            <RadzenCard class="mt-3">
-                <RadzenButton Text="Add New Question" Click="OpenAddQuestionDialog" ButtonStyle="ButtonStyle.Success" Icon="add" class="mb-3" />
+                    @if (students == null)
+                    {
+                        <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" />
+                    }
+                    else
+                    {
+                        <RadzenDataGrid class="admin-grid"
+                                        Data="@students"
+                                        TItem="StudentDto"
+                                        AllowFiltering="true"
+                                        AllowSorting="true"
+                                        AllowPaging="true"
+                                        PageSize="10">
+                            <Columns>
+                                <RadzenDataGridColumn TItem="StudentDto" Property="Id" Title="ID" Width="80px">
+                                    <Template Context="student">
+                                        <span class="id-pill">#@student.Id</span>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="StudentDto" Property="Name" Title="Name" />
+                                <RadzenDataGridColumn TItem="StudentDto" Property="Email" Title="Email" />
+                                <RadzenDataGridColumn TItem="StudentDto" Property="CreatedAt" Title="Created" Width="190px">
+                                    <Template Context="student">
+                                        @student.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="StudentDto" Title="Actions" Width="130px">
+                                    <Template Context="student">
+                                        <RadzenButton Text="Profile" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small" Click="@(() => ViewProfile(student.Id))" />
+                                    </Template>
+                                </RadzenDataGridColumn>
+                            </Columns>
+                        </RadzenDataGrid>
+                    }
+                </div>
+            </RadzenTabsItem>
 
-                @if (questions == null)
-                {
-                    <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" />
-                }
-                else
-                {
-                    <RadzenDataGrid Data="@questions" TItem="AdminQuestionDto" AllowFiltering="true" AllowSorting="true" AllowPaging="true" PageSize="10">
-                        <Columns>
-                            <RadzenDataGridColumn TItem="AdminQuestionDto" Property="Id" Title="ID" Width="60px" />
-                            <RadzenDataGridColumn TItem="AdminQuestionDto" Property="TopicName" Title="Topic" />
-                            <RadzenDataGridColumn TItem="AdminQuestionDto" Property="Difficulty" Title="Difficulty" Width="100px" />
-                            <RadzenDataGridColumn TItem="AdminQuestionDto" Property="QuestionText" Title="Question" />
-                            <RadzenDataGridColumn TItem="AdminQuestionDto" Property="CorrectAnswer" Title="Answer" Width="150px" />
-                            <RadzenDataGridColumn TItem="AdminQuestionDto" Title="Actions" Width="120px">
-                                <Template Context="question">
-                                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@(() => EditQuestion(question))" />
-                                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Click="@(() => DeleteQuestion(question.Id))" class="ms-1" />
-                                </Template>
-                            </RadzenDataGridColumn>
-                        </Columns>
-                    </RadzenDataGrid>
-                }
-            </RadzenCard>
-        </RadzenTabsItem>
-    </Tabs>
-</RadzenTabs>
+            <RadzenTabsItem Text="Questions">
+                <div class="admin-panel-card">
+                    <div class="panel-toolbar">
+                        <div>
+                            <h4>Question Bank</h4>
+                            <p>Maintain question quality, balance topics and difficulty.</p>
+                        </div>
+                        <RadzenButton Text="Add New Question" Click="OpenAddQuestionDialog" ButtonStyle="ButtonStyle.Success" Icon="add" class="panel-add-btn panel-add-question" />
+                    </div>
+
+                    @if (questions == null)
+                    {
+                        <RadzenProgressBar Mode="ProgressBarMode.Indeterminate" />
+                    }
+                    else
+                    {
+                        <RadzenDataGrid class="admin-grid"
+                                        Data="@questions"
+                                        TItem="AdminQuestionDto"
+                                        AllowFiltering="true"
+                                        AllowSorting="true"
+                                        AllowPaging="true"
+                                        PageSize="10">
+                            <Columns>
+                                <RadzenDataGridColumn TItem="AdminQuestionDto" Property="Id" Title="ID" Width="80px">
+                                    <Template Context="question">
+                                        <span class="id-pill">#@question.Id</span>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="AdminQuestionDto" Property="TopicName" Title="Topic" />
+                                <RadzenDataGridColumn TItem="AdminQuestionDto" Property="Difficulty" Title="Difficulty" Width="130px">
+                                    <Template Context="question">
+                                        <span class="difficulty-pill">Level @question.Difficulty</span>
+                                    </Template>
+                                </RadzenDataGridColumn>
+                                <RadzenDataGridColumn TItem="AdminQuestionDto" Property="QuestionText" Title="Question" />
+                                <RadzenDataGridColumn TItem="AdminQuestionDto" Property="CorrectAnswer" Title="Answer" Width="140px" />
+                                <RadzenDataGridColumn TItem="AdminQuestionDto" Title="Actions" Width="220px">
+                                    <Template Context="question">
+                                        <RadzenButton Icon="edit" Text="Edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@(() => EditQuestion(question))" class="grid-action-btn grid-action-edit" />
+                                        <RadzenButton Icon="delete" Text="Delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Click="@(() => DeleteQuestion(question.Id))" class="grid-action-btn grid-action-delete" />
+                                    </Template>
+                                </RadzenDataGridColumn>
+                            </Columns>
+                        </RadzenDataGrid>
+                    }
+                </div>
+            </RadzenTabsItem>
+        </Tabs>
+    </RadzenTabs>
+</div>
 
 @code {
     private PerformanceMetricsDto? metrics;
     private List<AdminQuestionDto>? questions;
     private List<StudentDto>? students;
+    private string? flashMessage;
+    private bool flashIsError;
 
     protected override async Task OnInitializedAsync()
     {
+        ApplyStatusFromQuery();
         await LoadMetrics();
         await LoadQuestions();
         await LoadStudents();
@@ -169,27 +236,76 @@
         Navigation.NavigateTo("/admin/add-student");
     }
     
-    private async Task OpenAddQuestionDialog()
+    private Task OpenAddQuestionDialog()
     {
-        // TODO: Implement dialog
+        Navigation.NavigateTo("/admin/add-question");
+        return Task.CompletedTask;
     }
 
     private void EditQuestion(AdminQuestionDto question)
     {
-        // TODO: Implement edit dialog
+        Navigation.NavigateTo($"/admin/edit-question/{question.Id}");
     }
 
     private async Task DeleteQuestion(int id)
     {
+        var confirmed = await JS.InvokeAsync<bool>("confirm", "Delete this question permanently?");
+        if (!confirmed)
+        {
+            return;
+        }
+
         var response = await Http.DeleteAsync($"/api/admin/questions/{id}");
         if (response.IsSuccessStatusCode)
         {
             await LoadQuestions();
+            flashMessage = "Question deleted successfully.";
+            flashIsError = false;
+        }
+        else
+        {
+            flashMessage = $"Delete failed ({response.StatusCode}).";
+            flashIsError = true;
         }
     }
 
     private void ViewProfile(int studentId)
     {
         Navigation.NavigateTo($"/profile/{studentId}");
+    }
+
+    private void ApplyStatusFromQuery()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        if (!query.TryGetValue("status", out var statusValue))
+        {
+            return;
+        }
+
+        switch (statusValue.ToString())
+        {
+            case "question-created":
+                flashMessage = "Question created successfully.";
+                flashIsError = false;
+                break;
+            case "question-updated":
+                flashMessage = "Question updated successfully.";
+                flashIsError = false;
+                break;
+        }
+
+        Navigation.NavigateTo("/admin", replace: true);
+    }
+
+    private string GetCompletionRatePercent()
+    {
+        if (metrics == null || metrics.TotalWorkItems <= 0)
+        {
+            return "0%";
+        }
+
+        var value = metrics.CompletedWorkItems * 100.0 / metrics.TotalWorkItems;
+        return $"{Math.Clamp(value, 0, 100):F1}%";
     }
 }

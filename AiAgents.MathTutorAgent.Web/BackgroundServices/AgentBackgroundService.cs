@@ -30,7 +30,7 @@ public class AgentBackgroundService(
                 }
                 else
                 {
-                    await hubContext.Clients.All.SendAsync(
+                    await hubContext.Clients.Group(AgentHub.GetStudentGroup(result.StudentId)).SendAsync(
                         "AgentTick",
                         result,
                         stoppingToken);

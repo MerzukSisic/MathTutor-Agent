@@ -372,6 +372,49 @@ namespace AiAgents.MathTutorAgent.Migrations
                     b.ToTable("TopicEdges");
                 });
 
+            modelBuilder.Entity("AiAgents.MathTutorAgent.Domain.Entities.UserAccount", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<bool>("EmailConfirmed")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int?>("StudentId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("StudentId");
+
+                    b.ToTable("UserAccounts");
+                });
+
             modelBuilder.Entity("AiAgents.MathTutorAgent.Domain.Entities.WorkItem", b =>
                 {
                     b.Property<int>("Id")
@@ -516,6 +559,16 @@ namespace AiAgents.MathTutorAgent.Migrations
                     b.Navigation("DependentTopic");
 
                     b.Navigation("PrerequisiteTopic");
+                });
+
+            modelBuilder.Entity("AiAgents.MathTutorAgent.Domain.Entities.UserAccount", b =>
+                {
+                    b.HasOne("AiAgents.MathTutorAgent.Domain.Entities.Student", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("AiAgents.MathTutorAgent.Domain.Entities.WorkItem", b =>

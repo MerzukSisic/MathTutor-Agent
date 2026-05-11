@@ -19,24 +19,47 @@ public class WorkQueueService(MathTutorDbContext context)
     /// </summary>
     public async Task<WorkItem?> DequeueNextAsync(CancellationToken ct = default)
     {
-        // ✅ FIX: Use CTE with UPDLOCK/READPAST for proper atomic claim
-        // ORDER BY must be in the subquery/CTE, not after OUTPUT
-        var results = await context.WorkItems
-            .FromSqlRaw(@"
-                ;WITH NextItem AS (
-                    SELECT TOP(1) *
-                    FROM WorkItems WITH (UPDLOCK, READPAST)
-                    WHERE Status = {1}
-                    ORDER BY CreatedAt
-                )
-                UPDATE NextItem
-                SET Status = {0}, ProcessedAt = GETUTCDATE()
-                OUTPUT INSERTED.*;",
-                (int)WorkStatus.Processing,
-                (int)WorkStatus.Queued)
-            .ToListAsync(ct);
+        if (context.Database.IsSqlServer())
+        {
+            // SQL Server fast-path: atomic claim with locking hints.
+            var results = await context.WorkItems
+                .FromSqlRaw(@"
+                    ;WITH NextItem AS (
+                        SELECT TOP(1) *
+                        FROM WorkItems WITH (UPDLOCK, READPAST)
+                        WHERE Status = {1}
+                        ORDER BY CreatedAt
+                    )
+                    UPDATE NextItem
+                    SET Status = {0}, ProcessedAt = GETUTCDATE()
+                    OUTPUT INSERTED.*;",
+                    (int)WorkStatus.Processing,
+                    (int)WorkStatus.Queued)
+                .ToListAsync(ct);
 
-        return results.FirstOrDefault();
+            return results.FirstOrDefault();
+        }
+
+        // Cross-provider fallback (SQLite, etc.).
+        await using var transaction = await context.Database.BeginTransactionAsync(ct);
+
+        var nextItem = await context.WorkItems
+            .Where(x => x.Status == WorkStatus.Queued)
+            .OrderBy(x => x.CreatedAt)
+            .FirstOrDefaultAsync(ct);
+
+        if (nextItem is null)
+        {
+            await transaction.CommitAsync(ct);
+            return null;
+        }
+
+        nextItem.Status = WorkStatus.Processing;
+        nextItem.ProcessedAt = DateTime.UtcNow;
+        await context.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+
+        return nextItem;
     }
 
     /// <summary>

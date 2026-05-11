@@ -44,13 +44,24 @@ public class ExplanationService(MathTutorDbContext context)
         var keywords = ExtractKeywords(questionText);
         if (keywords.Any())
         {
-            // ✅ FIX: Load all chunks first, then filter in memory to avoid EF Core translation issues
-            var allChunks = await context.KnowledgeChunks
-                .Include(c => c.Document)
-                .ToListAsync(ct);
-            
-            var matchedChunks = allChunks
-                .Where(c => keywords.Any(k => 
+            // Smanji skeniranje: prvo pretraga po tekstu u bazi, pa fallback po tagovima u memoriji.
+            var textMatchedChunks = new List<Domain.Entities.KnowledgeChunk>();
+
+            foreach (var keyword in keywords.Take(5))
+            {
+                var chunksByKeyword = await context.KnowledgeChunks
+                    .Include(c => c.Document)
+                    .Where(c => EF.Functions.Like(c.ChunkText, $"%{keyword}%"))
+                    .Take(6)
+                    .ToListAsync(ct);
+
+                textMatchedChunks.AddRange(chunksByKeyword);
+            }
+
+            var matchedChunks = textMatchedChunks
+                .GroupBy(c => c.Id)
+                .Select(g => g.First())
+                .Where(c => keywords.Any(k =>
                     c.ChunkText.Contains(k, StringComparison.OrdinalIgnoreCase) ||
                     c.Tags.Any(t => t.Contains(k, StringComparison.OrdinalIgnoreCase))))
                 .Take(2)

@@ -1,12 +1,15 @@
 ﻿using AiAgents.MathTutorAgent.Application.DTOs;
 using AiAgents.MathTutorAgent.Application.Services;
+using AiAgents.MathTutorAgent.Domain.Entities;
 using AiAgents.MathTutorAgent.ML.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AiAgents.MathTutorAgent.Web.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = UserRoles.Admin)]
 public class AdminController(
     AdminService adminService,
     StudentProfileService studentProfileService,
@@ -93,7 +96,9 @@ public class AdminController(
             TrainingData = new
             {
                 KnowledgeTracingSamples = result.KnowledgeTracingSamplesCount,
-                TopicClassificationSamples = result.TopicClassificationSamplesCount
+                TopicClassificationSamples = result.TopicClassificationSamplesCount,
+                RealKnowledgeTracingSamples = result.RealKnowledgeTracingSamplesCount,
+                RealTopicClassificationSamples = result.RealTopicClassificationSamplesCount
             }
         });
     }

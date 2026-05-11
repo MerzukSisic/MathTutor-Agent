@@ -5,13 +5,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AiAgents.MathTutorAgent.Application.Services;
 
-public class StudentProfileService(MathTutorDbContext context)
+public class StudentProfileService(
+    MathTutorDbContext context,
+    StudentInsightsCalculatorService insightsCalculator)
 {
     public async Task<StudentProfileDto> GetProfileAsync(int studentId, CancellationToken ct = default)
     {
         var student = await context.Students
             .Include(s => s.TopicStates).ThenInclude(ts => ts.Topic)
-            .Include(s => s.Attempts).ThenInclude(a => a.Question)
+            .Include(s => s.Attempts).ThenInclude(a => a.Question).ThenInclude(q => q.Topic)
             .FirstOrDefaultAsync(s => s.Id == studentId, ct);
 
         if (student == null)
@@ -27,6 +29,7 @@ public class StudentProfileService(MathTutorDbContext context)
             .Select(ts => new TopicProgressDto
             {
                 TopicName = ts.Topic.Name,
+                AreaName = ts.Topic.Area.ToString(),
                 MasteryScore = ts.MasteryScore,
                 Confidence = ts.Confidence,
                 LastPracticed = ts.LastPracticedUtc
@@ -41,10 +44,20 @@ public class StudentProfileService(MathTutorDbContext context)
             {
                 Date = a.CreatedAt,
                 QuestionText = a.Question.QuestionText,
+                TopicName = a.Question.Topic.Name,
+                AreaName = a.Question.Topic.Area.ToString(),
                 IsCorrect = a.IsCorrect,
                 TimeSeconds = a.TimeMs / 1000.0
             })
             .ToList();
+
+        var questionGroups = insightsCalculator.BuildQuestionAttemptInsights(student.Attempts);
+        var firstTrySuccessRate = insightsCalculator.CalculateFirstTrySuccessRate(questionGroups);
+        var areaInsights = insightsCalculator.BuildAreaAttemptInsights(student.Attempts);
+
+        var accuracy = totalAttempts > 0 ? correctAttempts * 100.0 / totalAttempts : 0;
+        var suggestedDifficulty = insightsCalculator.CalculateSuggestedDifficulty(accuracy, averageTime);
+        var readinessLabel = insightsCalculator.GetReadinessLabel(accuracy, averageTime);
 
         return new StudentProfileDto
         {
@@ -53,10 +66,15 @@ public class StudentProfileService(MathTutorDbContext context)
             Email = student.Email,
             TotalAttempts = totalAttempts,
             CorrectAttempts = correctAttempts,
-            AccuracyPercentage = totalAttempts > 0 ? (correctAttempts * 100.0 / totalAttempts) : 0,
+            AccuracyPercentage = accuracy,
             AverageTimeSeconds = averageTime,
+            FirstTrySuccessRate = firstTrySuccessRate,
+            SuggestedDifficulty = suggestedDifficulty,
+            ReadinessLabel = readinessLabel,
             TopicProgress = topicProgress,
-            RecentActivity = recentActivity
+            RecentActivity = recentActivity,
+            QuestionAttemptInsights = questionGroups,
+            AreaAttemptInsights = areaInsights
         };
     }
 

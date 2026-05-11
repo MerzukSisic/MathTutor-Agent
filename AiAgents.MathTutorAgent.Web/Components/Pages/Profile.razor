@@ -1,4 +1,5 @@
 ﻿@page "/profile/{studentId:int}"
+@attribute [Authorize]
 @inject HttpClient Http
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
@@ -29,6 +30,10 @@
                             <span class="badge badge-primary">
                                 <span class="badge-icon">🎯</span>
                                 @profile.AccuracyPercentage.ToString("F1")% Accuracy
+                            </span>
+                            <span class="badge badge-secondary">
+                                <span class="badge-icon">🧠</span>
+                                @profile.ReadinessLabel
                             </span>
                             @if (profile.TotalAttempts >= 100)
                             {
@@ -84,7 +89,7 @@
             </div>
 
             <div class="stat-card-modern">
-                <div class="stat-icon-wrapper stat-purple">
+                <div class="stat-icon-wrapper stat-teal">
                     <span class="stat-icon">⚡</span>
                 </div>
                 <div class="stat-details">
@@ -110,6 +115,34 @@
                     </p>
                 </div>
             </div>
+
+            <div class="stat-card-modern">
+                <div class="stat-icon-wrapper stat-blue">
+                    <span class="stat-icon">🥇</span>
+                </div>
+                <div class="stat-details">
+                    <p class="stat-label">First Try Success</p>
+                    <p class="stat-value">@profile.FirstTrySuccessRate.ToString("F1")%</p>
+                    <p class="stat-trend">
+                        <span class="trend-indicator">📌</span>
+                        Per question
+                    </p>
+                </div>
+            </div>
+
+            <div class="stat-card-modern">
+                <div class="stat-icon-wrapper stat-green">
+                    <span class="stat-icon">🎚️</span>
+                </div>
+                <div class="stat-details">
+                    <p class="stat-label">Suggested Difficulty</p>
+                    <p class="stat-value">@profile.SuggestedDifficulty / 5</p>
+                    <p class="stat-trend">
+                        <span class="trend-indicator">⚙️</span>
+                        Adaptive recommendation
+                    </p>
+                </div>
+            </div>
         </div>
 
         <!-- Main Content Grid -->
@@ -128,9 +161,11 @@
                         <div class="topic-progress-list">
                             @foreach (var topic in profile.TopicProgress.OrderByDescending(t => t.MasteryScore).Take(10))
                             {
-                                <div class="topic-item">
+                                <button type="button"
+                                        class="topic-item @(IsTopicActive(topic.TopicName) ? "active" : string.Empty)"
+                                        @onclick="() => ApplyTopicFilter(topic)">
                                     <div class="topic-header">
-                                        <span class="topic-name">@topic.TopicName</span>
+                                        <span class="topic-name">@topic.TopicName <span class="topic-area">@topic.AreaName</span></span>
                                         <span class="topic-score">@topic.MasteryScore.ToString("F0")%</span>
                                     </div>
                                     <div class="topic-progress-bar">
@@ -147,7 +182,7 @@
                                             Last: @GetRelativeTime(topic.LastPracticed)
                                         </span>
                                     </div>
-                                </div>
+                                </button>
                             }
                         </div>
                         
@@ -174,12 +209,19 @@
                         <span class="title-icon">⚡</span>
                         Recent Activity
                     </h3>
+                    @if (HasAnyFilter)
+                    {
+                        <div class="filter-pill">
+                            @ActiveFilterLabel
+                            <button type="button" class="clear-filter-btn" @onclick="ClearAreaFilter">Clear</button>
+                        </div>
+                    }
                 </div>
                 <div class="card-body">
-                    @if (profile.RecentActivity.Any())
+                    @if (FilteredRecentActivity.Any())
                     {
                         <div class="activity-feed">
-                            @foreach (var activity in profile.RecentActivity.Take(10))
+                            @foreach (var activity in FilteredRecentActivity.Take(10))
                             {
                                 <div class="activity-card @(activity.IsCorrect ? "activity-success" : "activity-error")">
                                     <div class="activity-indicator">
@@ -198,6 +240,7 @@
                                             <span class="activity-time">
                                                 🕒 @activity.TimeSeconds.ToString("F1")s
                                             </span>
+                                            <span class="activity-area">@activity.AreaName</span>
                                             <span class="activity-date">
                                                 @GetRelativeTime(activity.Date)
                                             </span>
@@ -211,8 +254,8 @@
                     {
                         <div class="empty-state-small">
                             <span class="empty-icon">📝</span>
-                            <p>No activity yet</p>
-                            <p class="empty-subtitle">Start solving questions to build your history</p>
+                            <p>@(HasAnyFilter ? "No activity for selected filter" : "No activity yet")</p>
+                            <p class="empty-subtitle">@(HasAnyFilter ? "Try another topic/area or clear filter" : "Start solving questions to build your history")</p>
                         </div>
                     }
                 </div>
@@ -236,6 +279,92 @@
                 </div>
             </div>
         }
+
+        @if (profile.AreaAttemptInsights.Any())
+        {
+            <div class="content-card chart-card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <span class="title-icon">🧩</span>
+                        Attempts by Area
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Area</th>
+                                    <th>Total Attempts</th>
+                                    <th>Unique Questions</th>
+                                    <th>Accuracy</th>
+                                    <th>First Try</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var area in profile.AreaAttemptInsights)
+                                {
+                                    <tr class="@(IsAreaActive(area.AreaName) ? "area-row active" : "area-row")"
+                                        @onclick="() => ApplyAreaFilter(area.AreaName)">
+                                        <td>@area.AreaName</td>
+                                        <td>@area.TotalAttempts</td>
+                                        <td>@area.UniqueQuestions</td>
+                                        <td>@area.AccuracyPercentage.ToString("F1")%</td>
+                                        <td>@area.FirstTrySuccessRate.ToString("F1")%</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
+
+        @if (profile.QuestionAttemptInsights.Any())
+        {
+            <div class="content-card chart-card">
+                <div class="card-header">
+                    <h3 class="card-title">
+                        <span class="title-icon">🔁</span>
+                        Most Retried Questions
+                    </h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Question</th>
+                                    <th>Area</th>
+                                    <th>Attempts</th>
+                                    <th>Accuracy</th>
+                                    <th>Solved First Try</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @if (!FilteredQuestionInsights.Any())
+                                {
+                                    <tr>
+                                        <td colspan="5">No questions for selected area.</td>
+                                    </tr>
+                                }
+
+                                @foreach (var q in FilteredQuestionInsights.OrderByDescending(x => x.AttemptsCount).Take(8))
+                                {
+                                    <tr>
+                                        <td>@q.QuestionText</td>
+                                        <td>@q.AreaName</td>
+                                        <td>@q.AttemptsCount</td>
+                                        <td>@q.AccuracyPercentage.ToString("F1")%</td>
+                                        <td>@(q.SolvedFromFirstTry ? "Yes" : "No")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        }
     }
 </div>
 
@@ -245,6 +374,29 @@
 
     private StudentProfileDto? profile;
     private StudySessionStatsDto? stats;
+    private string? selectedAreaFilter;
+    private string? selectedTopicFilter;
+
+    private bool HasAreaFilter => !string.IsNullOrWhiteSpace(selectedAreaFilter);
+    private bool HasTopicFilter => !string.IsNullOrWhiteSpace(selectedTopicFilter);
+    private bool HasAnyFilter => HasAreaFilter || HasTopicFilter;
+    private string ActiveFilterLabel => HasTopicFilter
+        ? $"Topic: {selectedTopicFilter}"
+        : $"Area: {selectedAreaFilter}";
+
+    private IEnumerable<ActivityDto> FilteredRecentActivity => profile?.RecentActivity
+        .Where(a =>
+            !HasAnyFilter ||
+            (HasTopicFilter && string.Equals(a.TopicName, selectedTopicFilter, StringComparison.OrdinalIgnoreCase)) ||
+            (!HasTopicFilter && HasAreaFilter && string.Equals(a.AreaName, selectedAreaFilter, StringComparison.OrdinalIgnoreCase)))
+        ?? Enumerable.Empty<ActivityDto>();
+
+    private IEnumerable<QuestionAttemptInsightDto> FilteredQuestionInsights => profile?.QuestionAttemptInsights
+        .Where(q =>
+            !HasAnyFilter ||
+            (HasTopicFilter && string.Equals(q.TopicName, selectedTopicFilter, StringComparison.OrdinalIgnoreCase)) ||
+            (!HasTopicFilter && HasAreaFilter && string.Equals(q.AreaName, selectedAreaFilter, StringComparison.OrdinalIgnoreCase)))
+        ?? Enumerable.Empty<QuestionAttemptInsightDto>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -382,523 +534,44 @@
         
         return date.ToString("MMM dd, yyyy");
     }
-}
-<style>
-    /* Profile Container */
-.profile-container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 2rem;
-    animation: fadeIn 0.4s ease-in;
-}
 
-@@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-/* Loading State */
-.loading-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 400px;
-    gap: 1.5rem;
-}
-
-.spinner-large {
-    width: 60px;
-    height: 60px;
-    border: 4px solid #f3f4f6;
-    border-top-color: #3b82f6;
-    border-radius: 50%;
-    animation: spin 0.8s linear infinite;
-}
-
-.loading-text {
-    font-size: 1.125rem;
-    color: #6b7280;
-    font-weight: 500;
-}
-
-/* Profile Header */
-.profile-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 20px;
-    padding: 2.5rem;
-    margin-bottom: 2rem;
-    box-shadow: 0 20px 40px rgba(102, 126, 234, 0.3);
-}
-
-.profile-header-content {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 2rem;
-}
-
-.profile-avatar-section {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-}
-
-.profile-avatar-large {
-    width: 100px;
-    height: 100px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #fbbf24, #f59e0b);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2.5rem;
-    font-weight: 700;
-    color: white;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
-    border: 4px solid rgba(255, 255, 255, 0.3);
-}
-
-.profile-info {
-    color: white;
-}
-
-.profile-name {
-    font-size: 2rem;
-    font-weight: 700;
-    margin: 0;
-    margin-bottom: 0.25rem;
-}
-
-.profile-email {
-    font-size: 1rem;
-    margin: 0;
-    opacity: 0.9;
-    margin-bottom: 0.75rem;
-}
-
-.profile-badges {
-    display: flex;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-}
-
-.badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.5rem 1rem;
-    border-radius: 50px;
-    font-size: 0.875rem;
-    font-weight: 600;
-    background: rgba(255, 255, 255, 0.2);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.badge-gold {
-    background: linear-gradient(135deg, #fbbf24, #f59e0b);
-    border-color: #fbbf24;
-}
-
-.badge-icon {
-    font-size: 1rem;
-}
-
-/* Profile Actions */
-.profile-actions {
-    display: flex;
-    gap: 1rem;
-}
-
-.btn-icon-primary,
-.btn-icon-secondary {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.75rem 1.5rem;
-    border-radius: 12px;
-    font-weight: 600;
-    font-size: 0.95rem;
-    cursor: pointer;
-    border: none;
-    transition: all 0.3s ease;
-}
-
-.btn-icon-primary {
-    background: white;
-    color: #667eea;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-}
-
-.btn-icon-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
-}
-
-.btn-icon-secondary {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.btn-icon-secondary:hover {
-    background: rgba(255, 255, 255, 0.3);
-}
-
-/* Stats Overview */
-.stats-overview {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-}
-
-.stat-card-modern {
-    background: white;
-    border-radius: 16px;
-    padding: 1.75rem;
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    transition: all 0.3s ease;
-    border: 1px solid #f3f4f6;
-}
-
-.stat-card-modern:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
-}
-
-.stat-icon-wrapper {
-    width: 60px;
-    height: 60px;
-    border-radius: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.75rem;
-}
-
-.stat-blue { background: linear-gradient(135deg, #3b82f6, #2563eb); }
-.stat-green { background: linear-gradient(135deg, #10b981, #059669); }
-.stat-purple { background: linear-gradient(135deg, #8b5cf6, #7c3aed); }
-.stat-orange { background: linear-gradient(135deg, #f59e0b, #d97706); }
-
-.stat-details {
-    flex: 1;
-}
-
-.stat-label {
-    font-size: 0.875rem;
-    color: #6b7280;
-    margin: 0 0 0.25rem 0;
-    font-weight: 500;
-}
-
-.stat-value {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #111827;
-    margin: 0 0 0.25rem 0;
-}
-
-.stat-trend {
-    font-size: 0.8125rem;
-    color: #10b981;
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-}
-
-.trend-indicator {
-    font-weight: 600;
-}
-
-/* Content Grid */
-.content-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
-    gap: 2rem;
-    margin-bottom: 2rem;
-}
-
-/* Content Cards */
-.content-card {
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    border: 1px solid #f3f4f6;
-    overflow: hidden;
-}
-
-.card-header {
-    padding: 1.5rem;
-    border-bottom: 1px solid #f3f4f6;
-    background: linear-gradient(to bottom, #fafafa, #ffffff);
-}
-
-.card-title {
-    margin: 0;
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #111827;
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-}
-
-.title-icon {
-    font-size: 1.5rem;
-}
-
-.card-body {
-    padding: 1.5rem;
-}
-
-/* Topic Progress List */
-.topic-progress-list {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-    margin-bottom: 2rem;
-}
-
-.topic-item {
-    padding: 1rem;
-    background: #f9fafb;
-    border-radius: 12px;
-    border: 1px solid #e5e7eb;
-    transition: all 0.2s ease;
-}
-
-.topic-item:hover {
-    background: #f3f4f6;
-    border-color: #d1d5db;
-}
-
-.topic-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.75rem;
-}
-
-.topic-name {
-    font-weight: 600;
-    color: #111827;
-    font-size: 0.95rem;
-}
-
-.topic-score {
-    font-weight: 700;
-    color: #3b82f6;
-    font-size: 1.1rem;
-}
-
-.topic-progress-bar {
-    height: 8px;
-    background: #e5e7eb;
-    border-radius: 50px;
-    overflow: hidden;
-    position: relative;
-    margin-bottom: 0.75rem;
-}
-
-.progress-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #3b82f6, #8b5cf6);
-    border-radius: 50px;
-    transition: width 0.6s ease;
-    position: relative;
-    overflow: hidden;
-}
-
-.progress-glow {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-    animation: shimmer 2s infinite;
-}
-
-@@keyframes shimmer {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-}
-
-.topic-meta {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.8125rem;
-    color: #6b7280;
-}
-
-.confidence-indicator {
-    display: flex;
-    align-items: center;
-    gap: 0.25rem;
-}
-
-/* Activity Feed */
-.activity-feed {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.activity-card {
-    display: flex;
-    gap: 1rem;
-    padding: 1rem;
-    border-radius: 12px;
-    border: 1px solid;
-    transition: all 0.2s ease;
-}
-
-.activity-success {
-    background: #f0fdf4;
-    border-color: #bbf7d0;
-}
-
-.activity-success:hover {
-    background: #dcfce7;
-}
-
-.activity-error {
-    background: #fef2f2;
-    border-color: #fecaca;
-}
-
-.activity-error:hover {
-    background: #fee2e2;
-}
-
-.activity-indicator {
-    flex-shrink: 0;
-}
-
-.activity-icon {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 1rem;
-}
-
-.activity-icon.success {
-    background: #10b981;
-    color: white;
-}
-
-.activity-icon.error {
-    background: #ef4444;
-    color: white;
-}
-
-.activity-content {
-    flex: 1;
-}
-
-.activity-question {
-    margin: 0 0 0.5rem 0;
-    font-weight: 500;
-    color: #111827;
-    font-size: 0.95rem;
-    line-height: 1.4;
-}
-
-.activity-meta {
-    display: flex;
-    gap: 1rem;
-    font-size: 0.8125rem;
-    color: #6b7280;
-}
-
-/* Charts */
-.chart-container {
-    margin-top: 1.5rem;
-    padding: 1rem;
-    background: #f9fafb;
-    border-radius: 12px;
-}
-
-.chart-card {
-    grid-column: 1 / -1;
-}
-
-.chart-container-large {
-    padding: 1.5rem;
-    background: #f9fafb;
-    border-radius: 12px;
-}
-
-/* Empty States */
-.empty-state-small {
-    text-align: center;
-    padding: 3rem 1rem;
-}
-
-.empty-icon {
-    font-size: 4rem;
-    display: block;
-    margin-bottom: 1rem;
-    opacity: 0.6;
-}
-
-.empty-state-small p {
-    margin: 0.5rem 0;
-    color: #6b7280;
-}
-
-.empty-subtitle {
-    font-size: 0.875rem;
-    color: #9ca3af;
-}
-
-/* Responsive */
-@@media (max-width: 768px) {
-    .profile-container {
-        padding: 1rem;
+    private void ApplyTopicFilter(TopicProgressDto topic)
+    {
+        if (IsTopicActive(topic.TopicName))
+        {
+            ClearAreaFilter();
+            return;
+        }
+
+        selectedTopicFilter = topic.TopicName;
+        selectedAreaFilter = topic.AreaName;
     }
 
-    .profile-header {
-        padding: 1.5rem;
+    private void ApplyAreaFilter(string areaName)
+    {
+        if (IsAreaActive(areaName))
+        {
+            ClearAreaFilter();
+            return;
+        }
+
+        selectedAreaFilter = areaName;
+        selectedTopicFilter = null;
     }
 
-    .profile-header-content {
-        flex-direction: column;
-        align-items: flex-start;
+    private bool IsAreaActive(string areaName)
+    {
+        return !HasTopicFilter && string.Equals(selectedAreaFilter, areaName, StringComparison.OrdinalIgnoreCase);
     }
 
-    .profile-avatar-large {
-        width: 80px;
-        height: 80px;
-        font-size: 2rem;
+    private bool IsTopicActive(string topicName)
+    {
+        return string.Equals(selectedTopicFilter, topicName, StringComparison.OrdinalIgnoreCase);
     }
 
-    .profile-name {
-        font-size: 1.5rem;
+    private void ClearAreaFilter()
+    {
+        selectedAreaFilter = null;
+        selectedTopicFilter = null;
     }
-
-    .stats-overview {
-        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-    }
-
-    .stat-value {
-        font-size: 1.5rem;
-    }
-
-    .content-grid {
-        grid-template-columns: 1fr;
-    }
-    }
-    </style>
+}

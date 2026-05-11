@@ -1,0 +1,200 @@
+@using System.Text.RegularExpressions
+
+@if (!string.IsNullOrWhiteSpace(normalizedArea))
+{
+    <div class="area-visual-guide">
+        <div class="avg-head">
+            <h4>🧠 Visual Guide</h4>
+            <span class="avg-tag">@AreaName · @TopicName</span>
+        </div>
+
+        @switch (normalizedArea)
+        {
+            case "arithmetic":
+                <div class="avg-card">
+                    @if (TryParseBinaryExpression(QuestionText, out var a, out var op, out var b, out var result))
+                    {
+                        <div class="avg-equation">
+                            <span class="avg-chip">@a</span>
+                            <span class="avg-op">@OperatorToText(op)</span>
+                            <span class="avg-chip">@b</span>
+                            <span class="avg-op">=</span>
+                            <span class="avg-chip answer">@result</span>
+                        </div>
+                        <div class="avg-items">
+                            @for (var i = 0; i < Math.Min(result, 20); i++)
+                            {
+                                <span class="avg-item">🍎</span>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <p>Count objects step by step and group them visually.</p>
+                    }
+                </div>
+                break;
+
+            case "prealgebra":
+                <div class="avg-card">
+                    <p>Think of the unknown as a box and keep both sides balanced.</p>
+                    <div class="avg-balance">
+                        <div class="avg-pan">📦 + 3</div>
+                        <div class="avg-center">⚖️</div>
+                        <div class="avg-pan">8</div>
+                    </div>
+                </div>
+                break;
+
+            case "algebra":
+                <div class="avg-card">
+                    <p>Isolate the variable by doing the same operation on both sides.</p>
+                    <div class="avg-steps">
+                        <span class="avg-step">x + 4 = 11</span>
+                        <span class="avg-arrow">→</span>
+                        <span class="avg-step">x = 11 - 4</span>
+                        <span class="avg-arrow">→</span>
+                        <span class="avg-step answer">x = 7</span>
+                    </div>
+                </div>
+                break;
+
+            case "logic":
+                <div class="avg-card">
+                    <p>Test the statement with true/false cases.</p>
+                    <div class="avg-logic-grid">
+                        <div class="logic-cell true">A = true</div>
+                        <div class="logic-cell false">B = false</div>
+                        <div class="logic-cell result">A AND B = false</div>
+                    </div>
+                </div>
+                break;
+
+            case "settheory":
+                <div class="avg-card">
+                    <p>Use two sets and highlight intersection/union visually.</p>
+                    <div class="avg-venn">
+                        <div class="venn a">A</div>
+                        <div class="venn b">B</div>
+                        <div class="venn mid">A ∩ B</div>
+                    </div>
+                </div>
+                break;
+
+            case "geometry":
+                <div class="avg-card">
+                    <p>Recognize shape properties first, then apply formula.</p>
+                    <div class="avg-geo">
+                        <div class="shape square"></div>
+                        <div class="shape triangle"></div>
+                        <div class="shape circle"></div>
+                    </div>
+                </div>
+                break;
+
+            case "proofs":
+                <div class="avg-card">
+                    <p>Build proof as a chain of justified steps.</p>
+                    <div class="avg-proof">
+                        <span class="proof-node">Given</span>
+                        <span class="avg-arrow">→</span>
+                        <span class="proof-node">Rule</span>
+                        <span class="avg-arrow">→</span>
+                        <span class="proof-node answer">Conclusion</span>
+                    </div>
+                </div>
+                break;
+
+            default:
+                <div class="avg-card">
+                    <p>Visual practice is available for this topic.</p>
+                </div>
+                break;
+        }
+    </div>
+}
+
+@code {
+    [Parameter] public string? AreaName { get; set; }
+    [Parameter] public string? TopicName { get; set; }
+    [Parameter] public string? QuestionText { get; set; }
+
+    private string normalizedArea = string.Empty;
+
+    protected override void OnParametersSet()
+    {
+        normalizedArea = NormalizeArea(AreaName);
+    }
+
+    private static string NormalizeArea(string? area)
+    {
+        if (string.IsNullOrWhiteSpace(area))
+        {
+            return string.Empty;
+        }
+
+        return area.Replace(" ", string.Empty).ToLowerInvariant();
+    }
+
+    private static string OperatorToText(char op)
+    {
+        return op switch
+        {
+            '*' => "×",
+            '/' => "÷",
+            _ => op.ToString()
+        };
+    }
+
+    private static bool TryParseBinaryExpression(string? text, out int a, out char op, out int b, out int result)
+    {
+        a = 0;
+        b = 0;
+        result = 0;
+        op = '+';
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return false;
+        }
+
+        var match = Regex.Match(text, @"(?<!\d)(\d+)\s*([+\-−xX*÷/×])\s*(\d+)");
+        if (!match.Success)
+        {
+            return false;
+        }
+
+        a = int.Parse(match.Groups[1].Value);
+        var raw = match.Groups[2].Value;
+        b = int.Parse(match.Groups[3].Value);
+
+        op = raw switch
+        {
+            "x" or "X" or "×" => '*',
+            "÷" => '/',
+            "−" => '-',
+            _ => raw[0]
+        };
+
+        if (op == '-' && a < b)
+        {
+            return false;
+        }
+
+        if (op == '/' && (b == 0 || a % b != 0))
+        {
+            return false;
+        }
+
+        result = op switch
+        {
+            '+' => a + b,
+            '-' => a - b,
+            '*' => a * b,
+            '/' => a / b,
+            _ => -1
+        };
+
+        return result >= 0;
+    }
+}

@@ -1,0 +1,186 @@
+@page "/admin/edit-question/{id:int}"
+@attribute [Authorize(Roles = UserRoles.Admin)]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Edit Question - MathTutor AI</PageTitle>
+
+<div class="qform-shell">
+    <div class="qform-card">
+        <div class="qform-header">
+            <div>
+                <h2>✏️ Edit Question</h2>
+                <p>Update wording, difficulty, and answer quality safely.</p>
+            </div>
+            <button class="qbtn ghost" @onclick="GoBack">← Back</button>
+        </div>
+
+        @if (isLoading)
+        {
+            <div class="q-loading">Loading question...</div>
+        }
+        else
+        {
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <div class="q-alert error">@errorMessage</div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(successMessage))
+            {
+                <div class="q-alert success">@successMessage</div>
+            }
+
+            <div class="qform-grid">
+                <label>
+                    Topic
+                    <select class="qinput" @bind="topicId" disabled="@isSubmitting">
+                        <option value="0">Select topic</option>
+                        @foreach (var topic in topics)
+                        {
+                            <option value="@topic.Id">@topic.Name (@topic.Area)</option>
+                        }
+                    </select>
+                </label>
+
+                <label>
+                    Difficulty (1-5)
+                    <select class="qinput" @bind="difficulty" disabled="@isSubmitting">
+                        @for (var i = 1; i <= 5; i++)
+                        {
+                            <option value="@i">@i</option>
+                        }
+                    </select>
+                </label>
+
+                <label class="full">
+                    Question text
+                    <textarea class="qinput" rows="4" @bind="questionText" disabled="@isSubmitting"></textarea>
+                </label>
+
+                <label class="full">
+                    Correct answer
+                    <input class="qinput" @bind="correctAnswer" disabled="@isSubmitting" />
+                </label>
+
+                <label class="full">
+                    Solution steps (optional)
+                    <textarea class="qinput" rows="3" @bind="solutionSteps" disabled="@isSubmitting"></textarea>
+                </label>
+
+                <label class="full">
+                    Common mistakes (optional, comma separated)
+                    <input class="qinput" @bind="commonMistakesRaw" disabled="@isSubmitting" />
+                </label>
+            </div>
+
+            <div class="qform-actions">
+                <button class="qbtn ghost" @onclick="GoBack" disabled="@isSubmitting">Cancel</button>
+                <button class="qbtn primary" @onclick="UpdateQuestion" disabled="@(isSubmitting || !IsValid())">
+                    @(isSubmitting ? "Saving..." : "Save Changes")
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private bool isLoading = true;
+    private bool isSubmitting;
+
+    private List<TopicDto> topics = new();
+    private int topicId;
+    private int difficulty = 1;
+    private string questionText = string.Empty;
+    private string correctAnswer = string.Empty;
+    private string? solutionSteps;
+    private string commonMistakesRaw = string.Empty;
+
+    private string? errorMessage;
+    private string? successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            topics = await Http.GetFromJsonAsync<List<TopicDto>>("/api/admin/topics") ?? new List<TopicDto>();
+            var questions = await Http.GetFromJsonAsync<List<AdminQuestionDto>>("/api/admin/questions") ?? new List<AdminQuestionDto>();
+            var selected = questions.FirstOrDefault(x => x.Id == Id);
+
+            if (selected == null)
+            {
+                errorMessage = "Question not found.";
+                return;
+            }
+
+            topicId = selected.TopicId;
+            difficulty = selected.Difficulty;
+            questionText = selected.QuestionText;
+            correctAnswer = selected.CorrectAnswer;
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private bool IsValid()
+        => topicId > 0 && !string.IsNullOrWhiteSpace(questionText) && !string.IsNullOrWhiteSpace(correctAnswer);
+
+    private async Task UpdateQuestion()
+    {
+        errorMessage = null;
+        successMessage = null;
+
+        if (!IsValid())
+        {
+            errorMessage = "Please fill all required fields.";
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            var dto = new CreateQuestionDto
+            {
+                TopicId = topicId,
+                Difficulty = difficulty,
+                QuestionText = questionText.Trim(),
+                CorrectAnswer = correctAnswer.Trim(),
+                SolutionSteps = string.IsNullOrWhiteSpace(solutionSteps) ? null : solutionSteps.Trim(),
+                CommonMistakes = ParseMistakes(commonMistakesRaw)
+            };
+
+            var response = await Http.PutAsJsonAsync($"/api/admin/questions/{Id}", dto);
+            if (!response.IsSuccessStatusCode)
+            {
+                errorMessage = $"Failed to update question ({response.StatusCode}).";
+                return;
+            }
+
+            successMessage = "Question updated successfully. Redirecting...";
+            await Task.Delay(800);
+            Navigation.NavigateTo("/admin?status=question-updated");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private static List<string> ParseMistakes(string raw)
+        => raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
+
+    private void GoBack() => Navigation.NavigateTo("/admin");
+}

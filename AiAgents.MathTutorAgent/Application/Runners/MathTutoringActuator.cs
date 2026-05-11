@@ -86,9 +86,16 @@ public class MathTutoringActuator(
             };
         }
 
-        await revisionService.UpdateScheduleAsync(workItem.StudentId, topicId.Value, ct);
+        // Ensure Topic navigation is loaded for UI metadata (area/topic labels).
+        question = await assessmentService.GetQuestionAsync(question.Id, ct) ?? question;
 
-        // ✅ FIX: Use proper DTO construction
+        await revisionService.UpdateScheduleAsync(workItem.StudentId, topicId.Value, ct);
+        var isFirstInTopic = await assessmentService.IsFirstQuestionInTopicForStudentAsync(
+            workItem.StudentId,
+            topicId.Value,
+            ct);
+        var timeLimitSeconds = await assessmentService.GetTimeLimitSecondsAsync(workItem.StudentId, question, ct);
+
         return new MathTickResult
         {
             WorkItemId = workItem.Id,
@@ -100,8 +107,12 @@ public class MathTutoringActuator(
             {
                 Id = question.Id,
                 TopicId = question.TopicId,
+                TopicName = question.Topic?.Name ?? string.Empty,
+                AreaName = question.Topic?.Area.ToString() ?? string.Empty,
                 QuestionText = question.QuestionText,
-                Difficulty = question.Difficulty
+                Difficulty = question.Difficulty,
+                TimeLimitSeconds = timeLimitSeconds,
+                IsFirstQuestionInTopicForStudent = isFirstInTopic
             }
         };
     }
@@ -164,7 +175,14 @@ public class MathTutoringActuator(
         if (question == null)
             throw new InvalidOperationException($"Question {payload.QuestionId} not found");
 
-        var isCorrect = await assessmentService.EvaluateAnswerAsync(question, payload.Answer, ct);
+        var timeLimitSeconds = await assessmentService.GetTimeLimitSecondsAsync(workItem.StudentId, question, ct);
+        var isTimedOut = payload.TimedOut || payload.TimeMs > timeLimitSeconds * 1000;
+        var isCorrect = !isTimedOut && await assessmentService.EvaluateAnswerAsync(question, payload.Answer, ct);
+        var tags = new List<string>();
+        if (isTimedOut)
+        {
+            tags.Add("TIMEOUT");
+        }
         
         var attempt = await assessmentService.SaveAttemptAsync(
             workItem.StudentId,
@@ -172,6 +190,7 @@ public class MathTutoringActuator(
             isCorrect,
             payload.TimeMs,
             payload.Answer,
+            tags,
             ct);
 
         var previousMastery = await knowledgeTracingService.GetMasteryScoreAsync(workItem.StudentId, question.TopicId, ct);
@@ -192,9 +211,12 @@ public class MathTutoringActuator(
             UiPayload = new
             {
                 IsCorrect = isCorrect,
+                IsTimedOut = isTimedOut,
                 CorrectAnswer = question.CorrectAnswer,
                 MasteryScore = newMastery,
-                Decision = decision.ToString()
+                Decision = decision.ToString(),
+                TimeLimitSeconds = timeLimitSeconds,
+                TimeSpentSeconds = Math.Round(payload.TimeMs / 1000.0, 1)
             }
         };
     }
