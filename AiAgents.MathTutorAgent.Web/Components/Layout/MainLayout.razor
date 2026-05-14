@@ -34,11 +34,6 @@ else
                         <button class="menu-toggle" @onclick="ToggleSidebar" aria-label="Toggle menu">☰</button>
                         <h1 class="page-title">@GetCurrentPageTitle()</h1>
                     </div>
-                    <div class="header-actions">
-                        <a href="https://matematiranje.in.rs/" target="_blank" class="header-link">
-                            <span class="icon">📖</span><span class="label">Documentation</span>
-                        </a>
-                    </div>
                 </div>
             </header>
 
@@ -101,11 +96,16 @@ else
             "admin" => "Admin Panel",
             "admin/add-student" => "Add Student",
             "admin/add-question" => "Add Question",
+            var p when p.StartsWith("admin/edit-student/") => "Edit Student",
             var p when p.StartsWith("quiz/") => "Practice Quiz",
             var p when p.StartsWith("profile/") => "Student Profile",
             var p when p.StartsWith("admin/edit-question/") => "Edit Question",
             "login" => "Sign In",
             "register" => "Register",
+            "confirm-email" => "Confirm Email",
+            "forgot-password" => "Forgot Password",
+            "reset-password" => "Reset Password",
+            "resend-confirmation" => "Resend Confirmation",
             _ => "MathTutor AI"
         };
     }
@@ -113,7 +113,7 @@ else
     private bool IsAuthPath()
     {
         var path = Navigation.ToAbsoluteUri(Navigation.Uri).AbsolutePath.Trim('/').ToLowerInvariant();
-        return path is "login" or "register";
+        return path is "login" or "register" or "confirm-email" or "forgot-password" or "reset-password" or "resend-confirmation";
     }
 
     public void Dispose()

@@ -12,25 +12,91 @@
         {
             case "arithmetic":
                 <div class="avg-card">
-                    @if (TryParseBinaryExpression(QuestionText, out var a, out var op, out var b, out var result))
+                    @if (TryParseBinaryExpression(QuestionText, out var a, out var op, out var b, out var result)
+                        && IsVisualFriendlyArithmetic(a, op, b, result))
                     {
                         <div class="avg-equation">
                             <span class="avg-chip">@a</span>
                             <span class="avg-op">@OperatorToText(op)</span>
                             <span class="avg-chip">@b</span>
                             <span class="avg-op">=</span>
-                            <span class="avg-chip answer">@result</span>
+                            <span class="avg-chip answer">?</span>
                         </div>
-                        <div class="avg-items">
-                            @for (var i = 0; i < Math.Min(result, 20); i++)
-                            {
-                                <span class="avg-item">🍎</span>
-                            }
-                        </div>
+                        @if (op == '+')
+                        {
+                            <p>Count apples from both groups, then write the total.</p>
+                            <div class="avg-group-wrap">
+                                <div class="avg-group">
+                                    <strong>Group A (@a)</strong>
+                                    <div class="avg-items">
+                                        @for (var i = 0; i < a; i++)
+                                        {
+                                            <span class="avg-item">🍎</span>
+                                        }
+                                    </div>
+                                </div>
+                                <div class="avg-group">
+                                    <strong>Group B (@b)</strong>
+                                    <div class="avg-items">
+                                        @for (var i = 0; i < b; i++)
+                                        {
+                                            <span class="avg-item">🍎</span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        else if (op == '-')
+                        {
+                            <p>Cross out @b apples, then count what remains.</p>
+                            <div class="avg-items">
+                                @for (var i = 0; i < a; i++)
+                                {
+                                    var removed = i < b;
+                                    <span class="avg-item @(removed ? "removed" : string.Empty)">🍎</span>
+                                }
+                            </div>
+                        }
+                        else if (op == '*')
+                        {
+                            <p>Count equal groups, then find total apples.</p>
+                            <div class="avg-group-wrap">
+                                @for (var row = 0; row < b; row++)
+                                {
+                                    <div class="avg-group">
+                                        <strong>Group @(row + 1)</strong>
+                                        <div class="avg-items">
+                                            @for (var i = 0; i < a; i++)
+                                            {
+                                                <span class="avg-item">🍎</span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else if (op == '/')
+                        {
+                            <p>Share @a apples into @b equal groups. Count apples per group.</p>
+                            <div class="avg-group-wrap">
+                                @for (var g = 0; g < b; g++)
+                                {
+                                    <div class="avg-group">
+                                        <strong>Group @(g + 1)</strong>
+                                        <div class="avg-items">
+                                            @for (var i = 0; i < result; i++)
+                                            {
+                                                <span class="avg-item">🍎</span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
                     }
                     else
                     {
-                        <p>Count objects step by step and group them visually.</p>
+                        <p>For larger numbers, use step-by-step explanation instead of object counting.</p>
                     }
                 </div>
                 break;
@@ -196,5 +262,19 @@
         };
 
         return result >= 0;
+    }
+
+    private static bool IsVisualFriendlyArithmetic(int a, char op, int b, int result)
+    {
+        // Only show concrete-object visuals for beginner-size tasks.
+        // This prevents unrealistic outputs like 262 apples.
+        return op switch
+        {
+            '+' => a <= 10 && b <= 10 && result <= 20,
+            '-' => a <= 20 && b <= 10 && a >= b && result <= 12,
+            '*' => a <= 5 && b <= 5 && result <= 25,
+            '/' => b > 0 && a % b == 0 && a <= 20 && b <= 5 && result <= 10,
+            _ => false
+        };
     }
 }

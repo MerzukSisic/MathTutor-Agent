@@ -1,6 +1,7 @@
 @page "/logout"
 @attribute [Authorize]
-@inject HttpClient Http
+@using System.Text.Json
+@inject IJSRuntime JS
 @inject NavigationManager Navigation
 
 <PageTitle>Logout - MathTutor AI</PageTitle>
@@ -17,7 +18,7 @@
     {
         try
         {
-            await Http.PostAsync("/api/auth/logout", null);
+            await JS.InvokeAsync<JsonElement>("authFetch", "/api/auth/logout", new { });
         }
         catch
         {

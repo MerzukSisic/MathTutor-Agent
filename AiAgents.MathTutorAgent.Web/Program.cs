@@ -12,9 +12,11 @@ using AiAgents.MathTutorAgent.Web.Services;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Radzen;
 using Serilog;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuredDbProvider = builder.Configuration["DatabaseProvider"];
@@ -37,10 +39,14 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 builder.Services.AddCascadingAuthenticationState();
 
-builder.Services.AddControllers();
+builder.Services.AddControllersWithViews();
 builder.Services.AddSignalR();
 builder.Services.AddRadzenComponents();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddAntiforgery(options =>
+{
+    options.HeaderName = "RequestVerificationToken";
+});
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -49,6 +55,9 @@ builder.Services
         options.LoginPath = "/login";
         options.AccessDeniedPath = "/login";
         options.Cookie.Name = "MathTutor.Auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Strict;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
         options.SlidingExpiration = true;
         options.ExpireTimeSpan = TimeSpan.FromDays(14);
         options.Events = new CookieAuthenticationEvents
@@ -79,6 +88,34 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddFixedWindowLimiter("auth", limiter =>
+    {
+        limiter.PermitLimit = 30;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
+        limiter.AutoReplenishment = true;
+    });
+
+    options.AddFixedWindowLimiter("admin-write", limiter =>
+    {
+        limiter.PermitLimit = 80;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
+        limiter.AutoReplenishment = true;
+    });
+
+    options.AddFixedWindowLimiter("agent-ops", limiter =>
+    {
+        limiter.PermitLimit = 120;
+        limiter.Window = TimeSpan.FromMinutes(1);
+        limiter.QueueLimit = 0;
+        limiter.AutoReplenishment = true;
+    });
+});
 
 builder.Services.AddScoped<DialogService>();
 builder.Services.AddScoped<NotificationService>();
@@ -161,16 +198,17 @@ builder.Services.AddScoped<QuestionTimeLimitService>();
 builder.Services.AddScoped<KnowledgeTracingService>();
 builder.Services.AddScoped<RevisionService>();
 builder.Services.AddScoped<ExplanationService>();
+builder.Services.AddScoped<CrossMathMilestoneService>();
 builder.Services.AddScoped<ImageIngestionService>();
 builder.Services.AddScoped<StudentProfileService>();
 builder.Services.AddScoped<StudentInsightsCalculatorService>();
 builder.Services.AddScoped<PdfExportService>();
-builder.Services.AddScoped<AdminService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<ValidationService>();
 builder.Services.AddScoped<MlTrainingDatasetBuilderService>();
 builder.Services.AddScoped<MlTrainingService>();
 builder.Services.AddScoped<PasswordHashingService>();
-builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
 
@@ -249,6 +287,33 @@ await using (var scope = app.Services.CreateAsyncScope())
                 );
                 CREATE UNIQUE INDEX IF NOT EXISTS "IX_UserAccounts_Email" ON "UserAccounts" ("Email");
                 CREATE INDEX IF NOT EXISTS "IX_UserAccounts_StudentId" ON "UserAccounts" ("StudentId");
+                CREATE TABLE IF NOT EXISTS "AuthTokens" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_AuthTokens" PRIMARY KEY AUTOINCREMENT,
+                    "UserAccountId" INTEGER NOT NULL,
+                    "Purpose" TEXT NOT NULL,
+                    "TokenHash" TEXT NOT NULL,
+                    "CreatedAtUtc" TEXT NOT NULL,
+                    "ExpiresAtUtc" TEXT NOT NULL,
+                    "ConsumedAtUtc" TEXT NULL,
+                    CONSTRAINT "FK_AuthTokens_UserAccounts_UserAccountId"
+                        FOREIGN KEY ("UserAccountId") REFERENCES "UserAccounts" ("Id")
+                        ON DELETE CASCADE
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS "IX_AuthTokens_TokenHash" ON "AuthTokens" ("TokenHash");
+                CREATE INDEX IF NOT EXISTS "IX_AuthTokens_UserAccountId" ON "AuthTokens" ("UserAccountId");
+                CREATE TABLE IF NOT EXISTS "StudentChallengeProgress" (
+                    "Id" INTEGER NOT NULL CONSTRAINT "PK_StudentChallengeProgress" PRIMARY KEY AUTOINCREMENT,
+                    "StudentId" INTEGER NOT NULL,
+                    "ChallengeKey" TEXT NOT NULL,
+                    "CompletedAtUtc" TEXT NOT NULL,
+                    CONSTRAINT "FK_StudentChallengeProgress_Students_StudentId"
+                        FOREIGN KEY ("StudentId") REFERENCES "Students" ("Id")
+                        ON DELETE CASCADE
+                );
+                CREATE UNIQUE INDEX IF NOT EXISTS "IX_StudentChallengeProgress_StudentId_ChallengeKey"
+                    ON "StudentChallengeProgress" ("StudentId", "ChallengeKey");
+                CREATE INDEX IF NOT EXISTS "IX_StudentChallengeProgress_StudentId"
+                    ON "StudentChallengeProgress" ("StudentId");
                 """);
         }
         else
@@ -286,6 +351,7 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseAntiforgery();
 app.UseCors(); // If CORS is needed
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

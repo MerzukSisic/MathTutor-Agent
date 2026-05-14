@@ -11,6 +11,7 @@ public class MathTutoringActuator(
     CurriculumService curriculumService,
     AssessmentService assessmentService,
     KnowledgeTracingService knowledgeTracingService,
+    CrossMathMilestoneService crossMathMilestoneService,
     RevisionService revisionService,
     ExplanationService explanationService,
     ImageIngestionService imageIngestionService,
@@ -198,6 +199,11 @@ public class MathTutoringActuator(
         var newMastery = await knowledgeTracingService.GetMasteryScoreAsync(workItem.StudentId, question.TopicId, ct);
 
         var decision = await assessmentService.DetermineAdvanceDecisionAsync(workItem.StudentId, question.TopicId, ct);
+        var milestoneChallenge = await crossMathMilestoneService.GetChallengeToStartAfterAnswerAsync(
+            workItem.StudentId,
+            question.TopicId,
+            newMastery,
+            ct);
 
         return new MathTickResult
         {
@@ -216,7 +222,8 @@ public class MathTutoringActuator(
                 MasteryScore = newMastery,
                 Decision = decision.ToString(),
                 TimeLimitSeconds = timeLimitSeconds,
-                TimeSpentSeconds = Math.Round(payload.TimeMs / 1000.0, 1)
+                TimeSpentSeconds = Math.Round(payload.TimeMs / 1000.0, 1),
+                MilestoneChallenge = milestoneChallenge
             }
         };
     }

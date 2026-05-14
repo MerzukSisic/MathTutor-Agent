@@ -4,6 +4,7 @@ using AiAgents.MathTutorAgent.Domain.Entities;
 using AiAgents.MathTutorAgent.ML.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace AiAgents.MathTutorAgent.Web.Controllers;
 
@@ -11,7 +12,7 @@ namespace AiAgents.MathTutorAgent.Web.Controllers;
 [Route("api/[controller]")]
 [Authorize(Roles = UserRoles.Admin)]
 public class AdminController(
-    AdminService adminService,
+    IAdminService adminService,
     StudentProfileService studentProfileService,
     MlTrainingService mlTrainingService)
     : ControllerBase
@@ -26,6 +27,7 @@ public class AdminController(
     }
 
     [HttpPost("questions")]
+    [EnableRateLimiting("admin-write")]
     public async Task<IActionResult> CreateQuestion([FromBody] CreateQuestionDto dto, CancellationToken ct)
     {
         var question = await adminService.CreateQuestionAsync(dto, ct);
@@ -33,6 +35,7 @@ public class AdminController(
     }
 
     [HttpPut("questions/{id}")]
+    [EnableRateLimiting("admin-write")]
     public async Task<IActionResult> UpdateQuestion(int id, [FromBody] CreateQuestionDto dto, CancellationToken ct)
     {
         var question = await adminService.UpdateQuestionAsync(id, dto, ct);
@@ -40,6 +43,7 @@ public class AdminController(
     }
 
     [HttpDelete("questions/{id}")]
+    [EnableRateLimiting("admin-write")]
     public async Task<IActionResult> DeleteQuestion(int id, CancellationToken ct)
     {
         await adminService.DeleteQuestionAsync(id, ct);
@@ -64,6 +68,18 @@ public class AdminController(
         return Ok(students);
     }
 
+    [HttpGet("students/{id:int}")]
+    public async Task<IActionResult> GetStudentById(int id, CancellationToken ct)
+    {
+        var student = await adminService.GetStudentByIdAsync(id, ct);
+        if (student == null)
+        {
+            return NotFound(new { Message = $"Student {id} not found." });
+        }
+
+        return Ok(student);
+    }
+
     // ========== METRICS ==========
 
     [HttpGet("performance-metrics")]
@@ -76,6 +92,7 @@ public class AdminController(
     // ========== ML MODEL TRAINING (THIN - just call service) ==========
 
     [HttpPost("train-ml-models")]
+    [EnableRateLimiting("admin-write")]
     public async Task<IActionResult> TrainMlModels(CancellationToken ct)
     {
         // Web layer: receive request, call Application service, return response
@@ -104,6 +121,7 @@ public class AdminController(
     }
 
     [HttpPost("reload-ml-models")]
+    [EnableRateLimiting("admin-write")]
     public async Task<IActionResult> ReloadMlModels(CancellationToken ct)
     {
         // Web layer: receive request, call Application service, return response
@@ -115,10 +133,52 @@ public class AdminController(
         return Ok(result);
     }
     [HttpPost("students")]
-    public async Task<IActionResult> CreateStudent([FromBody] CreateStudentRequest request, CancellationToken ct)
+    [EnableRateLimiting("admin-write")]
+    public async Task<IActionResult> CreateStudent([FromBody] CreateStudentDto request, CancellationToken ct)
     {
-        var student = await adminService.CreateStudentAsync(request.Name, request.Email, ct);
-        return Ok(student);
+        try
+        {
+            var student = await adminService.CreateStudentAsync(request, ct);
+            return Ok(student);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { Message = ex.Message });
+        }
+    }
+
+    [HttpPut("students/{id:int}")]
+    [EnableRateLimiting("admin-write")]
+    public async Task<IActionResult> UpdateStudent(int id, [FromBody] UpdateStudentDto request, CancellationToken ct)
+    {
+        try
+        {
+            var student = await adminService.UpdateStudentAsync(id, request, ct);
+            return Ok(student);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase)
+                ? NotFound(new { Message = ex.Message })
+                : BadRequest(new { Message = ex.Message });
+        }
+    }
+
+    [HttpDelete("students/{id:int}")]
+    [EnableRateLimiting("admin-write")]
+    public async Task<IActionResult> DeleteStudent(int id, CancellationToken ct)
+    {
+        try
+        {
+            await adminService.DeleteStudentAsync(id, ct);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase)
+                ? NotFound(new { Message = ex.Message })
+                : BadRequest(new { Message = ex.Message });
+        }
     }
     [HttpGet("dashboard/stats")]
     public async Task<ActionResult<DashboardStatsDto>> GetDashboardStats(CancellationToken ct)
@@ -126,6 +186,4 @@ public class AdminController(
         var stats = await studentProfileService.GetDashboardStatsAsync(ct);
         return Ok(stats);
     }
-
-    public record CreateStudentRequest(string Name, string Email);
 }

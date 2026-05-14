@@ -3,6 +3,7 @@
 @inject HttpClient Http
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
 
 <PageTitle>Student Profile - MathTutor AI</PageTitle>
 
@@ -50,10 +51,13 @@
                         <span class="icon">📄</span>
                         <span class="text">Export PDF</span>
                     </button>
-                    <button class="btn-icon-secondary" @onclick="BackToDashboard" title="Back">
-                        <span class="icon">←</span>
-                        <span class="text">Dashboard</span>
-                    </button>
+                    @if (isAdmin)
+                    {
+                        <button class="btn-icon-secondary" @onclick="BackToDashboard" title="Back">
+                            <span class="icon">←</span>
+                            <span class="text">Dashboard</span>
+                        </button>
+                    }
                 </div>
             </div>
         </div>
@@ -162,7 +166,7 @@
                             @foreach (var topic in profile.TopicProgress.OrderByDescending(t => t.MasteryScore).Take(10))
                             {
                                 <button type="button"
-                                        class="topic-item @(IsTopicActive(topic.TopicName) ? "active" : string.Empty)"
+                                        class="topic-item @(IsTopicActive(topic) ? "active" : string.Empty)"
                                         @onclick="() => ApplyTopicFilter(topic)">
                                     <div class="topic-header">
                                         <span class="topic-name">@topic.TopicName <span class="topic-area">@topic.AreaName</span></span>
@@ -213,7 +217,7 @@
                     {
                         <div class="filter-pill">
                             @ActiveFilterLabel
-                            <button type="button" class="clear-filter-btn" @onclick="ClearAreaFilter">Clear</button>
+                            <button type="button" class="clear-filter-btn" @onclick="ClearFilters">Clear</button>
                         </div>
                     }
                 </div>
@@ -240,6 +244,7 @@
                                             <span class="activity-time">
                                                 🕒 @activity.TimeSeconds.ToString("F1")s
                                             </span>
+                                            <span class="activity-topic">@activity.TopicName</span>
                                             <span class="activity-area">@activity.AreaName</span>
                                             <span class="activity-date">
                                                 @GetRelativeTime(activity.Date)
@@ -291,8 +296,8 @@
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table">
-                            <thead>
+                        <table class="table table-elevated">
+                            <thead class="table-head">
                                 <tr>
                                     <th>Area</th>
                                     <th>Total Attempts</th>
@@ -306,7 +311,7 @@
                                 {
                                     <tr class="@(IsAreaActive(area.AreaName) ? "area-row active" : "area-row")"
                                         @onclick="() => ApplyAreaFilter(area.AreaName)">
-                                        <td>@area.AreaName</td>
+                                        <td><span class="table-area-badge">@area.AreaName</span></td>
                                         <td>@area.TotalAttempts</td>
                                         <td>@area.UniqueQuestions</td>
                                         <td>@area.AccuracyPercentage.ToString("F1")%</td>
@@ -331,8 +336,8 @@
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table">
-                            <thead>
+                        <table class="table table-elevated">
+                            <thead class="table-head">
                                 <tr>
                                     <th>Question</th>
                                     <th>Area</th>
@@ -344,16 +349,16 @@
                             <tbody>
                                 @if (!FilteredQuestionInsights.Any())
                                 {
-                                    <tr>
+                                    <tr class="table-empty-row">
                                         <td colspan="5">No questions for selected area.</td>
                                     </tr>
                                 }
 
                                 @foreach (var q in FilteredQuestionInsights.OrderByDescending(x => x.AttemptsCount).Take(8))
                                 {
-                                    <tr>
+                                    <tr class="question-row">
                                         <td>@q.QuestionText</td>
-                                        <td>@q.AreaName</td>
+                                        <td><span class="table-area-badge">@q.AreaName</span></td>
                                         <td>@q.AttemptsCount</td>
                                         <td>@q.AccuracyPercentage.ToString("F1")%</td>
                                         <td>@(q.SolvedFromFirstTry ? "Yes" : "No")</td>
@@ -374,32 +379,38 @@
 
     private StudentProfileDto? profile;
     private StudySessionStatsDto? stats;
+    private bool isAdmin;
     private string? selectedAreaFilter;
-    private string? selectedTopicFilter;
+    private string? selectedTopicNameFilter;
+    private string? selectedTopicAreaFilter;
 
     private bool HasAreaFilter => !string.IsNullOrWhiteSpace(selectedAreaFilter);
-    private bool HasTopicFilter => !string.IsNullOrWhiteSpace(selectedTopicFilter);
+    private bool HasTopicFilter => !string.IsNullOrWhiteSpace(selectedTopicNameFilter)
+        && !string.IsNullOrWhiteSpace(selectedTopicAreaFilter);
     private bool HasAnyFilter => HasAreaFilter || HasTopicFilter;
     private string ActiveFilterLabel => HasTopicFilter
-        ? $"Topic: {selectedTopicFilter}"
+        ? $"Topic: {selectedTopicNameFilter} ({selectedTopicAreaFilter})"
         : $"Area: {selectedAreaFilter}";
 
     private IEnumerable<ActivityDto> FilteredRecentActivity => profile?.RecentActivity
         .Where(a =>
             !HasAnyFilter ||
-            (HasTopicFilter && string.Equals(a.TopicName, selectedTopicFilter, StringComparison.OrdinalIgnoreCase)) ||
+            (HasTopicFilter && IsTopicMatch(a.TopicName, a.AreaName)) ||
             (!HasTopicFilter && HasAreaFilter && string.Equals(a.AreaName, selectedAreaFilter, StringComparison.OrdinalIgnoreCase)))
         ?? Enumerable.Empty<ActivityDto>();
 
     private IEnumerable<QuestionAttemptInsightDto> FilteredQuestionInsights => profile?.QuestionAttemptInsights
         .Where(q =>
             !HasAnyFilter ||
-            (HasTopicFilter && string.Equals(q.TopicName, selectedTopicFilter, StringComparison.OrdinalIgnoreCase)) ||
+            (HasTopicFilter && IsTopicMatch(q.TopicName, q.AreaName)) ||
             (!HasTopicFilter && HasAreaFilter && string.Equals(q.AreaName, selectedAreaFilter, StringComparison.OrdinalIgnoreCase)))
         ?? Enumerable.Empty<QuestionAttemptInsightDto>();
 
     protected override async Task OnInitializedAsync()
     {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        isAdmin = authState.User.IsInRole(UserRoles.Admin);
+
         await LoadProfile();
         await LoadStats();
     }
@@ -488,7 +499,13 @@
 
     private void BackToDashboard()
     {
-        Navigation.NavigateTo("/");
+        if (isAdmin)
+        {
+            Navigation.NavigateTo("/");
+            return;
+        }
+
+        Navigation.NavigateTo($"/quiz/{StudentId}");
     }
 
     private string GetInitials(string name)
@@ -537,26 +554,28 @@
 
     private void ApplyTopicFilter(TopicProgressDto topic)
     {
-        if (IsTopicActive(topic.TopicName))
+        if (IsTopicActive(topic))
         {
-            ClearAreaFilter();
+            ClearFilters();
             return;
         }
 
-        selectedTopicFilter = topic.TopicName;
-        selectedAreaFilter = topic.AreaName;
+        selectedTopicNameFilter = topic.TopicName;
+        selectedTopicAreaFilter = topic.AreaName;
+        selectedAreaFilter = null;
     }
 
     private void ApplyAreaFilter(string areaName)
     {
         if (IsAreaActive(areaName))
         {
-            ClearAreaFilter();
+            ClearFilters();
             return;
         }
 
         selectedAreaFilter = areaName;
-        selectedTopicFilter = null;
+        selectedTopicNameFilter = null;
+        selectedTopicAreaFilter = null;
     }
 
     private bool IsAreaActive(string areaName)
@@ -564,14 +583,21 @@
         return !HasTopicFilter && string.Equals(selectedAreaFilter, areaName, StringComparison.OrdinalIgnoreCase);
     }
 
-    private bool IsTopicActive(string topicName)
+    private bool IsTopicActive(TopicProgressDto topic)
     {
-        return string.Equals(selectedTopicFilter, topicName, StringComparison.OrdinalIgnoreCase);
+        return HasTopicFilter && IsTopicMatch(topic.TopicName, topic.AreaName);
     }
 
-    private void ClearAreaFilter()
+    private bool IsTopicMatch(string topicName, string areaName)
+    {
+        return string.Equals(topicName, selectedTopicNameFilter, StringComparison.OrdinalIgnoreCase)
+            && string.Equals(areaName, selectedTopicAreaFilter, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private void ClearFilters()
     {
         selectedAreaFilter = null;
-        selectedTopicFilter = null;
+        selectedTopicNameFilter = null;
+        selectedTopicAreaFilter = null;
     }
 }

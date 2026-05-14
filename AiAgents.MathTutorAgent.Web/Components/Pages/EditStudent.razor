@@ -1,0 +1,158 @@
+@page "/admin/edit-student/{id:int}"
+@attribute [Authorize(Roles = UserRoles.Admin)]
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+<PageTitle>Edit Student - MathTutor AI</PageTitle>
+
+<div class="qform-shell">
+    <div class="qform-card">
+        <div class="qform-header">
+            <div>
+                <h2>✏️ Edit Student</h2>
+                <p>Update student identity and account email safely.</p>
+            </div>
+            <button class="qbtn ghost" @onclick="GoBack">← Back</button>
+        </div>
+
+        @if (isLoading)
+        {
+            <div class="q-loading">Loading student...</div>
+        }
+        else
+        {
+            @if (!string.IsNullOrWhiteSpace(errorMessage))
+            {
+                <div class="q-alert error">@errorMessage</div>
+            }
+
+            @if (!string.IsNullOrWhiteSpace(successMessage))
+            {
+                <div class="q-alert success">@successMessage</div>
+            }
+
+            <div class="qform-grid">
+                <label>
+                    Full name
+                    <input class="qinput" @bind="name" disabled="@isSubmitting" />
+                </label>
+
+                <label>
+                    Email
+                    <input class="qinput" type="email" @bind="email" disabled="@isSubmitting" />
+                </label>
+            </div>
+
+            <div class="qform-actions">
+                <button class="qbtn ghost" @onclick="GoBack" disabled="@isSubmitting">Cancel</button>
+                <button class="qbtn primary" @onclick="UpdateStudent" disabled="@(isSubmitting || !IsValid())">
+                    @(isSubmitting ? "Saving..." : "Save Changes")
+                </button>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private string name = string.Empty;
+    private string email = string.Empty;
+    private bool isLoading = true;
+    private bool isSubmitting;
+    private string? errorMessage;
+    private string? successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var student = await Http.GetFromJsonAsync<StudentDto>($"/api/admin/students/{Id}");
+            if (student == null)
+            {
+                errorMessage = "Student not found.";
+                return;
+            }
+
+            name = student.Name;
+            email = student.Email;
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"Unable to load student ({ex.Message}).";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private bool IsValid()
+        => !string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(email) && email.Contains('@');
+
+    private async Task UpdateStudent()
+    {
+        errorMessage = null;
+        successMessage = null;
+
+        if (!IsValid())
+        {
+            errorMessage = "Please enter valid student name and email.";
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            var payload = new UpdateStudentDto
+            {
+                Name = name.Trim(),
+                Email = email.Trim()
+            };
+
+            var response = await Http.PutAsJsonAsync($"/api/admin/students/{Id}", payload);
+            if (!response.IsSuccessStatusCode)
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                errorMessage = string.IsNullOrWhiteSpace(error)
+                    ? $"Update failed ({response.StatusCode})."
+                    : ExtractApiErrorMessage(error);
+                return;
+            }
+
+            successMessage = "Student updated successfully. Redirecting...";
+            await Task.Delay(800);
+            Navigation.NavigateTo("/admin?status=student-updated");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void GoBack() => Navigation.NavigateTo("/admin");
+
+    private static string ExtractApiErrorMessage(string raw)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(raw);
+            if (doc.RootElement.TryGetProperty("message", out var msgElement) &&
+                msgElement.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                return msgElement.GetString() ?? raw;
+            }
+        }
+        catch
+        {
+            // ignore parse errors
+        }
+
+        return raw;
+    }
+}

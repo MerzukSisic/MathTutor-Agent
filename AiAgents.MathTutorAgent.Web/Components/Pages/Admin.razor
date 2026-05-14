@@ -1,9 +1,7 @@
 ﻿@page "/admin"
 @attribute [Authorize(Roles = UserRoles.Admin)]
-@using Microsoft.AspNetCore.WebUtilities
 @inject HttpClient Http
 @inject NavigationManager Navigation
-@inject DialogService DialogService
 @inject IJSRuntime JS
 
 <PageTitle>Admin Panel - MathTutor AI</PageTitle>
@@ -117,9 +115,11 @@
                                         @student.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
                                     </Template>
                                 </RadzenDataGridColumn>
-                                <RadzenDataGridColumn TItem="StudentDto" Title="Actions" Width="130px">
+                                <RadzenDataGridColumn TItem="StudentDto" Title="Actions" Width="300px">
                                     <Template Context="student">
-                                        <RadzenButton Text="Profile" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small" Click="@(() => ViewProfile(student.Id))" />
+                                        <RadzenButton Text="Profile" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small" Click="@(() => ViewProfile(student.Id))" class="grid-action-btn" />
+                                        <RadzenButton Icon="edit" Text="Edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@(() => EditStudent(student.Id))" class="grid-action-btn grid-action-edit" />
+                                        <RadzenButton Icon="delete" Text="Delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Click="@(() => DeleteStudent(student.Id, student.Name))" class="grid-action-btn grid-action-delete" />
                                     </Template>
                                 </RadzenDataGridColumn>
                             </Columns>
@@ -179,133 +179,3 @@
         </Tabs>
     </RadzenTabs>
 </div>
-
-@code {
-    private PerformanceMetricsDto? metrics;
-    private List<AdminQuestionDto>? questions;
-    private List<StudentDto>? students;
-    private string? flashMessage;
-    private bool flashIsError;
-
-    protected override async Task OnInitializedAsync()
-    {
-        ApplyStatusFromQuery();
-        await LoadMetrics();
-        await LoadQuestions();
-        await LoadStudents();
-    }
-
-    private async Task LoadMetrics()
-    {
-        try
-        {
-            metrics = await Http.GetFromJsonAsync<PerformanceMetricsDto>("/api/admin/performance-metrics");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading metrics: {ex.Message}");
-        }
-    }
-
-    private async Task LoadQuestions()
-    {
-        try
-        {
-            questions = await Http.GetFromJsonAsync<List<AdminQuestionDto>>("/api/admin/questions");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading questions: {ex.Message}");
-        }
-    }
-
-    private async Task LoadStudents()
-    {
-        try
-        {
-            students = await Http.GetFromJsonAsync<List<StudentDto>>("/api/admin/students");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error loading students: {ex.Message}");
-        }
-    }
-
-    private void OpenAddStudentDialog()
-    {
-        Navigation.NavigateTo("/admin/add-student");
-    }
-    
-    private Task OpenAddQuestionDialog()
-    {
-        Navigation.NavigateTo("/admin/add-question");
-        return Task.CompletedTask;
-    }
-
-    private void EditQuestion(AdminQuestionDto question)
-    {
-        Navigation.NavigateTo($"/admin/edit-question/{question.Id}");
-    }
-
-    private async Task DeleteQuestion(int id)
-    {
-        var confirmed = await JS.InvokeAsync<bool>("confirm", "Delete this question permanently?");
-        if (!confirmed)
-        {
-            return;
-        }
-
-        var response = await Http.DeleteAsync($"/api/admin/questions/{id}");
-        if (response.IsSuccessStatusCode)
-        {
-            await LoadQuestions();
-            flashMessage = "Question deleted successfully.";
-            flashIsError = false;
-        }
-        else
-        {
-            flashMessage = $"Delete failed ({response.StatusCode}).";
-            flashIsError = true;
-        }
-    }
-
-    private void ViewProfile(int studentId)
-    {
-        Navigation.NavigateTo($"/profile/{studentId}");
-    }
-
-    private void ApplyStatusFromQuery()
-    {
-        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
-        var query = QueryHelpers.ParseQuery(uri.Query);
-        if (!query.TryGetValue("status", out var statusValue))
-        {
-            return;
-        }
-
-        switch (statusValue.ToString())
-        {
-            case "question-created":
-                flashMessage = "Question created successfully.";
-                flashIsError = false;
-                break;
-            case "question-updated":
-                flashMessage = "Question updated successfully.";
-                flashIsError = false;
-                break;
-        }
-
-        Navigation.NavigateTo("/admin", replace: true);
-    }
-
-    private string GetCompletionRatePercent()
-    {
-        if (metrics == null || metrics.TotalWorkItems <= 0)
-        {
-            return "0%";
-        }
-
-        var value = metrics.CompletedWorkItems * 100.0 / metrics.TotalWorkItems;
-        return $"{Math.Clamp(value, 0, 100):F1}%";
-    }
-}

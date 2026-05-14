@@ -77,6 +77,31 @@
     font-size: 1.05rem;
 }
 
+.avg-item.removed {
+    opacity: 0.42;
+    filter: grayscale(1);
+}
+
+.avg-group-wrap {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.55rem;
+    margin-top: 0.5rem;
+}
+
+.avg-group {
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    background: #fff;
+    padding: 0.5rem;
+}
+
+.avg-group strong {
+    display: block;
+    margin-bottom: 0.35rem;
+    color: #334155;
+}
+
 .avg-balance {
     margin-top: 0.45rem;
     display: grid;

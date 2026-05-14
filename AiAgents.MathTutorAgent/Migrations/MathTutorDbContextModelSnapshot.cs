@@ -62,6 +62,44 @@ namespace AiAgents.MathTutorAgent.Migrations
                     b.ToTable("Attempts");
                 });
 
+            modelBuilder.Entity("AiAgents.MathTutorAgent.Domain.Entities.AuthToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime?>("ConsumedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Purpose")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<int>("UserAccountId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserAccountId");
+
+                    b.ToTable("AuthTokens");
+                });
+
             modelBuilder.Entity("AiAgents.MathTutorAgent.Domain.Entities.ImageNote", b =>
                 {
                     b.Property<int>("Id")
@@ -246,6 +284,32 @@ namespace AiAgents.MathTutorAgent.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Students");
+                });
+
+            modelBuilder.Entity("AiAgents.MathTutorAgent.Domain.Entities.StudentChallengeProgress", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ChallengeKey")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime>("CompletedAtUtc")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId", "ChallengeKey")
+                        .IsUnique();
+
+                    b.ToTable("StudentChallengeProgress");
                 });
 
             modelBuilder.Entity("AiAgents.MathTutorAgent.Domain.Entities.StudentTopicState", b =>
@@ -471,6 +535,17 @@ namespace AiAgents.MathTutorAgent.Migrations
                     b.Navigation("Student");
                 });
 
+            modelBuilder.Entity("AiAgents.MathTutorAgent.Domain.Entities.AuthToken", b =>
+                {
+                    b.HasOne("AiAgents.MathTutorAgent.Domain.Entities.UserAccount", "UserAccount")
+                        .WithMany()
+                        .HasForeignKey("UserAccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("UserAccount");
+                });
+
             modelBuilder.Entity("AiAgents.MathTutorAgent.Domain.Entities.ImageNote", b =>
                 {
                     b.HasOne("AiAgents.MathTutorAgent.Domain.Entities.Student", "Student")
@@ -521,6 +596,17 @@ namespace AiAgents.MathTutorAgent.Migrations
                     b.Navigation("Student");
 
                     b.Navigation("Topic");
+                });
+
+            modelBuilder.Entity("AiAgents.MathTutorAgent.Domain.Entities.StudentChallengeProgress", b =>
+                {
+                    b.HasOne("AiAgents.MathTutorAgent.Domain.Entities.Student", "Student")
+                        .WithMany("ChallengeProgress")
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Student");
                 });
 
             modelBuilder.Entity("AiAgents.MathTutorAgent.Domain.Entities.StudentTopicState", b =>
@@ -595,6 +681,8 @@ namespace AiAgents.MathTutorAgent.Migrations
             modelBuilder.Entity("AiAgents.MathTutorAgent.Domain.Entities.Student", b =>
                 {
                     b.Navigation("Attempts");
+
+                    b.Navigation("ChallengeProgress");
 
                     b.Navigation("ImageNotes");
 

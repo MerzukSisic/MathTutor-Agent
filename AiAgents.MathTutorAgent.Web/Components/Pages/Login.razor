@@ -12,6 +12,11 @@
         <h1>Sign In</h1>
         <p>Continue your MathTutor learning journey.</p>
 
+        @if (!string.IsNullOrWhiteSpace(infoMessage))
+        {
+            <div class="auth-alert info">@infoMessage</div>
+        }
+
         @if (!string.IsNullOrWhiteSpace(errorMessage))
         {
             <div class="auth-alert error">@errorMessage</div>
@@ -32,7 +37,8 @@
         </button>
 
         <p class="auth-meta">No account yet? <a href="/register">Create one</a></p>
-        <p class="auth-hint">Default admin: <code>admin@mathtutor.local</code> / <code>Admin123!</code></p>
+        <p class="auth-meta"><a href="/forgot-password">Forgot password?</a></p>
+        <p class="auth-meta"><a href="/resend-confirmation">Resend confirmation email</a></p>
     </div>
 </div>
 
@@ -40,7 +46,34 @@
     private string email = string.Empty;
     private string password = string.Empty;
     private string? errorMessage;
+    private string? infoMessage;
     private bool isSubmitting;
+
+    protected override void OnInitialized()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        if (!query.TryGetValue("status", out var statusValue))
+        {
+            return;
+        }
+
+        switch (statusValue.ToString())
+        {
+            case "registered":
+                infoMessage = "Registration successful. Please confirm your email before signing in.";
+                break;
+            case "registered-ready":
+                infoMessage = "Registration successful. You can sign in now.";
+                break;
+            case "confirmed":
+                infoMessage = "Email confirmed successfully. You can now sign in.";
+                break;
+            case "password-reset":
+                infoMessage = "Password changed successfully. Sign in with your new password.";
+                break;
+        }
+    }
 
     private async Task LoginAsync()
     {

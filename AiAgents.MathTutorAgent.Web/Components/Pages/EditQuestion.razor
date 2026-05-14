@@ -34,23 +34,27 @@
             <div class="qform-grid">
                 <label>
                     Topic
-                    <select class="qinput" @bind="topicId" disabled="@isSubmitting">
-                        <option value="0">Select topic</option>
-                        @foreach (var topic in topics)
-                        {
-                            <option value="@topic.Id">@topic.Name (@topic.Area)</option>
-                        }
-                    </select>
+                    <div class="qselect-wrap">
+                        <select class="qinput qselect" @bind="topicId" disabled="@isSubmitting">
+                            <option value="0">Select topic</option>
+                            @foreach (var topic in topics)
+                            {
+                                <option value="@topic.Id">@topic.Name (@topic.Area)</option>
+                            }
+                        </select>
+                    </div>
                 </label>
 
                 <label>
                     Difficulty (1-5)
-                    <select class="qinput" @bind="difficulty" disabled="@isSubmitting">
-                        @for (var i = 1; i <= 5; i++)
-                        {
-                            <option value="@i">@i</option>
-                        }
-                    </select>
+                    <div class="qselect-wrap">
+                        <select class="qinput qselect" @bind="difficulty" disabled="@isSubmitting">
+                            @for (var i = 1; i <= 5; i++)
+                            {
+                                <option value="@i">@i</option>
+                            }
+                        </select>
+                    </div>
                 </label>
 
                 <label class="full">

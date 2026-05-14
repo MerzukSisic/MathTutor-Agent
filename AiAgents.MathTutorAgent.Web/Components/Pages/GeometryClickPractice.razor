@@ -1,0 +1,194 @@
+@using System.Globalization
+
+<div class="geometry-practice">
+    <div class="geometry-practice-head">
+        <h4>🧩 Shape Practice</h4>
+        <span class="geometry-tag">@Model.ShapeLabel · @TargetLabel</span>
+    </div>
+
+    <p class="geometry-help">@HelpText</p>
+
+    @if (IsCubeVertices)
+    {
+        <svg class="geometry-canvas" viewBox="0 0 220 150" role="img" aria-label="Interactive cube vertices">
+            @foreach (var edge in CubeEdges)
+            {
+                <line x1="@F(edge.X1)" y1="@F(edge.Y1)" x2="@F(edge.X2)" y2="@F(edge.Y2)" class="cube-edge" />
+            }
+
+            @for (var i = 0; i < CubePoints.Length; i++)
+            {
+                var index = i;
+                var point = CubePoints[i];
+                <circle cx="@F(point.X)" cy="@F(point.Y)"
+                        r="8"
+                        class="vertex-node @(selection[i] ? "selected" : string.Empty)"
+                        @onpointerdown="() => ToggleSelection(index)" />
+            }
+        </svg>
+    }
+    else if (IsCubeSides)
+    {
+        <svg class="geometry-canvas" viewBox="0 0 250 170" role="img" aria-label="Interactive cube faces">
+            @for (var i = 0; i < CubeFaces.Length; i++)
+            {
+                var index = i;
+                var face = CubeFaces[i];
+                <rect x="@F(face.X)" y="@F(face.Y)" width="40" height="40"
+                      rx="6" ry="6"
+                      class="cube-face @(selection[i] ? "selected" : string.Empty)"
+                      @onpointerdown="() => ToggleSelection(index)" />
+            }
+        </svg>
+    }
+    else
+    {
+        <svg class="geometry-canvas" viewBox="0 0 220 150" role="img" aria-label="Interactive polygon">
+            @{
+                var points = PolygonPoints;
+            }
+
+            @if (IsSidesMode)
+            {
+                @for (var i = 0; i < points.Count; i++)
+                {
+                    var current = points[i];
+                    var next = points[(i + 1) % points.Count];
+                    <line x1="@F(current.X)" y1="@F(current.Y)" x2="@F(next.X)" y2="@F(next.Y)" class="polygon-edge" />
+                }
+
+                @for (var i = 0; i < points.Count; i++)
+                {
+                    var index = i;
+                    var current = points[i];
+                    var next = points[(i + 1) % points.Count];
+                    <line x1="@F(current.X)" y1="@F(current.Y)" x2="@F(next.X)" y2="@F(next.Y)"
+                          class="side-hit @(selection[i] ? "selected" : string.Empty)"
+                          @onpointerdown="() => ToggleSelection(index)" />
+                }
+            }
+            else
+            {
+                @for (var i = 0; i < points.Count; i++)
+                {
+                    var current = points[i];
+                    var next = points[(i + 1) % points.Count];
+                    <line x1="@F(current.X)" y1="@F(current.Y)" x2="@F(next.X)" y2="@F(next.Y)" class="polygon-edge" />
+                }
+
+                @for (var i = 0; i < points.Count; i++)
+                {
+                    var index = i;
+                    var point = points[i];
+                    <circle cx="@F(point.X)" cy="@F(point.Y)"
+                            r="8"
+                            class="vertex-node @(selection[i] ? "selected" : string.Empty)"
+                            @onpointerdown="() => ToggleSelection(index)" />
+                }
+            }
+        </svg>
+    }
+
+    <div class="geometry-practice-meta">
+        <strong>Selected: @SelectedCount</strong>
+        <button type="button" class="btn-clear-geometry" @onclick="ClearSelection" disabled="@Disabled">Clear</button>
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public GeometryInteractionModel Model { get; set; } = default!;
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public EventCallback<int> OnSelectionChanged { get; set; }
+
+    private bool[] selection = Array.Empty<bool>();
+    private string? selectionKey;
+
+    private static readonly (double X, double Y)[] CubePoints =
+    {
+        (45, 42), (105, 42), (105, 102), (45, 102),
+        (72, 22), (132, 22), (132, 82), (72, 82)
+    };
+
+    private static readonly (double X1, double Y1, double X2, double Y2)[] CubeEdges =
+    {
+        (45, 42, 105, 42), (105, 42, 105, 102), (105, 102, 45, 102), (45, 102, 45, 42),
+        (72, 22, 132, 22), (132, 22, 132, 82), (132, 82, 72, 82), (72, 82, 72, 22),
+        (45, 42, 72, 22), (105, 42, 132, 22), (105, 102, 132, 82), (45, 102, 72, 82)
+    };
+
+    private static readonly (double X, double Y)[] CubeFaces =
+    {
+        (85, 20),   // top
+        (40, 65),   // left
+        (85, 65),   // front
+        (130, 65),  // right
+        (85, 110),  // bottom
+        (180, 65)   // back
+    };
+
+    private bool IsSidesMode => string.Equals(Model.CountTarget, "sides", StringComparison.OrdinalIgnoreCase);
+    private bool IsCubeVertices => string.Equals(Model.ShapeKey, "cube", StringComparison.OrdinalIgnoreCase) && !IsSidesMode;
+    private bool IsCubeSides => string.Equals(Model.ShapeKey, "cube", StringComparison.OrdinalIgnoreCase) && IsSidesMode;
+    private int SelectedCount => selection.Count(item => item);
+    private string TargetLabel => IsSidesMode ? "Count sides" : "Count vertices";
+    private string HelpText => IsSidesMode
+        ? "Click each side once. Your selected count is used as the answer."
+        : "Click each vertex (corner) once. Your selected count is used as the answer.";
+
+    private IReadOnlyList<(double X, double Y)> PolygonPoints
+    {
+        get
+        {
+            var count = Math.Clamp(Model.ElementCount, 3, 10);
+            var points = new List<(double X, double Y)>(count);
+            const double centerX = 110;
+            const double centerY = 75;
+            const double radius = 52;
+
+            for (var i = 0; i < count; i++)
+            {
+                var angle = -Math.PI / 2 + 2 * Math.PI * i / count;
+                points.Add((centerX + radius * Math.Cos(angle), centerY + radius * Math.Sin(angle)));
+            }
+
+            return points;
+        }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var newKey = $"{Model.QuestionText}:{Model.ShapeKey}:{Model.CountTarget}:{Model.ElementCount}";
+        if (string.Equals(selectionKey, newKey, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        selectionKey = newKey;
+        selection = new bool[Model.ElementCount];
+        await OnSelectionChanged.InvokeAsync(0);
+    }
+
+    private async Task ToggleSelection(int index)
+    {
+        if (Disabled || index < 0 || index >= selection.Length)
+        {
+            return;
+        }
+
+        selection[index] = !selection[index];
+        await OnSelectionChanged.InvokeAsync(SelectedCount);
+    }
+
+    private async Task ClearSelection()
+    {
+        if (Disabled || selection.Length == 0)
+        {
+            return;
+        }
+
+        Array.Fill(selection, false);
+        await OnSelectionChanged.InvokeAsync(0);
+    }
+
+    private static string F(double value) => value.ToString("0.###", CultureInfo.InvariantCulture);
+}

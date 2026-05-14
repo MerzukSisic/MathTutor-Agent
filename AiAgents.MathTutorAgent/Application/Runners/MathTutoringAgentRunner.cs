@@ -13,6 +13,7 @@ public class MathTutoringAgentRunner(
     CurriculumService curriculumService,
     AssessmentService assessmentService,
     KnowledgeTracingService knowledgeTracingService,
+    CrossMathMilestoneService crossMathMilestoneService,
     RevisionService revisionService,
     ExplanationService explanationService,
     ImageIngestionService imageIngestionService,
@@ -21,7 +22,7 @@ public class MathTutoringAgentRunner(
     : SoftwareAgent<WorkItem, MathAction, MathTickResult, object>(
         new WorkQueuePerceptionSource(queueService),
         new MathTutoringPolicy(),
-        new MathTutoringActuator(curriculumService, assessmentService, knowledgeTracingService, revisionService,
+        new MathTutoringActuator(curriculumService, assessmentService, knowledgeTracingService, crossMathMilestoneService, revisionService,
             explanationService, imageIngestionService, validationService, logger))
 {
     // ✅ PATCH A: StepAsync with proper error handling

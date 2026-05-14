@@ -244,6 +244,12 @@
     box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.2);
 }
 
+.answer-input[readonly] {
+    background: #f8fafc;
+    color: #0f172a;
+    cursor: not-allowed;
+}
+
 .action-buttons {
     margin-top: 0.75rem;
     display: flex;
@@ -305,6 +311,16 @@
 
 .feedback-section p {
     margin: 0.3rem 0;
+}
+
+.challenge-lock {
+    margin-top: 0.7rem;
+    border: 1px dashed #38bdf8;
+    border-radius: 10px;
+    background: #eff6ff;
+    color: #0c4a6e;
+    font-weight: 700;
+    padding: 0.52rem 0.66rem;
 }
 
 .decision-badge {

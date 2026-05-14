@@ -1,0 +1,107 @@
+@page "/confirm-email"
+@attribute [AllowAnonymous]
+@using Microsoft.AspNetCore.WebUtilities
+@using System.Text.Json
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+
+<PageTitle>Confirm Email - MathTutor AI</PageTitle>
+
+<div class="auth-page">
+    <div class="auth-card">
+        <h1>Confirm Email</h1>
+        <p>Verifying your account email address.</p>
+
+        @if (!string.IsNullOrWhiteSpace(message))
+        {
+            <div class="auth-alert info">@message</div>
+        }
+
+        @if (!string.IsNullOrWhiteSpace(errorMessage))
+        {
+            <div class="auth-alert error">@errorMessage</div>
+        }
+
+        @if (isProcessing)
+        {
+            <button class="auth-btn" disabled="true">Confirming...</button>
+        }
+        else
+        {
+            <button class="auth-btn" @onclick="GoToLogin">Go to Login</button>
+        }
+    </div>
+</div>
+
+@code {
+    private string email = string.Empty;
+    private string token = string.Empty;
+    private string? message;
+    private string? errorMessage;
+    private bool isProcessing = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
+        var query = QueryHelpers.ParseQuery(uri.Query);
+        if (query.TryGetValue("email", out var emailValue))
+        {
+            email = emailValue.ToString();
+        }
+
+        if (query.TryGetValue("token", out var tokenValue))
+        {
+            token = tokenValue.ToString();
+        }
+
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(token))
+        {
+            errorMessage = "Invalid confirmation link.";
+            isProcessing = false;
+            return;
+        }
+
+        try
+        {
+            var result = await JS.InvokeAsync<JsonElement>("authFetch", "/api/auth/confirm-email",
+                new { email, token });
+
+            if (!result.GetProperty("ok").GetBoolean())
+            {
+                string? msg = null;
+                if (result.TryGetProperty("data", out var data) && data.ValueKind != JsonValueKind.Null)
+                {
+                    data.TryGetProperty("message", out var msgEl);
+                    msg = msgEl.ValueKind == JsonValueKind.String ? msgEl.GetString() : null;
+                }
+
+                errorMessage = string.IsNullOrWhiteSpace(msg) ? "Confirmation link is invalid or expired." : msg;
+                return;
+            }
+
+            string? okMessage = null;
+            if (result.TryGetProperty("data", out var successData) && successData.ValueKind != JsonValueKind.Null)
+            {
+                successData.TryGetProperty("message", out var msgEl);
+                okMessage = msgEl.ValueKind == JsonValueKind.String ? msgEl.GetString() : null;
+            }
+
+            message = string.IsNullOrWhiteSpace(okMessage)
+                ? "Email confirmed successfully."
+                : okMessage;
+        }
+        catch
+        {
+            errorMessage = "Unable to confirm email right now.";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    private void GoToLogin()
+    {
+        Navigation.NavigateTo("/login?status=confirmed", forceLoad: true);
+    }
+}

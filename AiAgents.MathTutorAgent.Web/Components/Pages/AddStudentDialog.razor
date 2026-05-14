@@ -7,74 +7,77 @@
 
 <PageTitle>Add Student - MathTutor AI</PageTitle>
 
-<div class="add-student-container">
-    <div class="add-student-card">
-        <div class="card-header">
-            <h2>➕ Add New Student</h2>
-            <button class="btn-back" @onclick="GoBack">
-                ← Back to Admin
+<div class="qform-shell">
+    <div class="qform-card">
+        <div class="qform-header">
+            <div>
+                <h2>➕ Add New Student</h2>
+                <p>Create a student profile and connect it to login account flow.</p>
+            </div>
+            <button class="qbtn ghost" @onclick="GoBack">
+                ← Back
             </button>
         </div>
 
-        <div class="form-section">
-            <div class="form-group">
-                <label for="name">Student Name</label>
-                <input 
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="q-alert error">
+                @errorMessage
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="q-alert success">
+                @successMessage
+            </div>
+        }
+
+        <div class="qform-grid">
+            <label class="full" for="name">
+                Student name
+                <input
                     id="name"
-                    type="text" 
-                    class="form-input" 
-                    @bind="name" 
+                    type="text"
+                    class="qinput"
+                    @bind="name"
                     placeholder="Enter full name"
                     disabled="@isSubmitting" />
                 @if (showNameError)
                 {
-                    <span class="error-text">Name is required</span>
+                    <span class="q-inline-error">Name is required.</span>
                 }
-            </div>
+            </label>
 
-            <div class="form-group">
-                <label for="email">Email Address</label>
-                <input 
+            <label class="full" for="email">
+                Email address
+                <input
                     id="email"
-                    type="email" 
-                    class="form-input" 
-                    @bind="email" 
+                    type="email"
+                    class="qinput"
+                    @bind="email"
                     placeholder="student@example.com"
                     disabled="@isSubmitting" />
                 @if (showEmailError)
                 {
-                    <span class="error-text">Valid email is required</span>
+                    <span class="q-inline-error">Valid email is required.</span>
                 }
-            </div>
+            </label>
+        </div>
 
-            @if (!string.IsNullOrEmpty(errorMessage))
-            {
-                <div class="alert alert-danger">
-                    ❌ @errorMessage
-                </div>
-            }
-
-            @if (!string.IsNullOrEmpty(successMessage))
-            {
-                <div class="alert alert-success">
-                    ✅ @successMessage
-                </div>
-            }
-
-            <div class="form-actions">
-                <button 
-                    class="btn-cancel" 
+        <div class="qform-actions">
+            <button
+                    class="qbtn ghost"
                     @onclick="GoBack"
                     disabled="@isSubmitting">
                     Cancel
                 </button>
-                <button 
-                    class="btn-submit" 
+                <button
+                    class="qbtn primary"
                     @onclick="CreateStudent"
                     disabled="@(isSubmitting || !IsValid())">
                     @(isSubmitting ? "Creating..." : "Create Student")
                 </button>
-            </div>
         </div>
     </div>
 </div>
@@ -118,19 +121,21 @@
 
         try
         {
-            var request = new { Name = name.Trim(), Email = email.Trim() };
+            var request = new CreateStudentDto { Name = name.Trim(), Email = email.Trim() };
             var response = await Http.PostAsJsonAsync("/api/admin/students", request);
             
             if (response.IsSuccessStatusCode)
             {
                 successMessage = "Student created successfully! Redirecting...";
-                await Task.Delay(1500); // Show success message
-                Navigation.NavigateTo("/admin");
+                await Task.Delay(900);
+                Navigation.NavigateTo("/admin?status=student-created");
             }
             else
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                errorMessage = $"Failed to create student: {response.StatusCode}";
+                errorMessage = string.IsNullOrWhiteSpace(errorContent)
+                    ? $"Failed to create student ({response.StatusCode})."
+                    : ExtractApiErrorMessage(errorContent);
                 Console.WriteLine($"Error: {errorContent}");
             }
         }
@@ -148,5 +153,24 @@
     private void GoBack()
     {
         Navigation.NavigateTo("/admin");
+    }
+
+    private static string ExtractApiErrorMessage(string raw)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(raw);
+            if (doc.RootElement.TryGetProperty("message", out var msgElement) &&
+                msgElement.ValueKind == System.Text.Json.JsonValueKind.String)
+            {
+                return msgElement.GetString() ?? raw;
+            }
+        }
+        catch
+        {
+            // ignore parse errors
+        }
+
+        return raw;
     }
 }

@@ -18,6 +18,8 @@ public class MathTutorDbContext(DbContextOptions<MathTutorDbContext> options) : 
     public DbSet<WorkItem> WorkItems => Set<WorkItem>();
     public DbSet<SystemSettings> SystemSettings => Set<SystemSettings>();
     public DbSet<UserAccount> UserAccounts => Set<UserAccount>();
+    public DbSet<AuthToken> AuthTokens => Set<AuthToken>();
+    public DbSet<StudentChallengeProgress> StudentChallengeProgress => Set<StudentChallengeProgress>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -45,6 +47,26 @@ public class MathTutorDbContext(DbContextOptions<MathTutorDbContext> options) : 
             .WithMany()
             .HasForeignKey(u => u.StudentId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<AuthToken>()
+            .HasIndex(t => t.TokenHash)
+            .IsUnique();
+
+        modelBuilder.Entity<AuthToken>()
+            .HasOne(t => t.UserAccount)
+            .WithMany()
+            .HasForeignKey(t => t.UserAccountId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<StudentChallengeProgress>()
+            .HasIndex(x => new { x.StudentId, x.ChallengeKey })
+            .IsUnique();
+
+        modelBuilder.Entity<StudentChallengeProgress>()
+            .HasOne(x => x.Student)
+            .WithMany(s => s.ChallengeProgress)
+            .HasForeignKey(x => x.StudentId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         // SystemSettings - single row
         modelBuilder.Entity<SystemSettings>()

@@ -28,33 +28,49 @@
         <div class="qform-grid">
             <label>
                 Topic
-                <select class="qinput" @bind="topicId" disabled="@isSubmitting">
-                    <option value="0">Select topic</option>
-                    @foreach (var topic in topics)
-                    {
-                        <option value="@topic.Id">@topic.Name (@topic.Area)</option>
-                    }
-                </select>
+                <div class="qselect-wrap">
+                    <select class="qinput qselect" @bind="topicId" disabled="@isSubmitting">
+                        <option value="0">Select topic</option>
+                        @foreach (var topic in topics)
+                        {
+                            <option value="@topic.Id">@topic.Name (@topic.Area)</option>
+                        }
+                    </select>
+                </div>
+                @if (showTopicError)
+                {
+                    <span class="q-inline-error">Please select a topic.</span>
+                }
             </label>
 
             <label>
                 Difficulty (1-5)
-                <select class="qinput" @bind="difficulty" disabled="@isSubmitting">
-                    @for (var i = 1; i <= 5; i++)
-                    {
-                        <option value="@i">@i</option>
-                    }
-                </select>
+                <div class="qselect-wrap">
+                    <select class="qinput qselect" @bind="difficulty" disabled="@isSubmitting">
+                        @for (var i = 1; i <= 5; i++)
+                        {
+                            <option value="@i">@i</option>
+                        }
+                    </select>
+                </div>
             </label>
 
             <label class="full">
                 Question text
                 <textarea class="qinput" rows="4" @bind="questionText" disabled="@isSubmitting" placeholder="Example: What is 17 + 26?"></textarea>
+                @if (showQuestionTextError)
+                {
+                    <span class="q-inline-error">Question text is required.</span>
+                }
             </label>
 
             <label class="full">
                 Correct answer
                 <input class="qinput" @bind="correctAnswer" disabled="@isSubmitting" placeholder="Example: 43" />
+                @if (showCorrectAnswerError)
+                {
+                    <span class="q-inline-error">Correct answer is required.</span>
+                }
             </label>
 
             <label class="full">
@@ -87,6 +103,9 @@
     private string commonMistakesRaw = string.Empty;
 
     private bool isSubmitting;
+    private bool showTopicError;
+    private bool showQuestionTextError;
+    private bool showCorrectAnswerError;
     private string? errorMessage;
     private string? successMessage;
 
@@ -105,14 +124,25 @@
     private bool IsValid()
         => topicId > 0 && !string.IsNullOrWhiteSpace(questionText) && !string.IsNullOrWhiteSpace(correctAnswer);
 
+    private bool ValidateForm()
+    {
+        showTopicError = topicId <= 0;
+        showQuestionTextError = string.IsNullOrWhiteSpace(questionText);
+        showCorrectAnswerError = string.IsNullOrWhiteSpace(correctAnswer);
+        return !showTopicError && !showQuestionTextError && !showCorrectAnswerError;
+    }
+
     private async Task CreateQuestion()
     {
         errorMessage = null;
         successMessage = null;
+        showTopicError = false;
+        showQuestionTextError = false;
+        showCorrectAnswerError = false;
 
-        if (!IsValid())
+        if (!ValidateForm())
         {
-            errorMessage = "Please fill all required fields.";
+            errorMessage = "Please fix validation errors in the form.";
             return;
         }
 

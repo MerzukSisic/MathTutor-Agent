@@ -20,6 +20,9 @@ public class GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExcep
 
     private static Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
+        var environment = context.RequestServices.GetService<IHostEnvironment>();
+        var includeDetails = environment?.IsDevelopment() == true;
+
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 
@@ -27,7 +30,7 @@ public class GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExcep
         {
             statusCode = context.Response.StatusCode,
             message = "Internal Server Error",
-            detailed = exception.Message
+            detailed = includeDetails ? exception.Message : null
         };
 
         return context.Response.WriteAsync(JsonSerializer.Serialize(response));

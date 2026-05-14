@@ -10,6 +10,10 @@ namespace AiAgents.MathTutorAgent.Web.Components.Pages;
 public partial class Quiz
 {
     [Parameter] public int StudentId { get; set; }
+    private static readonly Regex ArithmeticOperationRegex = new(@"(\d+)\s*([+\-])\s*(\d+)", RegexOptions.Compiled);
+    private static readonly Regex GeometryCountRegex = new(
+        @"how\s+many\s+(?<target>sides|vertices)\s+does\s+(?:an?\s+)?(?<shape>[a-z\-\s]+?)\s+have\??",
+        RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private QuestionDto? currentQuestion;
     private string userAnswer = string.Empty;
@@ -23,6 +27,8 @@ public partial class Quiz
     private int remainingSeconds = 120;
     private Timer? countdownTimer;
     private VisualPracticeModel? visualPractice;
+    private GeometryInteractionModel? geometryInteraction;
+    private CrossMathChallengeModel? milestoneChallenge;
     private string? dragSource;
     private double TimeProgressPercent => timeLimitSeconds <= 0 ? 0 : Math.Max(0, remainingSeconds * 100.0 / timeLimitSeconds);
 
@@ -64,7 +70,7 @@ public partial class Quiz
                 questionStartTime = DateTime.UtcNow;
                 timeLimitSeconds = Math.Max(30, currentQuestion?.TimeLimitSeconds ?? 120);
                 remainingSeconds = timeLimitSeconds;
-                SetupVisualPractice();
+                SetupQuestionInteractions();
                 StartCountdown();
                 isLoading = false;
                 await InvokeAsync(StateHasChanged);
@@ -80,6 +86,7 @@ public partial class Quiz
 
                 isSubmitting = false;
                 StopCountdown();
+                milestoneChallenge = ToChallengeModel(feedback?.MilestoneChallenge);
                 await InvokeAsync(StateHasChanged);
                 break;
 
@@ -104,6 +111,8 @@ public partial class Quiz
         explanation = null;
         userAnswer = string.Empty;
         visualPractice = null;
+        geometryInteraction = null;
+        milestoneChallenge = null;
 
         try
         {
@@ -180,6 +189,12 @@ public partial class Quiz
         }
     }
 
+    private void SetupQuestionInteractions()
+    {
+        SetupVisualPractice();
+        SetupGeometryInteraction();
+    }
+
     private void SetupVisualPractice()
     {
         visualPractice = null;
@@ -189,7 +204,7 @@ public partial class Quiz
             return;
         }
 
-        var match = Regex.Match(currentQuestion.QuestionText, @"(\d+)\s*([+\-])\s*(\d+)");
+        var match = ArithmeticOperationRegex.Match(currentQuestion.QuestionText);
 
         if (!match.Success)
         {
@@ -202,6 +217,12 @@ public partial class Quiz
 
         if (op == "+")
         {
+            var result = a + b;
+            if (a > 10 || b > 10 || result > 20)
+            {
+                return;
+            }
+
             visualPractice = new VisualPracticeModel
             {
                 Mode = "addition",
@@ -215,6 +236,12 @@ public partial class Quiz
 
         if (op == "-" && a >= b)
         {
+            var result = a - b;
+            if (a > 20 || b > 10 || result > 12)
+            {
+                return;
+            }
+
             visualPractice = new VisualPracticeModel
             {
                 Mode = "subtraction",
@@ -225,6 +252,168 @@ public partial class Quiz
         }
     }
 
+    private void SetupGeometryInteraction()
+    {
+        geometryInteraction = null;
+
+        if (currentQuestion == null)
+        {
+            return;
+        }
+
+        var match = GeometryCountRegex.Match(currentQuestion.QuestionText);
+        if (!match.Success)
+        {
+            return;
+        }
+
+        var target = match.Groups["target"].Value.Trim().ToLowerInvariant();
+        var shapeLabel = match.Groups["shape"].Value.Trim().ToLowerInvariant();
+        var shapeKey = NormalizeShapeKey(shapeLabel);
+        if (shapeKey == null)
+        {
+            return;
+        }
+
+        var elementCount = ResolveElementCount(shapeKey, target);
+        if ((elementCount < 3 || elementCount > 10) && shapeKey != "cube")
+        {
+            return;
+        }
+
+        geometryInteraction = new GeometryInteractionModel
+        {
+            ShapeKey = shapeKey,
+            ShapeLabel = ToTitleCase(shapeLabel),
+            CountTarget = target,
+            ElementCount = elementCount,
+            QuestionText = currentQuestion.QuestionText
+        };
+    }
+
+    private static string? NormalizeShapeKey(string rawShape)
+    {
+        if (string.IsNullOrWhiteSpace(rawShape))
+        {
+            return null;
+        }
+
+        var normalized = rawShape.Trim().ToLowerInvariant();
+
+        if (normalized.Contains("triangle")) return "triangle";
+        if (normalized.Contains("square")) return "square";
+        if (normalized.Contains("rectangle")) return "rectangle";
+        if (normalized.Contains("quadrilateral")) return "quadrilateral";
+        if (normalized.Contains("pentagon")) return "pentagon";
+        if (normalized.Contains("hexagon")) return "hexagon";
+        if (normalized.Contains("heptagon")) return "heptagon";
+        if (normalized.Contains("octagon")) return "octagon";
+        if (normalized.Contains("nonagon")) return "nonagon";
+        if (normalized.Contains("decagon")) return "decagon";
+        if (normalized.Contains("cube")) return "cube";
+
+        return null;
+    }
+
+    private static int ResolveElementCount(string shapeKey, string target)
+    {
+        var isSides = string.Equals(target, "sides", StringComparison.OrdinalIgnoreCase);
+
+        return shapeKey switch
+        {
+            "triangle" => 3,
+            "square" => 4,
+            "rectangle" => 4,
+            "quadrilateral" => 4,
+            "pentagon" => 5,
+            "hexagon" => 6,
+            "heptagon" => 7,
+            "octagon" => 8,
+            "nonagon" => 9,
+            "decagon" => 10,
+            "cube" when isSides => 6,
+            "cube" => 8,
+            _ => 0
+        };
+    }
+
+    private static string ToTitleCase(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return value;
+        }
+
+        return string.Join(" ", value.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Select(token => char.ToUpperInvariant(token[0]) + token[1..].ToLowerInvariant()));
+    }
+
+    private void HandleGeometrySelectionChanged(int selectedCount)
+    {
+        userAnswer = selectedCount <= 0 ? string.Empty : selectedCount.ToString();
+    }
+
+    private async Task HandleMilestoneChallengeCompleted()
+    {
+        if (milestoneChallenge == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var currentKey = milestoneChallenge.ChallengeKey;
+            var response = await Http.PostAsJsonAsync("/api/agent/complete-milestone", new
+            {
+                StudentId,
+                ChallengeKey = currentKey
+            });
+            response.EnsureSuccessStatusCode();
+
+            var payload = await response.Content.ReadFromJsonAsync<MilestoneCompletionResponse>();
+            milestoneChallenge = ToChallengeModel(payload?.NextMilestone);
+
+            if (milestoneChallenge != null)
+            {
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            await GetNextQuestion();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+    }
+
+    private static CrossMathChallengeModel? ToChallengeModel(CrossMathMilestoneDto? dto)
+    {
+        if (dto == null || string.IsNullOrWhiteSpace(dto.ChallengeKey))
+        {
+            return null;
+        }
+
+        var mode = dto.Mode?.Trim().ToLowerInvariant() switch
+        {
+            "addition" => CrossMathOperationMode.Addition,
+            "subtraction" => CrossMathOperationMode.Subtraction,
+            "multiplication" => CrossMathOperationMode.Multiplication,
+            "division" => CrossMathOperationMode.Division,
+            "mixed" => CrossMathOperationMode.Mixed,
+            _ => CrossMathOperationMode.Addition
+        };
+
+        return new CrossMathChallengeModel
+        {
+            ChallengeKey = dto.ChallengeKey,
+            Title = dto.Title,
+            Subtitle = dto.Subtitle,
+            Mode = mode,
+            Size = dto.Size
+        };
+    }
+
     private void BeginAppleDrag(string source)
     {
         dragSource = source;
@@ -233,6 +422,44 @@ public partial class Quiz
     private void BeginAppleDragA(DragEventArgs _) => BeginAppleDrag("A");
     private void BeginAppleDragB(DragEventArgs _) => BeginAppleDrag("B");
     private void BeginAppleDragMain(DragEventArgs _) => BeginAppleDrag("MAIN");
+
+    private void TakeAppleFromA()
+    {
+        if (visualPractice == null || visualPractice.Mode != "addition" || visualPractice.SourceA <= 0)
+        {
+            return;
+        }
+
+        visualPractice.SourceA--;
+        visualPractice.Dropped++;
+    }
+
+    private void TakeAppleFromB()
+    {
+        if (visualPractice == null || visualPractice.Mode != "addition" || visualPractice.SourceB <= 0)
+        {
+            return;
+        }
+
+        visualPractice.SourceB--;
+        visualPractice.Dropped++;
+    }
+
+    private void TakeAppleFromMain()
+    {
+        if (visualPractice == null || visualPractice.Mode != "subtraction")
+        {
+            return;
+        }
+
+        if (visualPractice.Remaining <= 0 || visualPractice.Removed >= visualPractice.B)
+        {
+            return;
+        }
+
+        visualPractice.Remaining--;
+        visualPractice.Removed++;
+    }
 
     private void DropAppleToAnswer(DragEventArgs _)
     {
@@ -245,6 +472,7 @@ public partial class Quiz
         {
             visualPractice.SourceA--;
             visualPractice.Dropped++;
+            dragSource = null;
             return;
         }
 
@@ -252,6 +480,7 @@ public partial class Quiz
         {
             visualPractice.SourceB--;
             visualPractice.Dropped++;
+            dragSource = null;
         }
     }
 
@@ -266,6 +495,7 @@ public partial class Quiz
         {
             visualPractice.Remaining--;
             visualPractice.Removed++;
+            dragSource = null;
         }
     }
 
@@ -362,6 +592,12 @@ public partial class Quiz
         public string Decision { get; set; } = string.Empty;
         public int TimeLimitSeconds { get; set; }
         public double TimeSpentSeconds { get; set; }
+        public CrossMathMilestoneDto? MilestoneChallenge { get; set; }
+    }
+
+    private sealed class MilestoneCompletionResponse
+    {
+        public CrossMathMilestoneDto? NextMilestone { get; set; }
     }
 
     private sealed class VisualPracticeModel

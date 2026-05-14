@@ -47,9 +47,13 @@
 
             <div class="question-body">
                 <p class="question-text">@currentQuestion.QuestionText</p>
-                <AreaVisualGuide AreaName="@currentQuestion.AreaName"
-                                 TopicName="@currentQuestion.TopicName"
-                                 QuestionText="@currentQuestion.QuestionText" />
+
+                @if (geometryInteraction != null)
+                {
+                    <GeometryClickPractice Model="geometryInteraction"
+                                           Disabled="@(isSubmitting || isLoading)"
+                                           OnSelectionChanged="HandleGeometrySelectionChanged" />
+                }
 
                 @if (visualPractice != null)
                 {
@@ -65,7 +69,7 @@
                                 <span class="math-op">=</span>
                                 <span class="math-tile answer">@GetVisualResult()</span>
                             </div>
-                            <p>Drag apples to the answer basket and count them.</p>
+                            <p>Drag or click apples to move them into the answer basket.</p>
                             <div class="apple-playground">
                                 <div class="apple-source">
                                     <strong>Group A (@visualPractice.SourceA left)</strong>
@@ -74,7 +78,8 @@
                                         {
                                             <span class="apple"
                                                   draggable="true"
-                                                  @ondragstart="@BeginAppleDragA">🍎</span>
+                                                  @ondragstart="@BeginAppleDragA"
+                                                  @onclick="@TakeAppleFromA">🍎</span>
                                         }
                                     </div>
                                 </div>
@@ -85,12 +90,14 @@
                                         {
                                             <span class="apple"
                                                   draggable="true"
-                                                  @ondragstart="@BeginAppleDragB">🍎</span>
+                                                  @ondragstart="@BeginAppleDragB"
+                                                  @onclick="@TakeAppleFromB">🍎</span>
                                         }
                                     </div>
                                 </div>
                                 <div class="apple-target"
                                      @ondragover:preventDefault
+                                     @ondrop:preventDefault
                                      @ondrop="DropAppleToAnswer">
                                     <strong>Answer Basket</strong>
                                     <p>Apples dropped: @visualPractice.Dropped</p>
@@ -106,7 +113,7 @@
                                 <span class="math-op">=</span>
                                 <span class="math-tile answer">@GetVisualResult()</span>
                             </div>
-                            <p>Drag apples away to subtract, then count what remains.</p>
+                            <p>Drag or click apples away to subtract, then count what remains.</p>
                             <div class="apple-playground">
                                 <div class="apple-source">
                                     <strong>Start Basket (@visualPractice.Remaining left)</strong>
@@ -115,12 +122,14 @@
                                         {
                                             <span class="apple"
                                                   draggable="true"
-                                                  @ondragstart="@BeginAppleDragMain">🍎</span>
+                                                  @ondragstart="@BeginAppleDragMain"
+                                                  @onclick="@TakeAppleFromMain">🍎</span>
                                         }
                                     </div>
                                 </div>
                                 <div class="apple-target remove"
                                      @ondragover:preventDefault
+                                     @ondrop:preventDefault
                                      @ondrop="DropAppleToRemove">
                                     <strong>Remove Basket</strong>
                                     <p>Removed: @visualPractice.Removed / @visualPractice.B</p>
@@ -140,7 +149,8 @@
                        class="answer-input"
                        @bind="userAnswer"
                        @bind:event="oninput"
-                       placeholder="Enter your answer"
+                       placeholder="@(geometryInteraction != null ? "Click sides/vertices above to fill answer" : "Enter your answer")"
+                       readonly="@(geometryInteraction != null)"
                        disabled="@(isSubmitting || isLoading)"
                        @onkeypress="HandleKeyPress"/>
 
@@ -184,10 +194,26 @@
                         </span>
                     </p>
 
-                    <button class="btn-next" @onclick="GetNextQuestion">
-                        Next Question →
-                    </button>
+                    @if (milestoneChallenge == null)
+                    {
+                        <button class="btn-next" @onclick="GetNextQuestion">
+                            Next Question →
+                        </button>
+                    }
+                    else
+                    {
+                        <div class="challenge-lock">
+                            Complete the chapter challenge below to continue.
+                        </div>
+                    }
                 </div>
+            }
+
+            @if (milestoneChallenge != null)
+            {
+                <CrossMathChallenge Model="milestoneChallenge"
+                                    Disabled="@(isSubmitting || isLoading)"
+                                    OnCompleted="HandleMilestoneChallengeCompleted" />
             }
 
             @if (explanation != null)
@@ -198,7 +224,9 @@
 
                     @if (currentQuestion != null)
                     {
-                        <VisualMathExplanation QuestionText="@currentQuestion.QuestionText" />
+                        <AreaVisualGuide AreaName="@currentQuestion.AreaName"
+                                         TopicName="@currentQuestion.TopicName"
+                                         QuestionText="@currentQuestion.QuestionText" />
                     }
 
                     @if (!string.IsNullOrEmpty(explanation.Example))

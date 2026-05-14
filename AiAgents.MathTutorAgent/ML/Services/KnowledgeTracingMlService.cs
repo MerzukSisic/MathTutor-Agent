@@ -32,13 +32,21 @@ public class KnowledgeTracingMlService(ILogger<KnowledgeTracingMlService> logger
         float daysSinceLastPractice,
         int totalAttempts,
         int consecutiveCorrect,
-        int consecutiveIncorrect)
+        int consecutiveIncorrect,
+        int chapterChallengesCompleted,
+        bool topicChapterChallengeCompleted,
+        bool finalChallengeCompleted,
+        float daysSinceLastChallenge)
     {
         if (_predictionEngine == null)
         {
             // Fallback: simple heuristic
             var change = recentAccuracy * 10 - (1 - recentAccuracy) * 5;
             change += consecutiveCorrect * 2 - consecutiveIncorrect * 3;
+            change += chapterChallengesCompleted * 0.8f;
+            if (topicChapterChallengeCompleted) change += 1.4f;
+            if (finalChallengeCompleted) change += 2.2f;
+            change -= Math.Min(4f, daysSinceLastChallenge * 0.15f);
             return (float)Math.Clamp(currentMastery + change, 0, 100);
         }
 
@@ -51,7 +59,11 @@ public class KnowledgeTracingMlService(ILogger<KnowledgeTracingMlService> logger
             DaysSinceLastPractice = daysSinceLastPractice,
             TotalAttempts = totalAttempts,
             ConsecutiveCorrect = consecutiveCorrect,
-            ConsecutiveIncorrect = consecutiveIncorrect
+            ConsecutiveIncorrect = consecutiveIncorrect,
+            ChapterChallengesCompleted = chapterChallengesCompleted,
+            TopicChapterChallengeCompleted = topicChapterChallengeCompleted ? 1f : 0f,
+            FinalChallengeCompleted = finalChallengeCompleted ? 1f : 0f,
+            DaysSinceLastChallenge = daysSinceLastChallenge
         };
 
         var prediction = _predictionEngine.Predict(input);

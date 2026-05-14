@@ -1,0 +1,77 @@
+<div class="crossmath-challenge">
+    <div class="crossmath-head">
+        <div>
+            <h3>🧠 @Model.Title</h3>
+            <p>@Model.Subtitle</p>
+        </div>
+        <span class="crossmath-size">@Model.Size x @Model.Size</span>
+    </div>
+
+    <div class="crossmath-board">
+        @for (var row = 0; row < Model.Size; row++)
+        {
+            <div class="crossmath-row">
+                @for (var col = 0; col < Model.Size; col++)
+                {
+                    if (hiddenMask[row][col])
+                    {
+                        var rowIndex = row;
+                        var colIndex = col;
+                        var active = activeRow == row && activeCol == col;
+                        <button type="button"
+                                class="math-cell hidden @(active ? "active" : string.Empty)"
+                                @onclick="() => SelectCell(rowIndex, colIndex)"
+                                disabled="@Disabled">
+                            @(boardValues[row][col]?.ToString() ?? "?")
+                        </button>
+                    }
+                    else
+                    {
+                        <span class="math-cell fixed">@boardValues[row][col]</span>
+                    }
+
+                    if (col < Model.Size - 1)
+                    {
+                        <span class="math-op">@GetOperationSymbol(rowModes[row])</span>
+                    }
+                }
+
+                <span class="math-op equals">=</span>
+                <span class="row-target">@rowTargets[row]</span>
+                <span class="row-status @(IsRowCorrect(row) ? "ok" : "pending")">
+                    @(IsRowCorrect(row) ? "✓" : "…")
+                </span>
+            </div>
+        }
+    </div>
+
+    <div class="crossmath-bank">
+        <p>Choose a number, then click a highlighted cell.</p>
+        <div class="bank-items">
+            @for (var i = 0; i < bank.Count; i++)
+            {
+                var token = bank[i];
+                var index = i;
+                <button type="button"
+                        class="bank-item @(token.Used ? "used" : string.Empty)"
+                        @onclick="() => UseToken(index)"
+                        disabled="@(token.Used || Disabled || activeRow < 0)">
+                    @token.Value
+                </button>
+            }
+        </div>
+    </div>
+
+    <div class="crossmath-actions">
+        <span class="progress">Rows solved: @SolvedRows / @Model.Size</span>
+        <button type="button" class="btn-clear-cell" @onclick="ClearActiveCell" disabled="@(Disabled || activeRow < 0)">Clear Cell</button>
+        <button type="button" class="btn-reset-board" @onclick="ResetBoard" disabled="@Disabled">Reset Board</button>
+    </div>
+
+    @if (IsCompleted)
+    {
+        <div class="crossmath-success">
+            🎉 Challenge completed! Great work.
+        </div>
+    }
+</div>

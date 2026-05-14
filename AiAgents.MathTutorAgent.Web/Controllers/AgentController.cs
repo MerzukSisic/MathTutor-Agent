@@ -3,6 +3,7 @@ using AiAgents.MathTutorAgent.Domain.Entities;
 using AiAgents.MathTutorAgent.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Text.Json;
 using System.Security.Claims;
 
@@ -14,6 +15,7 @@ namespace AiAgents.MathTutorAgent.Web.Controllers;
 public class AgentController(WorkQueueService queueService) : ControllerBase
 {
     [HttpPost("next-question")]
+    [EnableRateLimiting("agent-ops")]
     public async Task<IActionResult> NextQuestion([FromBody] NextQuestionRequest request, CancellationToken ct)
     {
         if (!CanAccessStudent(request.StudentId))
@@ -35,6 +37,7 @@ public class AgentController(WorkQueueService queueService) : ControllerBase
     }
 
     [HttpPost("submit-answer")]
+    [EnableRateLimiting("agent-ops")]
     public async Task<IActionResult> SubmitAnswer([FromBody] SubmitAnswerRequest request, CancellationToken ct)
     {
         if (!CanAccessStudent(request.StudentId))
@@ -64,6 +67,7 @@ public class AgentController(WorkQueueService queueService) : ControllerBase
     }
 
     [HttpPost("explain")]
+    [EnableRateLimiting("agent-ops")]
     public async Task<IActionResult> Explain([FromBody] ExplainRequest request, CancellationToken ct)
     {
         if (!CanAccessStudent(request.StudentId))
@@ -91,7 +95,24 @@ public class AgentController(WorkQueueService queueService) : ControllerBase
         return Ok(new { WorkItemId = workItemId });
     }
 
+    [HttpPost("complete-milestone")]
+    [EnableRateLimiting("agent-ops")]
+    public async Task<IActionResult> CompleteMilestone(
+        [FromBody] CompleteMilestoneRequest request,
+        [FromServices] CrossMathMilestoneService milestoneService,
+        CancellationToken ct)
+    {
+        if (!CanAccessStudent(request.StudentId))
+        {
+            return Forbid();
+        }
+
+        var nextMilestone = await milestoneService.CompleteMilestoneAsync(request.StudentId, request.ChallengeKey, ct);
+        return Ok(new { NextMilestone = nextMilestone });
+    }
+
     [HttpPost("upload-image")]
+    [EnableRateLimiting("agent-ops")]
     public async Task<IActionResult> UploadImage([FromForm] IFormFile file, [FromForm] int studentId, CancellationToken ct)
     {
         if (!CanAccessStudent(studentId))
@@ -142,3 +163,4 @@ public class AgentController(WorkQueueService queueService) : ControllerBase
 public record NextQuestionRequest(int StudentId);
 public record SubmitAnswerRequest(int StudentId, int QuestionId, string Answer, int TimeMs, bool TimedOut = false);
 public record ExplainRequest(int StudentId, int? QuestionId, int? TopicId, string? ErrorTag);
+public record CompleteMilestoneRequest(int StudentId, string ChallengeKey);

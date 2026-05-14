@@ -20,6 +20,10 @@ public class KnowledgeTracingService
     {
         var question = await _context.Questions.FindAsync(new object[] { attempt.QuestionId }, ct);
         if (question == null) return;
+        var topicName = await _context.Topics
+            .Where(t => t.Id == question.TopicId)
+            .Select(t => t.Name)
+            .FirstOrDefaultAsync(ct) ?? string.Empty;
 
         var state = await _context.StudentTopicStates
             .FirstOrDefaultAsync(s => s.StudentId == studentId && s.TopicId == question.TopicId, ct);
@@ -65,6 +69,25 @@ public class KnowledgeTracingService
             else { consecutiveIncorrect++; break; }
         }
 
+        var challengeProgress = await _context.StudentChallengeProgress
+            .Where(x => x.StudentId == studentId)
+            .Select(x => new { x.ChallengeKey, x.CompletedAtUtc })
+            .ToListAsync(ct);
+
+        var chapterChallengesCompleted = ChallengeChapterMapper.CountCompletedChapterChallenges(
+            challengeProgress.Select(x => x.ChallengeKey));
+        var topicChapterKey = ChallengeChapterMapper.FromTopicName(topicName);
+        var topicChapterChallengeCompleted = topicChapterKey != null &&
+            challengeProgress.Any(x => string.Equals(x.ChallengeKey, topicChapterKey, StringComparison.OrdinalIgnoreCase));
+        var finalChallengeCompleted = challengeProgress.Any(x =>
+            string.Equals(x.ChallengeKey, ChallengeChapterMapper.FinalMixedKey, StringComparison.OrdinalIgnoreCase));
+        var lastChallengeCompletedAt = challengeProgress.Count == 0
+            ? (DateTime?)null
+            : challengeProgress.Max(x => x.CompletedAtUtc);
+        var daysSinceLastChallenge = lastChallengeCompletedAt.HasValue
+            ? (float)Math.Max(0, (DateTime.UtcNow - lastChallengeCompletedAt.Value).TotalDays)
+            : 30f;
+
         // ✅ USE ML MODEL TO PREDICT NEW MASTERY
         var predictedMastery = _mlService.PredictMasteryChange(
             topicDifficulty: question.Difficulty,
@@ -74,7 +97,11 @@ public class KnowledgeTracingService
             daysSinceLastPractice: (float)daysSince,
             totalAttempts: recentAttempts.Count,
             consecutiveCorrect: consecutiveCorrect,
-            consecutiveIncorrect: consecutiveIncorrect);
+            consecutiveIncorrect: consecutiveIncorrect,
+            chapterChallengesCompleted: chapterChallengesCompleted,
+            topicChapterChallengeCompleted: topicChapterChallengeCompleted,
+            finalChallengeCompleted: finalChallengeCompleted,
+            daysSinceLastChallenge: daysSinceLastChallenge);
 
         state.MasteryScore = predictedMastery;
         state.Confidence = Math.Min(1.0, recentAttempts.Count / 10.0);

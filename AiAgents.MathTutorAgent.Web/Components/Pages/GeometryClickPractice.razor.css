@@ -1,0 +1,163 @@
+.geometry-practice {
+    margin-top: 0.85rem;
+    border: 1px dashed #7dd3fc;
+    border-radius: 18px;
+    background: linear-gradient(180deg, #f8fbff, #f0f9ff);
+    padding: 0.8rem;
+}
+
+.geometry-practice-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.geometry-practice h4 {
+    margin: 0;
+    color: #0f172a;
+}
+
+.geometry-tag {
+    border: 1px solid #67e8f9;
+    border-radius: 999px;
+    background: #ecfeff;
+    color: #0e7490;
+    font-size: 0.76rem;
+    font-weight: 800;
+    padding: 0.28rem 0.55rem;
+}
+
+.geometry-help {
+    margin: 0.35rem 0 0.65rem;
+    color: #475569;
+    font-weight: 600;
+}
+
+.geometry-canvas {
+    width: 100%;
+    max-width: 330px;
+    border-radius: 12px;
+    background: #fff;
+    border: 1px solid #dbeafe;
+    padding: 0.35rem;
+    transition: box-shadow 180ms ease, border-color 180ms ease;
+    touch-action: manipulation;
+}
+
+.geometry-canvas:hover {
+    border-color: #7dd3fc;
+    box-shadow: 0 8px 20px rgba(14, 116, 144, 0.12);
+}
+
+.polygon-edge,
+.cube-edge {
+    stroke: #94a3b8;
+    stroke-width: 2.5;
+    fill: none;
+}
+
+.side-hit {
+    stroke: rgba(56, 189, 248, 0.001);
+    stroke-width: 22;
+    stroke-linecap: round;
+    pointer-events: stroke;
+    cursor: pointer;
+    transition: stroke 160ms ease;
+}
+
+.side-hit:hover {
+    stroke: rgba(56, 189, 248, 0.28);
+}
+
+.side-hit.selected {
+    stroke: rgba(34, 211, 238, 0.5);
+    animation: sidePulse 260ms ease;
+}
+
+.vertex-node {
+    fill: #fff;
+    stroke: #38bdf8;
+    stroke-width: 2;
+    cursor: pointer;
+    transition: transform 140ms ease, fill 140ms ease, stroke 140ms ease;
+    transform-origin: center;
+}
+
+.vertex-node:hover {
+    fill: #ecfeff;
+    stroke: #0ea5e9;
+    transform: scale(1.08);
+}
+
+.vertex-node.selected {
+    fill: #22d3ee;
+    stroke: #0e7490;
+    animation: popNode 260ms ease;
+}
+
+.cube-face {
+    fill: #fff;
+    stroke: #94a3b8;
+    stroke-width: 2.2;
+    cursor: pointer;
+    transition: transform 140ms ease, fill 140ms ease, stroke 140ms ease;
+    transform-origin: center;
+}
+
+.cube-face:hover {
+    fill: #f0f9ff;
+    stroke: #38bdf8;
+    transform: scale(1.03);
+}
+
+.cube-face.selected {
+    fill: #a5f3fc;
+    stroke: #0891b2;
+    animation: popNode 260ms ease;
+}
+
+.geometry-practice-meta {
+    margin-top: 0.65rem;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+}
+
+.btn-clear-geometry {
+    border: 1px solid #cbd5e1;
+    border-radius: 9px;
+    background: #fff;
+    color: #334155;
+    font-weight: 700;
+    padding: 0.35rem 0.65rem;
+    cursor: pointer;
+}
+
+.btn-clear-geometry:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+@keyframes popNode {
+    0% {
+        transform: scale(0.9);
+    }
+    60% {
+        transform: scale(1.13);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+@keyframes sidePulse {
+    0% {
+        stroke: rgba(34, 211, 238, 0.5);
+    }
+    100% {
+        stroke: #06b6d4;
+    }
+}

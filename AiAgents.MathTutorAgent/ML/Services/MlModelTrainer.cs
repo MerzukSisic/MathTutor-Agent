@@ -39,7 +39,11 @@ public class MlModelTrainer
                 nameof(KnowledgeTracingData.DaysSinceLastPractice),
                 nameof(KnowledgeTracingData.TotalAttempts),
                 nameof(KnowledgeTracingData.ConsecutiveCorrect),
-                nameof(KnowledgeTracingData.ConsecutiveIncorrect))
+                nameof(KnowledgeTracingData.ConsecutiveIncorrect),
+                nameof(KnowledgeTracingData.ChapterChallengesCompleted),
+                nameof(KnowledgeTracingData.TopicChapterChallengeCompleted),
+                nameof(KnowledgeTracingData.FinalChallengeCompleted),
+                nameof(KnowledgeTracingData.DaysSinceLastChallenge))
             .Append(_mlContext.Transforms.NormalizeMinMax("Features"))
             .Append(_mlContext.Regression.Trainers.FastTree(
                 labelColumnName: nameof(KnowledgeTracingData.PredictedMastery),
@@ -118,11 +122,19 @@ public class MlModelTrainer
             var consecutiveCorrect = random.Next(0, 10);
             var consecutiveIncorrect = random.Next(0, 5);
             var daysSince = random.Next(0, 30);
+            var chapterChallengesCompleted = random.Next(0, 5);
+            var topicChapterCompleted = random.NextDouble() < 0.45 ? 1f : 0f;
+            var finalChallengeCompleted = chapterChallengesCompleted >= 4 && random.NextDouble() < 0.35 ? 1f : 0f;
+            var daysSinceLastChallenge = chapterChallengesCompleted == 0 ? 30f : random.Next(0, 21);
 
             // Simulate mastery change
             var masteryChange = recentAccuracy * 10 - (1 - recentAccuracy) * 5;
             masteryChange += consecutiveCorrect * 2 - consecutiveIncorrect * 3;
             masteryChange -= daysSince * 0.5f; // Forgetting
+            masteryChange += chapterChallengesCompleted * 0.8f;
+            masteryChange += topicChapterCompleted * 1.4f;
+            masteryChange += finalChallengeCompleted * 2.2f;
+            masteryChange -= Math.Min(4f, daysSinceLastChallenge * 0.15f);
 
             var newMastery = Math.Clamp(previousMastery + masteryChange, 0, 100);
 
@@ -136,6 +148,10 @@ public class MlModelTrainer
                 TotalAttempts = random.Next(1, 100),
                 ConsecutiveCorrect = consecutiveCorrect,
                 ConsecutiveIncorrect = consecutiveIncorrect,
+                ChapterChallengesCompleted = chapterChallengesCompleted,
+                TopicChapterChallengeCompleted = topicChapterCompleted,
+                FinalChallengeCompleted = finalChallengeCompleted,
+                DaysSinceLastChallenge = daysSinceLastChallenge,
                 PredictedMastery = newMastery
             });
         }

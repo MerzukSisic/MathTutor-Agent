@@ -1,6 +1,8 @@
 @page "/register"
 @attribute [AllowAnonymous]
 @using System.Text.Json
+@using System.Text.Json.Serialization
+@using System.Text.RegularExpressions
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 
@@ -16,22 +18,56 @@
             <div class="auth-alert error">@errorMessage</div>
         }
 
+        @if (!string.IsNullOrWhiteSpace(successMessage))
+        {
+            <div class="auth-alert info">@successMessage</div>
+        }
+
         <label>
             Full Name
-            <input class="auth-input" @bind="fullName" autocomplete="name" />
+            <input class="auth-input" @bind="fullName" @bind:event="oninput" autocomplete="name" />
+            @if (showFullNameError)
+            {
+                <span class="auth-inline-error">Full name is required.</span>
+            }
         </label>
 
         <label>
             Email
-            <input class="auth-input" type="email" @bind="email" autocomplete="username" />
+            <input class="auth-input" type="email" @bind="email" @bind:event="oninput" autocomplete="username" />
+            @if (showEmailError)
+            {
+                <span class="auth-inline-error">Enter a valid email address (example: name@email.com).</span>
+            }
         </label>
 
         <label>
             Password
-            <input class="auth-input" type="password" @bind="password" autocomplete="new-password" />
+            <input class="auth-input" type="password" @bind="password" @bind:event="oninput" autocomplete="new-password" />
+            @if (showPasswordError)
+            {
+                <span class="auth-inline-error">Password is too weak. Use at least 8 chars with mixed character types.</span>
+            }
         </label>
 
-        <button class="auth-btn" @onclick="RegisterAsync" disabled="@isSubmitting">
+        <div class="auth-strength">
+            <div class="auth-strength-bars">
+                @for (var i = 1; i <= 4; i++)
+                {
+                    <span class="auth-strength-bar @(i <= PasswordStrengthScore ? $"active {PasswordStrengthClass}" : string.Empty)"></span>
+                }
+            </div>
+            <p class="auth-strength-label">Strength: @PasswordStrengthLabel</p>
+            <div class="auth-checklist">
+                <span class="auth-check-item @(HasMinLength ? "ok" : string.Empty)">8+ chars</span>
+                <span class="auth-check-item @(HasUpper ? "ok" : string.Empty)">Uppercase</span>
+                <span class="auth-check-item @(HasLower ? "ok" : string.Empty)">Lowercase</span>
+                <span class="auth-check-item @(HasDigit ? "ok" : string.Empty)">Number</span>
+                <span class="auth-check-item @(HasSpecial ? "ok" : string.Empty)">Special char</span>
+            </div>
+        </div>
+
+        <button class="auth-btn" @onclick="RegisterAsync" disabled="@(!CanSubmit || isSubmitting)">
             @(isSubmitting ? "Creating..." : "Create Account")
         </button>
 
@@ -44,21 +80,76 @@
     private string email = string.Empty;
     private string password = string.Empty;
     private string? errorMessage;
+    private string? successMessage;
     private bool isSubmitting;
+    private bool attemptedSubmit;
+    private static readonly Regex EmailRegex = new(@"^[^\s@]+@[^\s@]+\.[^\s@]+$", RegexOptions.Compiled);
+    private static readonly Regex UpperRegex = new(@"[A-Z]", RegexOptions.Compiled);
+    private static readonly Regex LowerRegex = new(@"[a-z]", RegexOptions.Compiled);
+    private static readonly Regex DigitRegex = new(@"\d", RegexOptions.Compiled);
+    private static readonly Regex SpecialRegex = new(@"[^a-zA-Z0-9]", RegexOptions.Compiled);
+
+    private bool HasMinLength => !string.IsNullOrWhiteSpace(password) && password.Length >= 8;
+    private bool HasUpper => !string.IsNullOrWhiteSpace(password) && UpperRegex.IsMatch(password);
+    private bool HasLower => !string.IsNullOrWhiteSpace(password) && LowerRegex.IsMatch(password);
+    private bool HasDigit => !string.IsNullOrWhiteSpace(password) && DigitRegex.IsMatch(password);
+    private bool HasSpecial => !string.IsNullOrWhiteSpace(password) && SpecialRegex.IsMatch(password);
+    private bool IsEmailValid => !string.IsNullOrWhiteSpace(email) && EmailRegex.IsMatch(email.Trim());
+    private int PasswordStrengthScore
+    {
+        get
+        {
+            if (string.IsNullOrWhiteSpace(password))
+            {
+                return 0;
+            }
+
+            return new[] { HasMinLength, HasUpper, HasLower, HasDigit, HasSpecial }.Count(x => x) switch
+            {
+                <= 1 => 1,
+                2 => 2,
+                3 or 4 => 3,
+                _ => 4
+            };
+        }
+    }
+    private bool IsPasswordStrongEnough => HasMinLength && HasUpper && HasLower && (HasDigit || HasSpecial);
+    private bool CanSubmit => !string.IsNullOrWhiteSpace(fullName) && IsEmailValid && IsPasswordStrongEnough;
+    private bool showFullNameError => attemptedSubmit && string.IsNullOrWhiteSpace(fullName);
+    private bool showEmailError => (!string.IsNullOrWhiteSpace(email) || attemptedSubmit) && !IsEmailValid;
+    private bool showPasswordError => (!string.IsNullOrWhiteSpace(password) || attemptedSubmit) && !IsPasswordStrongEnough;
+    private string PasswordStrengthClass => PasswordStrengthScore <= 1 ? "weak" : PasswordStrengthScore <= 2 ? "medium" : PasswordStrengthScore == 3 ? "good" : "strong";
+    private string PasswordStrengthLabel => string.IsNullOrWhiteSpace(password)
+        ? "No password"
+        : PasswordStrengthClass switch
+        {
+            "weak" => "Weak",
+            "medium" => "Medium",
+            "good" => "Good",
+            _ => "Strong"
+        };
 
     private async Task RegisterAsync()
     {
         errorMessage = null;
+        successMessage = null;
+        attemptedSubmit = true;
 
-        if (string.IsNullOrWhiteSpace(fullName) || string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+        if (string.IsNullOrWhiteSpace(fullName))
         {
-            errorMessage = "All fields are required.";
+            errorMessage = "Full name is required.";
             return;
         }
 
-        if (password.Length < 6)
+        if (!IsEmailValid)
         {
-            errorMessage = "Password must be at least 6 characters.";
+            errorMessage = "Please enter a valid email address.";
+            return;
+        }
+
+        if (!IsPasswordStrongEnough)
+        {
+            errorMessage = "Password is too weak. Add more variety (upper/lower/digit/special).";
             return;
         }
 
@@ -82,16 +173,30 @@
                 return;
             }
 
+            string? message = null;
             AuthUserDto? user = null;
-            if (result.TryGetProperty("data", out var authData) && authData.ValueKind != JsonValueKind.Null
-                && authData.TryGetProperty("user", out var userEl) && userEl.ValueKind != JsonValueKind.Null)
+            if (result.TryGetProperty("data", out var authData) && authData.ValueKind != JsonValueKind.Null)
             {
-                user = JsonSerializer.Deserialize<AuthUserDto>(userEl.GetRawText(),
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                authData.TryGetProperty("message", out var msgEl);
+                message = msgEl.ValueKind == JsonValueKind.String ? msgEl.GetString() : null;
+
+                if (authData.TryGetProperty("user", out var userEl) && userEl.ValueKind != JsonValueKind.Null)
+                {
+                    user = JsonSerializer.Deserialize<AuthUserDto>(userEl.GetRawText(),
+                        new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true,
+                            NumberHandling = JsonNumberHandling.AllowReadingFromString
+                        });
+                }
             }
 
-            var destination = user?.StudentId is int studentId ? $"/quiz/{studentId}" : "/";
-            Navigation.NavigateTo(destination, forceLoad: true);
+            successMessage = string.IsNullOrWhiteSpace(message)
+                ? "Registration successful. Check your email to confirm account."
+                : message;
+            await Task.Delay(1200);
+            var status = user?.EmailConfirmed == true ? "registered-ready" : "registered";
+            Navigation.NavigateTo($"/login?status={status}", forceLoad: true);
         }
         catch
         {

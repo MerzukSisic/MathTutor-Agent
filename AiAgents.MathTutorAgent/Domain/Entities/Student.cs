@@ -11,4 +11,5 @@ public class Student
     public List<StudentTopicState> TopicStates { get; set; } = new();
     public List<Attempt> Attempts { get; set; } = new();
     public List<ImageNote> ImageNotes { get; set; } = new();
+    public List<StudentChallengeProgress> ChallengeProgress { get; set; } = new();
 }

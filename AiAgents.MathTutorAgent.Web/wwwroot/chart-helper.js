@@ -72,13 +72,45 @@ window.downloadFile = function(fileName, base64Content) {
 };
 
 // Makes auth API calls from the browser so the cookie lands in the browser's jar
+let antiForgeryTokenCache = null;
+
+async function getAntiForgeryToken() {
+    if (antiForgeryTokenCache) {
+        return antiForgeryTokenCache;
+    }
+
+    const tokenResponse = await fetch('/api/auth/csrf-token', {
+        method: 'GET',
+        credentials: 'include'
+    });
+
+    if (!tokenResponse.ok) {
+        return null;
+    }
+
+    const payload = await tokenResponse.json();
+    antiForgeryTokenCache = payload?.token ?? null;
+    return antiForgeryTokenCache;
+}
+
 window.authFetch = async function(url, body) {
+    const headers = { 'Content-Type': 'application/json' };
+    const token = await getAntiForgeryToken();
+    if (token) {
+        headers['RequestVerificationToken'] = token;
+    }
+
     const response = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         credentials: 'include',
-        body: JSON.stringify(body)
+        body: JSON.stringify(body ?? {})
     });
+
+    if (response.status === 400) {
+        antiForgeryTokenCache = null;
+    }
+
     const text = await response.text();
     let data = null;
     try { data = JSON.parse(text); } catch {}

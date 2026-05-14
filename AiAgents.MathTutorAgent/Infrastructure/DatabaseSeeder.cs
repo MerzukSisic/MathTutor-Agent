@@ -533,8 +533,23 @@ public static class DatabaseSeeder
 
     private static async Task EnsureDefaultAdminAccountAsync(MathTutorDbContext context)
     {
-        var adminEmail = "admin@mathtutor.local";
+        var adminEmail = Environment.GetEnvironmentVariable("MATH_TUTOR_DEFAULT_ADMIN_EMAIL");
+        if (string.IsNullOrWhiteSpace(adminEmail))
+        {
+            adminEmail = "admin@mathtutor.local";
+        }
+        else
+        {
+            adminEmail = adminEmail.Trim().ToLowerInvariant();
+        }
+
         if (await context.UserAccounts.AnyAsync(u => u.Email == adminEmail))
+        {
+            return;
+        }
+
+        var adminPassword = Environment.GetEnvironmentVariable("MATH_TUTOR_DEFAULT_ADMIN_PASSWORD");
+        if (string.IsNullOrWhiteSpace(adminPassword))
         {
             return;
         }
@@ -544,7 +559,7 @@ public static class DatabaseSeeder
         {
             FullName = "MathTutor Admin",
             Email = adminEmail,
-            PasswordHash = passwordHashingService.HashPassword("Admin123!"),
+            PasswordHash = passwordHashingService.HashPassword(adminPassword),
             Role = UserRoles.Admin,
             EmailConfirmed = true,
             CreatedAt = DateTime.UtcNow

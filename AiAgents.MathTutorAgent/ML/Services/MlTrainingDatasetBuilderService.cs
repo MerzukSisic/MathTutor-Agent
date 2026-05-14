@@ -1,5 +1,6 @@
 using AiAgents.MathTutorAgent.Infrastructure;
 using AiAgents.MathTutorAgent.ML.Models;
+using AiAgents.MathTutorAgent.Application.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace AiAgents.MathTutorAgent.ML.Services;
@@ -10,12 +11,24 @@ public class MlTrainingDatasetBuilderService(MathTutorDbContext context)
     {
         var attempts = await context.Attempts
             .Include(a => a.Question)
+            .ThenInclude(q => q.Topic)
             .OrderBy(a => a.StudentId)
             .ThenBy(a => a.Question.TopicId)
             .ThenBy(a => a.CreatedAt)
             .ToListAsync(ct);
 
         var data = new List<KnowledgeTracingData>();
+        var studentIds = attempts.Select(a => a.StudentId).Distinct().ToList();
+        var challengeRows = await context.StudentChallengeProgress
+            .Where(x => studentIds.Contains(x.StudentId))
+            .OrderBy(x => x.StudentId)
+            .ThenBy(x => x.CompletedAtUtc)
+            .Select(x => new ChallengeSnapshot(x.StudentId, x.ChallengeKey, x.CompletedAtUtc))
+            .ToListAsync(ct);
+
+        var challengeByStudent = challengeRows
+            .GroupBy(x => x.StudentId)
+            .ToDictionary(g => g.Key, g => g.ToList());
 
         foreach (var group in attempts.GroupBy(a => new { a.StudentId, a.Question.TopicId }))
         {
@@ -46,6 +59,23 @@ public class MlTrainingDatasetBuilderService(MathTutorDbContext context)
                     ? 0f
                     : (float)(current.CreatedAt - topicAttempts[i - 1].CreatedAt).TotalDays;
 
+                var studentChallenges = challengeByStudent.TryGetValue(current.StudentId, out var snapshots)
+                    ? snapshots.Where(x => x.CompletedAtUtc <= current.CreatedAt).ToList()
+                    : new List<ChallengeSnapshot>();
+                var chapterChallengesCompleted = ChallengeChapterMapper.CountCompletedChapterChallenges(
+                    studentChallenges.Select(x => x.ChallengeKey));
+                var topicChapterKey = ChallengeChapterMapper.FromTopicName(current.Question.Topic?.Name ?? string.Empty);
+                var topicChapterChallengeCompleted = topicChapterKey != null &&
+                    studentChallenges.Any(x => string.Equals(x.ChallengeKey, topicChapterKey, StringComparison.OrdinalIgnoreCase));
+                var finalChallengeCompleted = studentChallenges.Any(x =>
+                    string.Equals(x.ChallengeKey, ChallengeChapterMapper.FinalMixedKey, StringComparison.OrdinalIgnoreCase));
+                var latestChallengeUtc = studentChallenges.Count == 0
+                    ? (DateTime?)null
+                    : studentChallenges.Max(x => x.CompletedAtUtc);
+                var daysSinceLastChallenge = latestChallengeUtc.HasValue
+                    ? (float)Math.Max(0, (current.CreatedAt - latestChallengeUtc.Value).TotalDays)
+                    : 30f;
+
                 data.Add(new KnowledgeTracingData
                 {
                     TopicDifficulty = current.Question.Difficulty,
@@ -56,6 +86,10 @@ public class MlTrainingDatasetBuilderService(MathTutorDbContext context)
                     TotalAttempts = history.Count,
                     ConsecutiveCorrect = consecutiveCorrect,
                     ConsecutiveIncorrect = consecutiveIncorrect,
+                    ChapterChallengesCompleted = chapterChallengesCompleted,
+                    TopicChapterChallengeCompleted = topicChapterChallengeCompleted ? 1f : 0f,
+                    FinalChallengeCompleted = finalChallengeCompleted ? 1f : 0f,
+                    DaysSinceLastChallenge = daysSinceLastChallenge,
                     PredictedMastery = predictedMastery
                 });
             }
@@ -91,4 +125,6 @@ public class MlTrainingDatasetBuilderService(MathTutorDbContext context)
 
         return count;
     }
+
+    private sealed record ChallengeSnapshot(int StudentId, string ChallengeKey, DateTime CompletedAtUtc);
 }

@@ -36,6 +36,18 @@ public record StudentDto
     public DateTime CreatedAt { get; init; }
 }
 
+public record CreateStudentDto
+{
+    public string Name { get; init; } = string.Empty;
+    public string Email { get; init; } = string.Empty;
+}
+
+public record UpdateStudentDto
+{
+    public string Name { get; init; } = string.Empty;
+    public string Email { get; init; } = string.Empty;
+}
+
 public record PerformanceMetricsDto
 {
     public int TotalStudents { get; init; }

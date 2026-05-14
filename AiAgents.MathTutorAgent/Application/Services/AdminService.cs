@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AiAgents.MathTutorAgent.Application.Services;
 
-public class AdminService(MathTutorDbContext context)
+public class AdminService(MathTutorDbContext context) : IAdminService
 {
     // ========== QUESTIONS ==========
     public async Task<List<AdminQuestionDto>> GetAllQuestionsAsync(CancellationToken ct = default)
@@ -123,6 +123,20 @@ public class AdminService(MathTutorDbContext context)
             .ToListAsync(ct);
     }
 
+    public async Task<StudentDto?> GetStudentByIdAsync(int id, CancellationToken ct = default)
+    {
+        return await context.Students
+            .Where(s => s.Id == id)
+            .Select(s => new StudentDto
+            {
+                Id = s.Id,
+                Name = s.Name,
+                Email = s.Email,
+                CreatedAt = s.CreatedAt
+            })
+            .FirstOrDefaultAsync(ct);
+    }
+
     // ========== METRICS ==========
     public async Task<PerformanceMetricsDto> GetPerformanceMetricsAsync(CancellationToken ct = default)
     {
@@ -158,12 +172,24 @@ public class AdminService(MathTutorDbContext context)
             AverageProcessingTimeMs = avgProcessingTime
         };
     }
-    public async Task<StudentDto> CreateStudentAsync(string name, string email, CancellationToken ct = default)
+    public async Task<StudentDto> CreateStudentAsync(CreateStudentDto dto, CancellationToken ct = default)
     {
+        var name = dto.Name.Trim();
+        var email = dto.Email.Trim();
+
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidOperationException("Student name is required.");
+        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
+            throw new InvalidOperationException("Valid email is required.");
+
+        var normalizedEmail = NormalizeEmail(email);
+        if (await context.Students.AnyAsync(s => s.Email.ToLower() == normalizedEmail, ct))
+            throw new InvalidOperationException("Student with this email already exists.");
+
         var student = new Student
         {
             Name = name,
-            Email = email,
+            Email = normalizedEmail,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -178,5 +204,85 @@ public class AdminService(MathTutorDbContext context)
             CreatedAt = student.CreatedAt
         };
     }
+
+    public async Task<StudentDto> UpdateStudentAsync(int id, UpdateStudentDto dto, CancellationToken ct = default)
+    {
+        var student = await context.Students.FirstOrDefaultAsync(s => s.Id == id, ct);
+        if (student == null)
+            throw new InvalidOperationException($"Student {id} not found.");
+
+        var name = dto.Name.Trim();
+        var email = dto.Email.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+            throw new InvalidOperationException("Student name is required.");
+        if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
+            throw new InvalidOperationException("Valid email is required.");
+
+        var normalizedEmail = NormalizeEmail(email);
+        var emailTaken = await context.Students
+            .AnyAsync(s => s.Id != id && s.Email.ToLower() == normalizedEmail, ct);
+        if (emailTaken)
+            throw new InvalidOperationException("Another student already uses this email.");
+
+        student.Name = name;
+        student.Email = normalizedEmail;
+
+        var linkedAccounts = await context.UserAccounts
+            .Where(a => a.StudentId == id)
+            .ToListAsync(ct);
+
+        var linkedAccountIds = linkedAccounts
+            .Select(a => a.Id)
+            .ToList();
+
+        var accountEmailTaken = await context.UserAccounts.AnyAsync(
+            a => a.Email == normalizedEmail && !linkedAccountIds.Contains(a.Id),
+            ct);
+        if (accountEmailTaken)
+        {
+            throw new InvalidOperationException("Email already belongs to another user account.");
+        }
+
+        foreach (var account in linkedAccounts)
+        {
+            account.FullName = name;
+            account.Email = normalizedEmail;
+        }
+
+        await context.SaveChangesAsync(ct);
+
+        return new StudentDto
+        {
+            Id = student.Id,
+            Name = student.Name,
+            Email = student.Email,
+            CreatedAt = student.CreatedAt
+        };
+    }
+
+    public async Task DeleteStudentAsync(int id, CancellationToken ct = default)
+    {
+        var student = await context.Students.FirstOrDefaultAsync(s => s.Id == id, ct);
+        if (student == null)
+            throw new InvalidOperationException($"Student {id} not found.");
+
+        var hasProgressData = await context.Attempts.AnyAsync(a => a.StudentId == id, ct)
+            || await context.StudentTopicStates.AnyAsync(s => s.StudentId == id, ct)
+            || await context.RevisionScheduleItems.AnyAsync(r => r.StudentId == id, ct)
+            || await context.WorkItems.AnyAsync(w => w.StudentId == id, ct);
+
+        if (hasProgressData)
+            throw new InvalidOperationException("Student has learning history and cannot be deleted. Edit student instead.");
+
+        var linkedAccounts = await context.UserAccounts
+            .Where(a => a.StudentId == id)
+            .ToListAsync(ct);
+        context.UserAccounts.RemoveRange(linkedAccounts);
+        context.Students.Remove(student);
+        await context.SaveChangesAsync(ct);
+    }
+
+    private static string NormalizeEmail(string email)
+        => email.Trim().ToLowerInvariant();
     
 }

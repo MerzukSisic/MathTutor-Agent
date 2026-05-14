@@ -483,6 +483,14 @@
     color: #6b7280;
 }
 
+.activity-topic {
+    background: #eef2ff;
+    color: #3730a3;
+    border-radius: 999px;
+    padding: 0.1rem 0.45rem;
+    font-weight: 700;
+}
+
 .activity-area {
     background: #e0f2fe;
     color: #0c4a6e;
@@ -518,9 +526,17 @@
     border-collapse: collapse;
 }
 
+.table-elevated {
+    border: 1px solid #dbe7f3;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.07);
+    background: #fff;
+}
+
 .table th,
 .table td {
-    padding: 0.72rem 0.6rem;
+    padding: 0.82rem 0.72rem;
     border-bottom: 1px solid #e5e7eb;
     text-align: left;
     font-size: 0.9rem;
@@ -529,20 +545,62 @@
 .table thead th {
     color: #334155;
     font-weight: 800;
-    background: #f8fafc;
+    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+}
+
+.table-head th {
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    font-size: 0.78rem;
 }
 
 .area-row {
     cursor: pointer;
-    transition: background-color 0.2s ease;
+    transition: background-color 0.2s ease, transform 0.15s ease;
 }
 
 .area-row:hover {
     background: #f8fafc;
+    transform: translateY(-1px);
 }
 
 .area-row.active {
     background: #ecfeff;
+}
+
+.area-row.active td {
+    color: #0e7490;
+    font-weight: 700;
+}
+
+.question-row:nth-child(even) {
+    background: #fbfdff;
+}
+
+.question-row:hover {
+    background: #f8fbff;
+}
+
+.question-row td:first-child {
+    font-weight: 700;
+    color: #1e293b;
+}
+
+.table-empty-row td {
+    color: #64748b;
+    font-style: italic;
+}
+
+.table-area-badge {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    border: 1px solid #bae6fd;
+    background: #f0f9ff;
+    color: #0c4a6e;
+    padding: 0.18rem 0.52rem;
+    font-size: 0.76rem;
+    font-weight: 800;
 }
 
 /* Empty States */
@@ -609,4 +667,4 @@
         flex-wrap: wrap;
         gap: 0.45rem;
     }
-    }
+}

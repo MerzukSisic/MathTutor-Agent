@@ -31,8 +31,20 @@ public class KnowledgeTracingData
     [LoadColumn(7)]
     public float ConsecutiveIncorrect { get; set; }
 
-    // Label: predicted mastery after this attempt
     [LoadColumn(8)]
+    public float ChapterChallengesCompleted { get; set; }
+
+    [LoadColumn(9)]
+    public float TopicChapterChallengeCompleted { get; set; }
+
+    [LoadColumn(10)]
+    public float FinalChallengeCompleted { get; set; }
+
+    [LoadColumn(11)]
+    public float DaysSinceLastChallenge { get; set; }
+
+    // Label: predicted mastery after this attempt
+    [LoadColumn(12)]
     public float PredictedMastery { get; set; }
 }
 

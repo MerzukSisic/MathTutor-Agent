@@ -30,8 +30,22 @@ public class QuestionSelectionService(
         var paceSnapshots = allAttempts
             .Select(a => new AttemptPaceSnapshot(a.IsCorrect, a.TimeMs))
             .ToList();
+        var topicName = await context.Topics
+            .Where(t => t.Id == topicId)
+            .Select(t => t.Name)
+            .FirstOrDefaultAsync(ct) ?? string.Empty;
+        var chapterKey = ChallengeChapterMapper.FromTopicName(topicName);
+        var completedChallengeKeys = await context.StudentChallengeProgress
+            .Where(x => x.StudentId == studentId)
+            .Select(x => x.ChallengeKey)
+            .ToListAsync(ct);
+        var challengeSignals = new ChallengePaceSignals(
+            ChapterChallengesCompleted: ChallengeChapterMapper.CountCompletedChapterChallenges(completedChallengeKeys),
+            TopicChapterChallengeCompleted: chapterKey != null &&
+                                           completedChallengeKeys.Contains(chapterKey, StringComparer.OrdinalIgnoreCase),
+            FinalChallengeCompleted: completedChallengeKeys.Contains(ChallengeChapterMapper.FinalMixedKey, StringComparer.OrdinalIgnoreCase));
 
-        var targetDifficulty = difficultyAdvisor.AdaptDifficultyByPace(initialDifficulty, paceSnapshots);
+        var targetDifficulty = difficultyAdvisor.AdaptDifficultyByPace(initialDifficulty, paceSnapshots, challengeSignals);
 
         var totalAttempts = allAttempts.Count;
         var attemptedQuestionIds = allAttempts

@@ -11,6 +11,7 @@ public class SmtpEmailService(
     : IEmailService
 {
     private readonly EmailSettings emailSettings = settings.Value;
+    public bool IsEnabled => emailSettings.Enabled;
 
     public async Task SendEmailAsync(string to, string subject, string htmlBody, CancellationToken ct = default)
     {
