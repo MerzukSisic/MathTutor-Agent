@@ -14,7 +14,7 @@ namespace AiAgents.MathTutorAgent.Web.Controllers;
 [Authorize]
 public class AgentController(WorkQueueService queueService) : ControllerBase
 {
-    [HttpPost("next-question")]
+    [HttpPost("next_question")]
     [EnableRateLimiting("agent-ops")]
     public async Task<IActionResult> NextQuestion([FromBody] NextQuestionRequest request, CancellationToken ct)
     {
@@ -36,7 +36,7 @@ public class AgentController(WorkQueueService queueService) : ControllerBase
         return Ok(new { WorkItemId = workItemId });
     }
 
-    [HttpPost("submit-answer")]
+    [HttpPost("submit_answer")]
     [EnableRateLimiting("agent-ops")]
     public async Task<IActionResult> SubmitAnswer([FromBody] SubmitAnswerRequest request, CancellationToken ct)
     {
@@ -95,7 +95,7 @@ public class AgentController(WorkQueueService queueService) : ControllerBase
         return Ok(new { WorkItemId = workItemId });
     }
 
-    [HttpPost("complete-milestone")]
+    [HttpPost("complete_milestone")]
     [EnableRateLimiting("agent-ops")]
     public async Task<IActionResult> CompleteMilestone(
         [FromBody] CompleteMilestoneRequest request,
@@ -111,7 +111,7 @@ public class AgentController(WorkQueueService queueService) : ControllerBase
         return Ok(new { NextMilestone = nextMilestone });
     }
 
-    [HttpPost("upload-image")]
+    [HttpPost("upload_image")]
     [EnableRateLimiting("agent-ops")]
     public async Task<IActionResult> UploadImage([FromForm] IFormFile file, [FromForm] int studentId, CancellationToken ct)
     {

@@ -1,4 +1,4 @@
-@page "/resend-confirmation"
+@page "/resend_confirmation"
 @attribute [AllowAnonymous]
 @using System.Text.Json
 @inject IJSRuntime JS
@@ -54,7 +54,7 @@
 
         try
         {
-            var result = await JS.InvokeAsync<JsonElement>("authFetch", "/api/auth/resend-confirmation", new { email });
+            var result = await JS.InvokeAsync<JsonElement>("authFetch", "/api/auth/resend_confirmation", new { email });
             string? msg = null;
             if (result.TryGetProperty("data", out var data) && data.ValueKind != JsonValueKind.Null)
             {

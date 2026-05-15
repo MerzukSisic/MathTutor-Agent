@@ -116,7 +116,7 @@ public partial class Quiz
 
         try
         {
-            var response = await Http.PostAsJsonAsync("/api/agent/next-question", new { StudentId });
+            var response = await Http.PostAsJsonAsync("/api/agent/next_question", new { StudentId });
             response.EnsureSuccessStatusCode();
         }
         catch (Exception ex)
@@ -140,7 +140,7 @@ public partial class Quiz
 
         try
         {
-            var response = await Http.PostAsJsonAsync("/api/agent/submit-answer", new
+            var response = await Http.PostAsJsonAsync("/api/agent/submit_answer", new
             {
                 StudentId,
                 QuestionId = currentQuestion.Id,
@@ -363,7 +363,7 @@ public partial class Quiz
         try
         {
             var currentKey = milestoneChallenge.ChallengeKey;
-            var response = await Http.PostAsJsonAsync("/api/agent/complete-milestone", new
+            var response = await Http.PostAsJsonAsync("/api/agent/complete_milestone", new
             {
                 StudentId,
                 ChallengeKey = currentKey

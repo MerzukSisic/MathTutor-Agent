@@ -26,7 +26,7 @@ public partial class Admin
     {
         try
         {
-            metrics = await Http.GetFromJsonAsync<PerformanceMetricsDto>("/api/admin/performance-metrics");
+            metrics = await Http.GetFromJsonAsync<PerformanceMetricsDto>("/api/admin/performance_metrics");
         }
         catch (Exception ex)
         {

@@ -540,7 +540,7 @@ public static class DatabaseSeeder
         }
         else
         {
-            adminEmail = adminEmail.Trim().ToLowerInvariant();
+            adminEmail = StringNormalizer.NormalizeEmail(adminEmail);
         }
 
         if (await context.UserAccounts.AnyAsync(u => u.Email == adminEmail))

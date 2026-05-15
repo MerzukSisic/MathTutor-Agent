@@ -148,11 +148,16 @@ desktop.ini
 # Keep Migrations - professor needs them!
 # Migrations/
 
-# ========== Documentation (keep these) ==========
-# *.docx
+# ========== Documentation ==========
+*.doc
+*.docx
 # *.pdf
 
 # ========== Specific to your project ==========
+
+# Cursor / local AI rules
+.cursor/
+.cursor/rules/bugbot-dotnet.mdc
 
 # GitHub folder (usually auto-generated)
 .github/

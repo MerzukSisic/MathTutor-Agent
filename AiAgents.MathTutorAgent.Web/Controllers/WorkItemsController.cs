@@ -1,10 +1,14 @@
 ﻿using AiAgents.MathTutorAgent.Application.Services;
+using AiAgents.MathTutorAgent.Domain.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace AiAgents.MathTutorAgent.Web.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/work_items")]
+[Authorize]
 public class WorkItemsController(WorkQueueService queueService) : ControllerBase
 {
     [HttpGet("{id}")]
@@ -13,6 +17,11 @@ public class WorkItemsController(WorkQueueService queueService) : ControllerBase
         var workItem = await queueService.GetWorkItemAsync(id, ct);
         if (workItem == null)
             return NotFound();
+
+        if (!CanAccessStudent(workItem.StudentId))
+        {
+            return Forbid();
+        }
 
         return Ok(new
         {
@@ -32,6 +41,22 @@ public class WorkItemsController(WorkQueueService queueService) : ControllerBase
         if (workItem == null)
             return NotFound();
 
+        if (!CanAccessStudent(workItem.StudentId))
+        {
+            return Forbid();
+        }
+
         return Ok(new { Status = workItem.Status.ToString() });
+    }
+
+    private bool CanAccessStudent(int studentId)
+    {
+        if (User.IsInRole(UserRoles.Admin))
+        {
+            return true;
+        }
+
+        var claimValue = User.FindFirstValue("student_id");
+        return int.TryParse(claimValue, out var currentStudentId) && currentStudentId == studentId;
     }
 }

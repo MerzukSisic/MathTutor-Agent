@@ -38,16 +38,30 @@ public class AdminController(
     [EnableRateLimiting("admin-write")]
     public async Task<IActionResult> UpdateQuestion(int id, [FromBody] CreateQuestionDto dto, CancellationToken ct)
     {
-        var question = await adminService.UpdateQuestionAsync(id, dto, ct);
-        return Ok(question);
+        try
+        {
+            var question = await adminService.UpdateQuestionAsync(id, dto, ct);
+            return Ok(question);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { Message = ex.Message });
+        }
     }
 
     [HttpDelete("questions/{id}")]
     [EnableRateLimiting("admin-write")]
     public async Task<IActionResult> DeleteQuestion(int id, CancellationToken ct)
     {
-        await adminService.DeleteQuestionAsync(id, ct);
-        return NoContent();
+        try
+        {
+            await adminService.DeleteQuestionAsync(id, ct);
+            return NoContent();
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { Message = ex.Message });
+        }
     }
 
     // ========== TOPICS ==========
@@ -82,7 +96,7 @@ public class AdminController(
 
     // ========== METRICS ==========
 
-    [HttpGet("performance-metrics")]
+    [HttpGet("performance_metrics")]
     public async Task<IActionResult> GetPerformanceMetrics(CancellationToken ct)
     {
         var metrics = await adminService.GetPerformanceMetricsAsync(ct);
@@ -91,7 +105,7 @@ public class AdminController(
 
     // ========== ML MODEL TRAINING (THIN - just call service) ==========
 
-    [HttpPost("train-ml-models")]
+    [HttpPost("train_ml_models")]
     [EnableRateLimiting("admin-write")]
     public async Task<IActionResult> TrainMlModels(CancellationToken ct)
     {
@@ -120,7 +134,7 @@ public class AdminController(
         });
     }
 
-    [HttpPost("reload-ml-models")]
+    [HttpPost("reload_ml_models")]
     [EnableRateLimiting("admin-write")]
     public async Task<IActionResult> ReloadMlModels(CancellationToken ct)
     {
@@ -156,11 +170,13 @@ public class AdminController(
             var student = await adminService.UpdateStudentAsync(id, request, ct);
             return Ok(student);
         }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { Message = ex.Message });
+        }
         catch (InvalidOperationException ex)
         {
-            return ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase)
-                ? NotFound(new { Message = ex.Message })
-                : BadRequest(new { Message = ex.Message });
+            return BadRequest(new { Message = ex.Message });
         }
     }
 
@@ -173,11 +189,13 @@ public class AdminController(
             await adminService.DeleteStudentAsync(id, ct);
             return NoContent();
         }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { Message = ex.Message });
+        }
         catch (InvalidOperationException ex)
         {
-            return ex.Message.Contains("not found", StringComparison.OrdinalIgnoreCase)
-                ? NotFound(new { Message = ex.Message })
-                : BadRequest(new { Message = ex.Message });
+            return BadRequest(new { Message = ex.Message });
         }
     }
     [HttpGet("dashboard/stats")]

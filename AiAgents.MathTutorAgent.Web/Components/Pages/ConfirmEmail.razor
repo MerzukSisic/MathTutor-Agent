@@ -1,4 +1,4 @@
-@page "/confirm-email"
+@page "/confirm_email"
 @attribute [AllowAnonymous]
 @using Microsoft.AspNetCore.WebUtilities
 @using System.Text.Json
@@ -63,7 +63,7 @@
 
         try
         {
-            var result = await JS.InvokeAsync<JsonElement>("authFetch", "/api/auth/confirm-email",
+            var result = await JS.InvokeAsync<JsonElement>("authFetch", "/api/auth/confirm_email",
                 new { email, token });
 
             if (!result.GetProperty("ok").GetBoolean())

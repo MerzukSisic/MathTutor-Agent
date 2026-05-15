@@ -52,7 +52,7 @@ public class StudentController(StudentProfileService profileService, PdfExportSe
         return Ok(stats);
     }
 
-    [HttpGet("{studentId}/export-pdf")]
+    [HttpGet("{studentId}/export_pdf")]
     public async Task<IActionResult> ExportReport(int studentId)
     {
         if (!CanAccessStudent(studentId))

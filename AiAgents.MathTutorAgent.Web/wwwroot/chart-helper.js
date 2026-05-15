@@ -79,7 +79,7 @@ async function getAntiForgeryToken() {
         return antiForgeryTokenCache;
     }
 
-    const tokenResponse = await fetch('/api/auth/csrf-token', {
+    const tokenResponse = await fetch('/api/auth/csrf_token', {
         method: 'GET',
         credentials: 'include'
     });

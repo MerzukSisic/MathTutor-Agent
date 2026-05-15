@@ -1,16 +1,18 @@
 # MathTutor-Agent
 
-AI-driven math tutoring web application built with .NET 9, Blazor Server, EF Core, SignalR, and ML.NET.
+An AI-assisted math tutoring platform built with **.NET 9**, **Blazor Server**, **EF Core**, **SignalR**, and **ML.NET**.
 
-## Features
+It supports adaptive quiz delivery, student progress tracking, admin management workflows, and lightweight ML-backed recommendations.
 
-- Adaptive quiz flow with dynamic question generation
-- Geometry click practice (count sides/vertices)
+## Highlights
+
+- Adaptive quiz loop with timed questions
+- Interactive geometry practice (count sides/vertices)
 - CrossMath milestone challenges
-- Student profile insights and progress tracking
-- Admin dashboard for questions/students and ML operations
-- Background agent processing via SignalR + work queue
-- SQLite (default) or SQL Server database support
+- Student profile dashboards and PDF export
+- Admin management for students, questions, and ML operations
+- Background work queue + SignalR updates
+- Dual database support: SQLite (default) or SQL Server
 
 ## Tech Stack
 
@@ -19,72 +21,75 @@ AI-driven math tutoring web application built with .NET 9, Blazor Server, EF Cor
 - Entity Framework Core (SQLite / SQL Server)
 - SignalR
 - ML.NET
-- Radzen Blazor UI components
-- Serilog logging
+- Radzen Blazor
+- Serilog
 
-## Project Structure
+## Solution Layout
 
-- `AiAgents.MathTutorAgent.Web` - web app (UI + API + SignalR + startup)
-- `AiAgents.MathTutorAgent` - application/domain/services layer
-- `AiAgents.Core` - shared core library
-- `AiAgents.MathTutor.sln` - solution file
-
-## Requirements
-
-- .NET SDK 9.0+
-- (Optional) SQL Server if using `DatabaseProvider=SqlServer`
+- `AiAgents.MathTutorAgent.Web` - web UI, API controllers, startup, SignalR hub
+- `AiAgents.MathTutorAgent` - application services, domain logic, infrastructure integration
+- `AiAgents.Core` - shared primitives/core library
+- `AiAgents.MathTutor.sln` - root solution
 
 ## Quick Start
 
 ```bash
-cd /Users/merzuksisic/Desktop/MathTutor-Agent
 dotnet restore
 dotnet build
 cd AiAgents.MathTutorAgent.Web
 dotnet run
 ```
 
-Default URLs:
+Default local endpoints:
 
 - `http://localhost:5297`
 - `https://localhost:7152`
 
 ## Configuration
 
-Primary config file:
+Main config file:
 
 - `AiAgents.MathTutorAgent.Web/appsettings.json`
 
-Important keys:
+Important settings:
 
-- `DatabaseProvider`: `Sqlite` (default) or `SqlServer`
+- `DatabaseProvider`: `Sqlite` or `SqlServer`
 - `ConnectionStrings:SqliteConnection`
 - `ConnectionStrings:SqlServerConnection`
 - `App:PublicBaseUrl`
-- `Email:*` (SMTP settings)
+- `Email:*` (SMTP options)
 
-### Database Notes
+## Database Behavior
 
-- For SQLite, schema is ensured automatically on startup.
-- For SQL Server, EF Core migrations are applied on startup.
-- Seed data is populated during application startup.
+- **SQLite**: schema is ensured on startup.
+- **SQL Server**: EF Core migrations are applied on startup.
+- Seed routines run automatically at startup.
+
+## Security Notes
+
+- Authentication is cookie-based with role checks (`Admin` / `Student`).
+- CSRF protection is enabled for auth-modifying operations.
+- API routes use `snake_case` naming.
+- Internal exception details are not returned in API responses.
+- Do **not** commit real secrets into `appsettings.json`; use environment variables or user-secrets for sensitive values.
 
 ## Useful Commands
 
-From repository root:
-
 ```bash
+# build everything
 dotnet build AiAgents.MathTutor.sln
+
+# run web app directly
 dotnet run --project AiAgents.MathTutorAgent.Web/AiAgents.MathTutorAgent.Web.csproj
 ```
 
 ## Logging
 
-Serilog writes logs to:
+Serilog outputs to:
 
 - Console
-- `AiAgents.MathTutorAgent.Web/logs/` (rolling daily files)
+- `AiAgents.MathTutorAgent.Web/logs/` (daily rolling files)
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See [LICENSE](LICENSE).

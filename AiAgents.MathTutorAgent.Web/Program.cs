@@ -251,7 +251,7 @@ await using (var scope = app.Services.CreateAsyncScope())
     }
     catch (FileNotFoundException)
     {
-        Log.Warning("⚠️ ML models not found - using fallback predictions. Train models via /api/admin/train-ml-models");
+        Log.Warning("⚠️ ML models not found - using fallback predictions. Train models via /api/admin/train_ml_models");
     }
     catch (Exception ex)
     {
@@ -373,7 +373,7 @@ Log.Information("📍 Admin Panel:   /admin");
 Log.Information("📍 API Docs:      /swagger (if enabled)");
 Log.Information("📍 SignalR Hub:   /agenthub");
 Log.Information("═══════════════════════════════════════════");
-Log.Information("💡 Train ML Models: POST /api/admin/train-ml-models");
+Log.Information("💡 Train ML Models: POST /api/admin/train_ml_models");
 Log.Information("💡 Environment: {Environment}", app.Environment.EnvironmentName);
 Log.Information("═══════════════════════════════════════════");
 

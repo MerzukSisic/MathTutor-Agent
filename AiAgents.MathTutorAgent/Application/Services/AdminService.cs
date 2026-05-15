@@ -58,7 +58,7 @@ public class AdminService(MathTutorDbContext context) : IAdminService
             .FirstOrDefaultAsync(q => q.Id == id, ct);
 
         if (question == null)
-            throw new InvalidOperationException($"Question {id} not found");
+            throw new KeyNotFoundException($"Question {id} not found.");
 
         question.TopicId = dto.TopicId;
         question.Difficulty = dto.Difficulty;
@@ -89,7 +89,7 @@ public class AdminService(MathTutorDbContext context) : IAdminService
     {
         var question = await context.Questions.FindAsync(new object[] { id }, ct);
         if (question == null)
-            throw new InvalidOperationException($"Question {id} not found");
+            throw new KeyNotFoundException($"Question {id} not found.");
 
         context.Questions.Remove(question);
         await context.SaveChangesAsync(ct);
@@ -182,8 +182,8 @@ public class AdminService(MathTutorDbContext context) : IAdminService
         if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
             throw new InvalidOperationException("Valid email is required.");
 
-        var normalizedEmail = NormalizeEmail(email);
-        if (await context.Students.AnyAsync(s => s.Email.ToLower() == normalizedEmail, ct))
+        var normalizedEmail = StringNormalizer.NormalizeEmail(email);
+        if (await context.Students.AnyAsync(s => s.Email == normalizedEmail, ct))
             throw new InvalidOperationException("Student with this email already exists.");
 
         var student = new Student
@@ -209,7 +209,7 @@ public class AdminService(MathTutorDbContext context) : IAdminService
     {
         var student = await context.Students.FirstOrDefaultAsync(s => s.Id == id, ct);
         if (student == null)
-            throw new InvalidOperationException($"Student {id} not found.");
+            throw new KeyNotFoundException($"Student {id} not found.");
 
         var name = dto.Name.Trim();
         var email = dto.Email.Trim();
@@ -218,9 +218,9 @@ public class AdminService(MathTutorDbContext context) : IAdminService
         if (string.IsNullOrWhiteSpace(email) || !email.Contains('@'))
             throw new InvalidOperationException("Valid email is required.");
 
-        var normalizedEmail = NormalizeEmail(email);
+        var normalizedEmail = StringNormalizer.NormalizeEmail(email);
         var emailTaken = await context.Students
-            .AnyAsync(s => s.Id != id && s.Email.ToLower() == normalizedEmail, ct);
+            .AnyAsync(s => s.Id != id && s.Email == normalizedEmail, ct);
         if (emailTaken)
             throw new InvalidOperationException("Another student already uses this email.");
 
@@ -264,7 +264,7 @@ public class AdminService(MathTutorDbContext context) : IAdminService
     {
         var student = await context.Students.FirstOrDefaultAsync(s => s.Id == id, ct);
         if (student == null)
-            throw new InvalidOperationException($"Student {id} not found.");
+            throw new KeyNotFoundException($"Student {id} not found.");
 
         var hasProgressData = await context.Attempts.AnyAsync(a => a.StudentId == id, ct)
             || await context.StudentTopicStates.AnyAsync(s => s.StudentId == id, ct)
@@ -281,8 +281,4 @@ public class AdminService(MathTutorDbContext context) : IAdminService
         context.Students.Remove(student);
         await context.SaveChangesAsync(ct);
     }
-
-    private static string NormalizeEmail(string email)
-        => email.Trim().ToLowerInvariant();
-    
 }

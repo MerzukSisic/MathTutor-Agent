@@ -49,7 +49,7 @@ public class AuthController(
     }
 
     [AllowAnonymous]
-    [HttpPost("confirm-email")]
+    [HttpPost("confirm_email")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailRequestDto request, CancellationToken ct)
     {
@@ -63,7 +63,7 @@ public class AuthController(
     }
 
     [AllowAnonymous]
-    [HttpPost("forgot-password")]
+    [HttpPost("forgot_password")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequestDto request, CancellationToken ct)
     {
@@ -72,7 +72,7 @@ public class AuthController(
     }
 
     [AllowAnonymous]
-    [HttpPost("reset-password")]
+    [HttpPost("reset_password")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto request, CancellationToken ct)
     {
@@ -86,7 +86,7 @@ public class AuthController(
     }
 
     [AllowAnonymous]
-    [HttpPost("resend-confirmation")]
+    [HttpPost("resend_confirmation")]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> ResendConfirmation([FromBody] ForgotPasswordRequestDto request, CancellationToken ct)
     {
@@ -104,7 +104,7 @@ public class AuthController(
     }
 
     [AllowAnonymous]
-    [HttpGet("csrf-token")]
+    [HttpGet("csrf_token")]
     public IActionResult GetCsrfToken()
     {
         var tokens = antiforgery.GetAndStoreTokens(HttpContext);

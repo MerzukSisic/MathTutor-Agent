@@ -12,6 +12,8 @@ public class StudentProfileService(
     public async Task<StudentProfileDto> GetProfileAsync(int studentId, CancellationToken ct = default)
     {
         var student = await context.Students
+            .AsNoTracking()
+            .AsSplitQuery()
             .Include(s => s.TopicStates).ThenInclude(ts => ts.Topic)
             .Include(s => s.Attempts).ThenInclude(a => a.Question).ThenInclude(q => q.Topic)
             .FirstOrDefaultAsync(s => s.Id == studentId, ct);
@@ -81,6 +83,7 @@ public class StudentProfileService(
     public async Task<StudySessionStatsDto> GetStudySessionStatsAsync(int studentId, DateTime from, DateTime to, CancellationToken ct = default)
     {
         var attempts = await context.Attempts
+            .AsNoTracking()
             .Include(a => a.Question).ThenInclude(q => q.Topic)
             .Where(a => a.StudentId == studentId && a.CreatedAt >= from && a.CreatedAt <= to)
             .OrderBy(a => a.CreatedAt)

@@ -30,7 +30,7 @@ public class AuthService(
             return new AuthResultDto { Success = false, Message = "Password must be at least 6 characters." };
         }
 
-        var email = NormalizeEmail(request.Email);
+        var email = StringNormalizer.NormalizeEmail(request.Email);
         if (await context.UserAccounts.AnyAsync(u => u.Email == email, ct))
         {
             return new AuthResultDto { Success = false, Message = "Email already in use." };
@@ -39,7 +39,7 @@ public class AuthService(
         await using var tx = await context.Database.BeginTransactionAsync(ct);
 
         Student? student = await context.Students
-            .FirstOrDefaultAsync(s => s.Email.ToLower() == email, ct);
+            .FirstOrDefaultAsync(s => s.Email == email, ct);
         if (student == null)
         {
             student = new Student
@@ -89,7 +89,7 @@ public class AuthService(
             return new AuthResultDto { Success = false, Message = "Email and password are required." };
         }
 
-        var email = NormalizeEmail(request.Email);
+        var email = StringNormalizer.NormalizeEmail(request.Email);
         var account = await context.UserAccounts.FirstOrDefaultAsync(u => u.Email == email, ct);
         if (account == null || !passwordHashingService.VerifyPassword(request.Password, account.PasswordHash))
         {
@@ -120,7 +120,7 @@ public class AuthService(
             return new AuthResultDto { Success = false, Message = "Email and token are required." };
         }
 
-        var normalizedEmail = NormalizeEmail(request.Email);
+        var normalizedEmail = StringNormalizer.NormalizeEmail(request.Email);
         var tokenHash = HashToken(request.Token);
 
         var token = await context.AuthTokens
@@ -160,7 +160,7 @@ public class AuthService(
             return new AuthResultDto { Success = true, Message = "If the account exists, a reset link has been sent." };
         }
 
-        var email = NormalizeEmail(request.Email);
+        var email = StringNormalizer.NormalizeEmail(request.Email);
         var account = await context.UserAccounts.FirstOrDefaultAsync(u => u.Email == email, ct);
         if (account == null || !account.EmailConfirmed)
         {
@@ -185,7 +185,7 @@ public class AuthService(
             return new AuthResultDto { Success = false, Message = "Password must be at least 6 characters." };
         }
 
-        var normalizedEmail = NormalizeEmail(request.Email);
+        var normalizedEmail = StringNormalizer.NormalizeEmail(request.Email);
         var tokenHash = HashToken(request.Token);
         var token = await context.AuthTokens
             .Include(t => t.UserAccount)
@@ -219,7 +219,7 @@ public class AuthService(
             return new AuthResultDto { Success = true, Message = "If the account exists, a confirmation email has been sent." };
         }
 
-        var email = NormalizeEmail(request.Email);
+        var email = StringNormalizer.NormalizeEmail(request.Email);
         var account = await context.UserAccounts.FirstOrDefaultAsync(u => u.Email == email, ct);
         if (account == null || account.EmailConfirmed)
         {
@@ -259,7 +259,7 @@ public class AuthService(
         try
         {
             var token = await CreateTokenAsync(account.Id, AuthTokenPurposes.PasswordReset, TimeSpan.FromHours(1), ct);
-            var resetLink = BuildPublicLink(appBaseUrl, "reset-password",
+            var resetLink = BuildPublicLink(appBaseUrl, "reset_password",
                 ("email", account.Email),
                 ("token", token));
             var subject = "Reset your MathTutor AI password";
@@ -281,7 +281,7 @@ public class AuthService(
     private async Task SendEmailConfirmationInternalAsync(UserAccount account, string appBaseUrl, CancellationToken ct)
     {
         var token = await CreateTokenAsync(account.Id, AuthTokenPurposes.EmailConfirmation, TimeSpan.FromHours(24), ct);
-        var confirmationLink = BuildPublicLink(appBaseUrl, "confirm-email",
+        var confirmationLink = BuildPublicLink(appBaseUrl, "confirm_email",
             ("email", account.Email),
             ("token", token));
         var subject = "Confirm your MathTutor AI account";
@@ -350,9 +350,6 @@ public class AuthService(
         var hash = SHA256.HashData(bytes);
         return Convert.ToHexString(hash);
     }
-
-    public static string NormalizeEmail(string email)
-        => email.Trim().ToLowerInvariant();
 
     private static bool IsValidEmail(string email)
     {

@@ -102,10 +102,10 @@ else
             var p when p.StartsWith("admin/edit-question/") => "Edit Question",
             "login" => "Sign In",
             "register" => "Register",
-            "confirm-email" => "Confirm Email",
-            "forgot-password" => "Forgot Password",
-            "reset-password" => "Reset Password",
-            "resend-confirmation" => "Resend Confirmation",
+            "confirm_email" => "Confirm Email",
+            "forgot_password" => "Forgot Password",
+            "reset_password" => "Reset Password",
+            "resend_confirmation" => "Resend Confirmation",
             _ => "MathTutor AI"
         };
     }
@@ -113,7 +113,7 @@ else
     private bool IsAuthPath()
     {
         var path = Navigation.ToAbsoluteUri(Navigation.Uri).AbsolutePath.Trim('/').ToLowerInvariant();
-        return path is "login" or "register" or "confirm-email" or "forgot-password" or "reset-password" or "resend-confirmation";
+        return path is "login" or "register" or "confirm_email" or "forgot_password" or "reset_password" or "resend_confirmation";
     }
 
     public void Dispose()
