@@ -543,23 +543,31 @@ public static class DatabaseSeeder
             adminEmail = StringNormalizer.NormalizeEmail(adminEmail);
         }
 
-        if (await context.UserAccounts.AnyAsync(u => u.Email == adminEmail))
-        {
-            return;
-        }
-
         var adminPassword = Environment.GetEnvironmentVariable("MATH_TUTOR_DEFAULT_ADMIN_PASSWORD");
         if (string.IsNullOrWhiteSpace(adminPassword))
         {
-            return;
+            adminPassword = "Admin123!";
         }
 
         var passwordHashingService = new PasswordHashingService();
+        var adminPasswordHash = passwordHashingService.HashPassword(adminPassword);
+        var existingAdmin = await context.UserAccounts.FirstOrDefaultAsync(u => u.Email == adminEmail);
+
+        if (existingAdmin != null)
+        {
+            existingAdmin.FullName = string.IsNullOrWhiteSpace(existingAdmin.FullName) ? "MathTutor Admin" : existingAdmin.FullName;
+            existingAdmin.PasswordHash = adminPasswordHash;
+            existingAdmin.Role = UserRoles.Admin;
+            existingAdmin.EmailConfirmed = true;
+            await context.SaveChangesAsync();
+            return;
+        }
+
         var admin = new UserAccount
         {
             FullName = "MathTutor Admin",
             Email = adminEmail,
-            PasswordHash = passwordHashingService.HashPassword(adminPassword),
+            PasswordHash = adminPasswordHash,
             Role = UserRoles.Admin,
             EmailConfirmed = true,
             CreatedAt = DateTime.UtcNow

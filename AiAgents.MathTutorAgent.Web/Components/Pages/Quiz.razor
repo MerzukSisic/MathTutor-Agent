@@ -151,13 +151,13 @@
                        @bind:event="oninput"
                        placeholder="@(geometryInteraction != null ? "Click sides/vertices above to fill answer" : "Enter your answer")"
                        readonly="@(geometryInteraction != null)"
-                       disabled="@(isSubmitting || isLoading)"
+                       disabled="@(isSubmitting || isLoading || feedback != null)"
                        @onkeypress="HandleKeyPress"/>
 
                 <div class="action-buttons">
                     <button class="btn-submit"
                             @onclick="() => SubmitAnswer(false)"
-                            disabled="@(string.IsNullOrWhiteSpace(userAnswer) || isSubmitting || isLoading)">
+                            disabled="@(string.IsNullOrWhiteSpace(userAnswer) || isSubmitting || isLoading || feedback != null)">
                         @if (isSubmitting)
                         {
                             <span class="spinner-small"></span>

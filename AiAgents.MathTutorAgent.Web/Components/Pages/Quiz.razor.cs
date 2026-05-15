@@ -128,7 +128,7 @@ public partial class Quiz
 
     private async Task SubmitAnswer(bool timedOut = false)
     {
-        if ((!timedOut && string.IsNullOrWhiteSpace(userAnswer)) || currentQuestion == null || isSubmitting)
+        if ((!timedOut && string.IsNullOrWhiteSpace(userAnswer)) || currentQuestion == null || isSubmitting || feedback != null)
         {
             return;
         }
@@ -183,7 +183,7 @@ public partial class Quiz
 
     private async Task HandleKeyPress(KeyboardEventArgs e)
     {
-        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(userAnswer) && !isSubmitting && !isLoading)
+        if (e.Key == "Enter" && !string.IsNullOrWhiteSpace(userAnswer) && !isSubmitting && !isLoading && feedback == null)
         {
             await SubmitAnswer(false);
         }
