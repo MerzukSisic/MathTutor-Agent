@@ -4,13 +4,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace AiAgents.MathTutorAgent.Application.Services;
 
-public class ExplanationService(MathTutorDbContext context)
+public class ExplanationService(
+    MathTutorDbContext context,
+    MathContentLocalizationService localizationService)
 {
     public async Task<ExplanationDto> RetrieveAndComposeExplanationAsync(
         int studentId, 
         int? questionId, 
         int? topicId, 
         string? errorTag,
+        string? languageCode = null,
         CancellationToken ct = default)
     {
         var references = new List<ReferenceDto>();
@@ -81,8 +84,8 @@ public class ExplanationService(MathTutorDbContext context)
         
         return new ExplanationDto
         {
-            Explanation = explanation,
-            Example = example,
+            Explanation = localizationService.LocalizeExplanationText(explanation, languageCode),
+            Example = localizationService.LocalizeExplanationText(example, languageCode),
             Sources = references
         };
     }
@@ -97,7 +100,7 @@ public class ExplanationService(MathTutorDbContext context)
         // ========== GEOMETRY - SPECIFIC KEYWORDS ==========
         
         // VERTICES (vrhovi)
-        if (lower.Contains("vertices") || lower.Contains("vertex"))
+        if (lower.Contains("vertices") || lower.Contains("vertex") || lower.Contains("vrh") || lower.Contains("vrhova"))
         {
             if (lower.Contains("cube"))
                 return ("A cube has 8 vertices (corners where edges meet). Count the 4 vertices on top and 4 on bottom.",
@@ -116,7 +119,7 @@ public class ExplanationService(MathTutorDbContext context)
         }
         
         // SIDES (stranice)
-        if (lower.Contains("sides") || lower.Contains("side"))
+        if (lower.Contains("sides") || lower.Contains("side") || lower.Contains("stranic") || lower.Contains("strana"))
         {
             if (lower.Contains("triangle"))
                 return ("A triangle has 3 sides. Each side is a straight line connecting two vertices.",
@@ -139,7 +142,7 @@ public class ExplanationService(MathTutorDbContext context)
         }
         
         // ANGLES (uglovi)
-        if (lower.Contains("angle") || lower.Contains("sum of angle"))
+        if (lower.Contains("angle") || lower.Contains("sum of angle") || lower.Contains("ugao") || lower.Contains("uglova"))
         {
             if (lower.Contains("triangle"))
                 return ("The sum of angles in ANY triangle is always 180°. To find a missing angle: subtract the known angles from 180°.",
@@ -155,37 +158,37 @@ public class ExplanationService(MathTutorDbContext context)
         
         // ========== ARITHMETIC ==========
         
-        if (lower.Contains("+") || lower.Contains("add") || lower.Contains("plus") || lower.Contains("sum"))
+        if (lower.Contains("+") || lower.Contains("add") || lower.Contains("plus") || lower.Contains("sum") || lower.Contains("saberi") || lower.Contains("zbir"))
         {
             return ("Addition combines numbers. Start with the first number and count up by the second number.",
                    "Example: 5 + 3 = 8. Start at 5, count: 6, 7, 8.");
         }
         
-        if (lower.Contains("-") || lower.Contains("subtract") || lower.Contains("minus") || lower.Contains("difference"))
+        if (lower.Contains("-") || lower.Contains("subtract") || lower.Contains("minus") || lower.Contains("difference") || lower.Contains("oduzmi") || lower.Contains("razlika"))
         {
             return ("Subtraction finds the difference. Start with the larger number and count down.",
                    "Example: 10 - 4 = 6. Start at 10, count back: 9, 8, 7, 6.");
         }
         
-        if (lower.Contains("×") || lower.Contains("*") || lower.Contains("multiply") || lower.Contains("times"))
+        if (lower.Contains("×") || lower.Contains("*") || lower.Contains("multiply") || lower.Contains("times") || lower.Contains("pomno") || lower.Contains("umno"))
         {
             return ("Multiplication is repeated addition. 3 × 4 means add 3 four times: 3+3+3+3=12.",
                    "Example: 6 × 7 = 42. Think: 6 groups of 7, or add 7 six times.");
         }
         
-        if (lower.Contains("÷") || lower.Contains("/") || lower.Contains("divide"))
+        if (lower.Contains("÷") || lower.Contains("/") || lower.Contains("divide") || lower.Contains("podijeli") || lower.Contains("dijeli"))
         {
             return ("Division splits a number into equal parts. Ask 'how many groups fit?'",
                    "Example: 20 ÷ 4 = 5. How many 4s fit in 20? Count: 4, 8, 12, 16, 20 = 5 groups.");
         }
         
-        if (lower.Contains("fraction") || lower.Contains("1/") || lower.Contains("/2") || lower.Contains("/3") || lower.Contains("/4"))
+        if (lower.Contains("fraction") || lower.Contains("razlom") || lower.Contains("1/") || lower.Contains("/2") || lower.Contains("/3") || lower.Contains("/4"))
         {
             return ("Fractions show parts of a whole. Numerator (top) = how many parts. Denominator (bottom) = total parts. To add fractions, find common denominator first.",
                    "Example: 1/2 + 1/4 = 2/4 + 1/4 = 3/4 (convert to same denominator).");
         }
         
-        if (lower.Contains("percent") || lower.Contains("%"))
+        if (lower.Contains("percent") || lower.Contains("procenat") || lower.Contains("postot") || lower.Contains("%"))
         {
             return ("Percent means 'per hundred'. To find X% of Y, convert to decimal and multiply: (X/100) × Y.",
                    "Example: 25% of 80 = 0.25 × 80 = 20.");
@@ -193,19 +196,19 @@ public class ExplanationService(MathTutorDbContext context)
         
         // ========== ALGEBRA ==========
         
-        if (lower.Contains("solve") && (lower.Contains("x") || lower.Contains("equation")))
+        if ((lower.Contains("solve") || lower.Contains("riješi") || lower.Contains("resi")) && (lower.Contains("x") || lower.Contains("equation") || lower.Contains("jednačin")))
         {
             return ("To solve equations, isolate the variable using inverse operations. Whatever you do to one side, do to the other.",
                    "Example: 2x + 5 = 13 → Subtract 5: 2x = 8 → Divide by 2: x = 4.");
         }
         
-        if (lower.Contains("simplify") || (lower.Contains("x") && (lower.Contains("+") || lower.Contains("-"))))
+        if (lower.Contains("simplify") || lower.Contains("pojednostavi") || (lower.Contains("x") && (lower.Contains("+") || lower.Contains("-"))))
         {
             return ("To simplify expressions, combine like terms (terms with the same variable).",
                    "Example: 2x + 3x = 5x (add coefficients). 5a - 2a = 3a.");
         }
         
-        if (lower.Contains("expand") || lower.Contains("factor") || lower.Contains("(x"))
+        if (lower.Contains("expand") || lower.Contains("factor") || lower.Contains("razvij") || lower.Contains("faktori") || lower.Contains("(x"))
         {
             return ("To expand, use FOIL (First, Outer, Inner, Last). To factor, find common factors or patterns.",
                    "Example: (x+3)(x+2) = x² + 2x + 3x + 6 = x² + 5x + 6.");
@@ -293,34 +296,34 @@ public class ExplanationService(MathTutorDbContext context)
         var lower = questionText.ToLower();
         
         // Math operations
-        if (lower.Contains("add") || lower.Contains("+")) keywords.Add("addition");
-        if (lower.Contains("subtract") || lower.Contains("-")) keywords.Add("subtraction");
-        if (lower.Contains("multiply") || lower.Contains("×")) keywords.Add("multiplication");
-        if (lower.Contains("divide") || lower.Contains("÷")) keywords.Add("division");
+        if (lower.Contains("add") || lower.Contains("saberi") || lower.Contains("+")) keywords.Add("addition");
+        if (lower.Contains("subtract") || lower.Contains("oduzmi") || lower.Contains("-")) keywords.Add("subtraction");
+        if (lower.Contains("multiply") || lower.Contains("pomno") || lower.Contains("×")) keywords.Add("multiplication");
+        if (lower.Contains("divide") || lower.Contains("dijeli") || lower.Contains("÷")) keywords.Add("division");
         
         // Shapes
-        if (lower.Contains("triangle")) keywords.Add("triangle");
-        if (lower.Contains("square")) keywords.Add("square");
-        if (lower.Contains("rectangle")) keywords.Add("rectangle");
-        if (lower.Contains("circle")) keywords.Add("circle");
-        if (lower.Contains("cube")) keywords.Add("cube");
-        if (lower.Contains("pentagon")) keywords.Add("pentagon");
+        if (lower.Contains("triangle") || lower.Contains("trougao") || lower.Contains("trokut")) keywords.Add("triangle");
+        if (lower.Contains("square") || lower.Contains("kvadrat")) keywords.Add("square");
+        if (lower.Contains("rectangle") || lower.Contains("pravougaonik") || lower.Contains("pravokutnik")) keywords.Add("rectangle");
+        if (lower.Contains("circle") || lower.Contains("krug")) keywords.Add("circle");
+        if (lower.Contains("cube") || lower.Contains("kocka")) keywords.Add("cube");
+        if (lower.Contains("pentagon") || lower.Contains("petougao") || lower.Contains("petokut")) keywords.Add("pentagon");
         
         // Geometry terms
-        if (lower.Contains("angle")) keywords.Add("angles");
-        if (lower.Contains("side")) keywords.Add("sides");
-        if (lower.Contains("vertices") || lower.Contains("vertex")) keywords.Add("vertices");
-        if (lower.Contains("perimeter")) keywords.Add("perimeter");
-        if (lower.Contains("area")) keywords.Add("area");
-        if (lower.Contains("pythagorean")) keywords.Add("pythagorean");
+        if (lower.Contains("angle") || lower.Contains("ugao") || lower.Contains("uglova")) keywords.Add("angles");
+        if (lower.Contains("side") || lower.Contains("stranic")) keywords.Add("sides");
+        if (lower.Contains("vertices") || lower.Contains("vertex") || lower.Contains("vrh")) keywords.Add("vertices");
+        if (lower.Contains("perimeter") || lower.Contains("obim")) keywords.Add("perimeter");
+        if (lower.Contains("area") || lower.Contains("površin") || lower.Contains("povrsin")) keywords.Add("area");
+        if (lower.Contains("pythagorean") || lower.Contains("pitagor")) keywords.Add("pythagorean");
         
         // Algebra
-        if (lower.Contains("solve")) keywords.Add("equations");
-        if (lower.Contains("simplify")) keywords.Add("expressions");
+        if (lower.Contains("solve") || lower.Contains("riješi") || lower.Contains("resi")) keywords.Add("equations");
+        if (lower.Contains("simplify") || lower.Contains("pojednostavi")) keywords.Add("expressions");
         
         // Logic
-        if (lower.Contains("set")) keywords.Add("sets");
-        if (lower.Contains("tautology")) keywords.Add("tautology");
+        if (lower.Contains("set") || lower.Contains("skup")) keywords.Add("sets");
+        if (lower.Contains("tautology") || lower.Contains("tautolog")) keywords.Add("tautology");
         
         return keywords;
     }

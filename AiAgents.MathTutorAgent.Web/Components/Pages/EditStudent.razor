@@ -2,22 +2,23 @@
 @attribute [Authorize(Roles = UserRoles.Admin)]
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject UiPreferencesService UiPrefs
 
-<PageTitle>Edit Student - MathTutor AI</PageTitle>
+<PageTitle>@($"{L("Uredi učenika", "Edit Student")} - MathTutor AI")</PageTitle>
 
 <div class="qform-shell">
     <div class="qform-card">
         <div class="qform-header">
             <div>
-                <h2>✏️ Edit Student</h2>
-                <p>Update student identity and account email safely.</p>
+                <h2>✏️ @L("Uredi učenika", "Edit Student")</h2>
+                <p>@L("Sigurno ažuriraj identitet učenika i email naloga.", "Update student identity and account email safely.")</p>
             </div>
-            <button class="qbtn ghost" @onclick="GoBack">← Back</button>
+            <button class="qbtn ghost" @onclick="GoBack">← @L("Nazad", "Back")</button>
         </div>
 
         @if (isLoading)
         {
-            <div class="q-loading">Loading student...</div>
+            <div class="q-loading">@L("Učitavam učenika...", "Loading student...")</div>
         }
         else
         {
@@ -33,20 +34,20 @@
 
             <div class="qform-grid">
                 <label>
-                    Full name
+                    @L("Puno ime", "Full name")
                     <input class="qinput" @bind="name" disabled="@isSubmitting" />
                 </label>
 
                 <label>
-                    Email
+                    @L("Email", "Email")
                     <input class="qinput" type="email" @bind="email" disabled="@isSubmitting" />
                 </label>
             </div>
 
             <div class="qform-actions">
-                <button class="qbtn ghost" @onclick="GoBack" disabled="@isSubmitting">Cancel</button>
+                <button class="qbtn ghost" @onclick="GoBack" disabled="@isSubmitting">@L("Otkaži", "Cancel")</button>
                 <button class="qbtn primary" @onclick="UpdateStudent" disabled="@(isSubmitting || !IsValid())">
-                    @(isSubmitting ? "Saving..." : "Save Changes")
+                    @(isSubmitting ? L("Spremam...", "Saving...") : L("Spremi izmjene", "Save Changes"))
                 </button>
             </div>
         }
@@ -62,6 +63,7 @@
     private bool isSubmitting;
     private string? errorMessage;
     private string? successMessage;
+    private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
     protected override async Task OnInitializedAsync()
     {
@@ -70,7 +72,7 @@
             var student = await Http.GetFromJsonAsync<StudentDto>($"/api/admin/students/{Id}");
             if (student == null)
             {
-                errorMessage = "Student not found.";
+                errorMessage = L("Učenik nije pronađen.", "Student not found.");
                 return;
             }
 
@@ -79,7 +81,7 @@
         }
         catch (HttpRequestException ex)
         {
-            errorMessage = $"Unable to load student ({ex.Message}).";
+            errorMessage = $"{L("Ne mogu učitati učenika", "Unable to load student")} ({ex.Message}).";
         }
         finally
         {
@@ -97,7 +99,7 @@
 
         if (!IsValid())
         {
-            errorMessage = "Please enter valid student name and email.";
+            errorMessage = L("Unesi ispravno ime učenika i email.", "Please enter valid student name and email.");
             return;
         }
 
@@ -116,12 +118,12 @@
             {
                 var error = await response.Content.ReadAsStringAsync();
                 errorMessage = string.IsNullOrWhiteSpace(error)
-                    ? $"Update failed ({response.StatusCode})."
+                    ? $"{L("Ažuriranje nije uspjelo", "Update failed")} ({response.StatusCode})."
                     : ExtractApiErrorMessage(error);
                 return;
             }
 
-            successMessage = "Student updated successfully. Redirecting...";
+            successMessage = L("Učenik je uspješno ažuriran. Preusmjeravam...", "Student updated successfully. Redirecting...");
             await Task.Delay(800);
             Navigation.NavigateTo("/admin?status=student-updated");
         }

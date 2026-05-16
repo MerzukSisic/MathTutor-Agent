@@ -4,10 +4,12 @@
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
+@inject UiPreferencesService UiPrefs
+@implements IDisposable
 
 <PageTitle>Student Profile - MathTutor AI</PageTitle>
 
-<div class="profile-container">
+<div class="profile-container theme-@UiPrefs.ThemeCode">
     @if (profile == null)
     {
         <div class="loading-container">
@@ -410,6 +412,7 @@
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();
         isAdmin = authState.User.IsInRole(UserRoles.Admin);
+        UiPrefs.Changed += HandleLanguageChanged;
 
         await LoadProfile();
         await LoadStats();
@@ -427,7 +430,7 @@
     {
         try
         {
-            profile = await Http.GetFromJsonAsync<StudentProfileDto>($"/api/student/{StudentId}/profile");
+            profile = await Http.GetFromJsonAsync<StudentProfileDto>($"/api/student/{StudentId}/profile?lang={UiPrefs.LanguageCode}");
         }
         catch (Exception ex)
         {
@@ -442,7 +445,7 @@
             var fromDate = DateTime.UtcNow.AddDays(-30);
             var toDate = DateTime.UtcNow;
             stats = await Http.GetFromJsonAsync<StudySessionStatsDto>(
-                $"/api/student/{StudentId}/stats?from={fromDate:yyyy-MM-dd}&to={toDate:yyyy-MM-dd}");
+                $"/api/student/{StudentId}/stats?from={fromDate:yyyy-MM-dd}&to={toDate:yyyy-MM-dd}&lang={UiPrefs.LanguageCode}");
         }
         catch (Exception ex)
         {
@@ -483,7 +486,7 @@
     {
         try
         {
-            var response = await Http.GetAsync($"/api/student/{StudentId}/export_pdf");
+            var response = await Http.GetAsync($"/api/student/{StudentId}/export_pdf?lang={UiPrefs.LanguageCode}");
             if (response.IsSuccessStatusCode)
             {
                 var fileBytes = await response.Content.ReadAsByteArrayAsync();
@@ -537,6 +540,22 @@
             >= 50 => "Keep Practicing",
             _ => "More Practice Needed"
         };
+    }
+
+    private void HandleLanguageChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await LoadProfile();
+            await LoadStats();
+            await RenderCharts();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        UiPrefs.Changed -= HandleLanguageChanged;
     }
 
     private string GetRelativeTime(DateTime date)

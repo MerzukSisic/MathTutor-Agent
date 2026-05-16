@@ -2,17 +2,18 @@
 @attribute [Authorize(Roles = UserRoles.Admin)]
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject UiPreferencesService UiPrefs
 
-<PageTitle>Add Question - MathTutor AI</PageTitle>
+<PageTitle>@($"{L("Dodaj pitanje", "Add Question")} - MathTutor AI")</PageTitle>
 
 <div class="qform-shell">
     <div class="qform-card">
         <div class="qform-header">
             <div>
-                <h2>➕ Add New Question</h2>
-                <p>Create fresh content for students with topic and difficulty mapping.</p>
+                <h2>➕ @L("Dodaj novo pitanje", "Add New Question")</h2>
+                <p>@L("Kreiraj novi sadržaj za učenike sa mapiranjem teme i težine.", "Create fresh content for students with topic and difficulty mapping.")</p>
             </div>
-            <button class="qbtn ghost" @onclick="GoBack">← Back</button>
+            <button class="qbtn ghost" @onclick="GoBack">← @L("Nazad", "Back")</button>
         </div>
 
         @if (!string.IsNullOrWhiteSpace(errorMessage))
@@ -27,10 +28,10 @@
 
         <div class="qform-grid">
             <label>
-                Topic
+                @L("Tema", "Topic")
                 <div class="qselect-wrap">
                     <select class="qinput qselect" @bind="topicId" disabled="@isSubmitting">
-                        <option value="0">Select topic</option>
+                        <option value="0">@L("Odaberi temu", "Select topic")</option>
                         @foreach (var topic in topics)
                         {
                             <option value="@topic.Id">@topic.Name (@topic.Area)</option>
@@ -39,12 +40,12 @@
                 </div>
                 @if (showTopicError)
                 {
-                    <span class="q-inline-error">Please select a topic.</span>
+                    <span class="q-inline-error">@L("Odaberi temu.", "Please select a topic.")</span>
                 }
             </label>
 
             <label>
-                Difficulty (1-5)
+                @L("Težina (1-5)", "Difficulty (1-5)")
                 <div class="qselect-wrap">
                     <select class="qinput qselect" @bind="difficulty" disabled="@isSubmitting">
                         @for (var i = 1; i <= 5; i++)
@@ -56,38 +57,38 @@
             </label>
 
             <label class="full">
-                Question text
-                <textarea class="qinput" rows="4" @bind="questionText" disabled="@isSubmitting" placeholder="Example: What is 17 + 26?"></textarea>
+                @L("Tekst pitanja", "Question text")
+                <textarea class="qinput" rows="4" @bind="questionText" disabled="@isSubmitting" placeholder="@L("Primjer: Koliko je 17 + 26?", "Example: What is 17 + 26?")"></textarea>
                 @if (showQuestionTextError)
                 {
-                    <span class="q-inline-error">Question text is required.</span>
+                    <span class="q-inline-error">@L("Tekst pitanja je obavezan.", "Question text is required.")</span>
                 }
             </label>
 
             <label class="full">
-                Correct answer
-                <input class="qinput" @bind="correctAnswer" disabled="@isSubmitting" placeholder="Example: 43" />
+                @L("Tačan odgovor", "Correct answer")
+                <input class="qinput" @bind="correctAnswer" disabled="@isSubmitting" placeholder="@L("Primjer: 43", "Example: 43")" />
                 @if (showCorrectAnswerError)
                 {
-                    <span class="q-inline-error">Correct answer is required.</span>
+                    <span class="q-inline-error">@L("Tačan odgovor je obavezan.", "Correct answer is required.")</span>
                 }
             </label>
 
             <label class="full">
-                Solution steps (optional)
-                <textarea class="qinput" rows="3" @bind="solutionSteps" disabled="@isSubmitting" placeholder="Step-by-step explanation"></textarea>
+                @L("Koraci rješenja (opcionalno)", "Solution steps (optional)")
+                <textarea class="qinput" rows="3" @bind="solutionSteps" disabled="@isSubmitting" placeholder="@L("Objašnjenje korak po korak", "Step-by-step explanation")"></textarea>
             </label>
 
             <label class="full">
-                Common mistakes (optional, comma separated)
+                @L("Česte greške (opcionalno, odvojene zarezom)", "Common mistakes (optional, comma separated)")
                 <input class="qinput" @bind="commonMistakesRaw" disabled="@isSubmitting" placeholder="42, 44" />
             </label>
         </div>
 
         <div class="qform-actions">
-            <button class="qbtn ghost" @onclick="GoBack" disabled="@isSubmitting">Cancel</button>
+            <button class="qbtn ghost" @onclick="GoBack" disabled="@isSubmitting">@L("Otkaži", "Cancel")</button>
             <button class="qbtn primary" @onclick="CreateQuestion" disabled="@(isSubmitting || !IsValid())">
-                @(isSubmitting ? "Creating..." : "Create Question")
+                @(isSubmitting ? L("Kreiram...", "Creating...") : L("Kreiraj pitanje", "Create Question"))
             </button>
         </div>
     </div>
@@ -108,16 +109,17 @@
     private bool showCorrectAnswerError;
     private string? errorMessage;
     private string? successMessage;
+    private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            topics = await Http.GetFromJsonAsync<List<TopicDto>>("/api/admin/topics") ?? new();
+            topics = await Http.GetFromJsonAsync<List<TopicDto>>($"/api/admin/topics?lang={UiPrefs.LanguageCode}") ?? new();
         }
         catch
         {
-            errorMessage = "Failed to load topics. Please refresh.";
+            errorMessage = L("Učitavanje tema nije uspjelo. Osvježi stranicu.", "Failed to load topics. Please refresh.");
         }
     }
 
@@ -142,7 +144,7 @@
 
         if (!ValidateForm())
         {
-            errorMessage = "Please fix validation errors in the form.";
+            errorMessage = L("Ispravi greške u formi.", "Please fix validation errors in the form.");
             return;
         }
 
@@ -163,11 +165,11 @@
             var response = await Http.PostAsJsonAsync("/api/admin/questions", dto);
             if (!response.IsSuccessStatusCode)
             {
-                errorMessage = $"Failed to create question ({response.StatusCode}).";
+                errorMessage = $"{L("Kreiranje pitanja nije uspjelo", "Failed to create question")} ({response.StatusCode}).";
                 return;
             }
 
-            successMessage = "Question created successfully. Redirecting...";
+            successMessage = L("Pitanje je uspješno kreirano. Preusmjeravam...", "Question created successfully. Redirecting...");
             await Task.Delay(800);
             Navigation.NavigateTo("/admin?status=question-created");
         }

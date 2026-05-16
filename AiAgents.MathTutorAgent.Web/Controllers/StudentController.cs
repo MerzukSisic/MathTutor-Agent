@@ -13,7 +13,7 @@ public class StudentController(StudentProfileService profileService, PdfExportSe
     : ControllerBase
 {
     [HttpGet("{studentId}/profile")]
-    public async Task<IActionResult> GetProfile(int studentId)
+    public async Task<IActionResult> GetProfile(int studentId, [FromQuery] string? lang = null)
     {
         if (!CanAccessStudent(studentId))
         {
@@ -22,7 +22,7 @@ public class StudentController(StudentProfileService profileService, PdfExportSe
 
         try
         {
-            var profile = await profileService.GetProfileAsync(studentId, HttpContext.RequestAborted);
+            var profile = await profileService.GetProfileAsync(studentId, lang, HttpContext.RequestAborted);
             return Ok(profile);
         }
         catch (KeyNotFoundException)
@@ -32,7 +32,7 @@ public class StudentController(StudentProfileService profileService, PdfExportSe
     }
 
     [HttpGet("{studentId}/stats")]
-    public async Task<IActionResult> GetStudyStats(int studentId, [FromQuery] DateTime? from, [FromQuery] DateTime? to)
+    public async Task<IActionResult> GetStudyStats(int studentId, [FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string? lang = null)
     {
         if (!CanAccessStudent(studentId))
         {
@@ -48,12 +48,12 @@ public class StudentController(StudentProfileService profileService, PdfExportSe
             toDate = to.Value.Date.AddDays(1).AddTicks(-1);
         }
 
-        var stats = await profileService.GetStudySessionStatsAsync(studentId, fromDate, toDate, HttpContext.RequestAborted);
+        var stats = await profileService.GetStudySessionStatsAsync(studentId, fromDate, toDate, lang, HttpContext.RequestAborted);
         return Ok(stats);
     }
 
     [HttpGet("{studentId}/export_pdf")]
-    public async Task<IActionResult> ExportReport(int studentId)
+    public async Task<IActionResult> ExportReport(int studentId, [FromQuery] string? lang = null)
     {
         if (!CanAccessStudent(studentId))
         {
@@ -62,11 +62,12 @@ public class StudentController(StudentProfileService profileService, PdfExportSe
 
         try
         {
-            var profile = await profileService.GetProfileAsync(studentId, HttpContext.RequestAborted);
+            var profile = await profileService.GetProfileAsync(studentId, lang, HttpContext.RequestAborted);
             var stats = await profileService.GetStudySessionStatsAsync(
                 studentId, 
                 DateTime.UtcNow.AddMonths(-1), 
                 DateTime.UtcNow, 
+                lang,
                 HttpContext.RequestAborted);
 
             var pdfBytes = pdfService.GenerateStudentReport(profile, stats);

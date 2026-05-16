@@ -4,13 +4,14 @@
 @using System.Text.Json
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
+@inject UiPreferencesService UiPrefs
 
-<PageTitle>Login - MathTutor AI</PageTitle>
+<PageTitle>@($"{L("Prijava", "Login")} - MathTutor AI")</PageTitle>
 
 <div class="auth-page">
     <div class="auth-card">
-        <h1>Sign In</h1>
-        <p>Continue your MathTutor learning journey.</p>
+        <h1>@L("Prijava", "Sign In")</h1>
+        <p>@L("Nastavi svoje MathTutor učenje.", "Continue your MathTutor learning journey.")</p>
 
         @if (!string.IsNullOrWhiteSpace(infoMessage))
         {
@@ -23,22 +24,22 @@
         }
 
         <label>
-            Email
+            @L("Email", "Email")
             <input class="auth-input" type="email" @bind="email" autocomplete="username" />
         </label>
 
         <label>
-            Password
+            @L("Lozinka", "Password")
             <input class="auth-input" type="password" @bind="password" autocomplete="current-password" />
         </label>
 
         <button class="auth-btn" @onclick="LoginAsync" disabled="@isSubmitting">
-            @(isSubmitting ? "Signing in..." : "Sign In")
+            @(isSubmitting ? L("Prijavljujem...", "Signing in...") : L("Prijavi se", "Sign In"))
         </button>
 
-        <p class="auth-meta">No account yet? <a href="/register">Create one</a></p>
-        <p class="auth-meta"><a href="/forgot_password">Forgot password?</a></p>
-        <p class="auth-meta"><a href="/resend_confirmation">Resend confirmation email</a></p>
+        <p class="auth-meta">@L("Nemaš nalog?", "No account yet?") <a href="/register">@L("Napravi ga", "Create one")</a></p>
+        <p class="auth-meta"><a href="/forgot_password">@L("Zaboravljena lozinka?", "Forgot password?")</a></p>
+        <p class="auth-meta"><a href="/resend_confirmation">@L("Ponovo pošalji potvrdu emaila", "Resend confirmation email")</a></p>
     </div>
 </div>
 
@@ -48,6 +49,7 @@
     private string? errorMessage;
     private string? infoMessage;
     private bool isSubmitting;
+    private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
     protected override void OnInitialized()
     {
@@ -61,16 +63,16 @@
         switch (statusValue.ToString())
         {
             case "registered":
-                infoMessage = "Registration successful. Please confirm your email before signing in.";
+                infoMessage = L("Registracija uspješna. Potvrdi email prije prijave.", "Registration successful. Please confirm your email before signing in.");
                 break;
             case "registered-ready":
-                infoMessage = "Registration successful. You can sign in now.";
+                infoMessage = L("Registracija uspješna. Sada se možeš prijaviti.", "Registration successful. You can sign in now.");
                 break;
             case "confirmed":
-                infoMessage = "Email confirmed successfully. You can now sign in.";
+                infoMessage = L("Email je uspješno potvrđen. Sada se možeš prijaviti.", "Email confirmed successfully. You can now sign in.");
                 break;
             case "password-reset":
-                infoMessage = "Password changed successfully. Sign in with your new password.";
+                infoMessage = L("Lozinka je uspješno promijenjena. Prijavi se novom lozinkom.", "Password changed successfully. Sign in with your new password.");
                 break;
         }
     }
@@ -81,7 +83,7 @@
 
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
         {
-            errorMessage = "Please enter both email and password.";
+            errorMessage = L("Unesi i email i lozinku.", "Please enter both email and password.");
             return;
         }
 
@@ -101,7 +103,7 @@
                     data.TryGetProperty("message", out var msgEl);
                     msg = msgEl.ValueKind == JsonValueKind.String ? msgEl.GetString() : null;
                 }
-                errorMessage = string.IsNullOrWhiteSpace(msg) ? "Invalid email or password." : msg;
+                errorMessage = string.IsNullOrWhiteSpace(msg) ? L("Neispravan email ili lozinka.", "Invalid email or password.") : msg;
                 return;
             }
 
@@ -119,7 +121,7 @@
         }
         catch
         {
-            errorMessage = "Login failed. Please try again.";
+            errorMessage = L("Prijava nije uspjela. Pokušaj ponovo.", "Login failed. Please try again.");
         }
         finally
         {

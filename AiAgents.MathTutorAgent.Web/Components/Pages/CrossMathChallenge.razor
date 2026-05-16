@@ -1,3 +1,5 @@
+@inject UiPreferencesService UiPrefs
+
 <div class="crossmath-challenge">
     <div class="crossmath-head">
         <div>
@@ -46,7 +48,7 @@
     </div>
 
     <div class="crossmath-bank">
-        <p>Choose a number, then click a highlighted cell.</p>
+        <p>@(UiPrefs.Language == UiLanguage.Bs ? "Odaberi broj, pa klikni označeno polje." : "Choose a number, then click a highlighted cell.")</p>
         <div class="bank-items">
             @for (var i = 0; i < bank.Count; i++)
             {
@@ -63,15 +65,15 @@
     </div>
 
     <div class="crossmath-actions">
-        <span class="progress">Rows solved: @SolvedRows / @Model.Size</span>
-        <button type="button" class="btn-clear-cell" @onclick="ClearActiveCell" disabled="@(Disabled || activeRow < 0)">Clear Cell</button>
-        <button type="button" class="btn-reset-board" @onclick="ResetBoard" disabled="@Disabled">Reset Board</button>
+        <span class="progress">@(UiPrefs.Language == UiLanguage.Bs ? "Riješeni redovi" : "Rows solved"): @SolvedRows / @Model.Size</span>
+        <button type="button" class="btn-clear-cell" @onclick="ClearActiveCell" disabled="@(Disabled || activeRow < 0)">@(UiPrefs.Language == UiLanguage.Bs ? "Očisti polje" : "Clear Cell")</button>
+        <button type="button" class="btn-reset-board" @onclick="ResetBoard" disabled="@Disabled">@(UiPrefs.Language == UiLanguage.Bs ? "Resetuj tablu" : "Reset Board")</button>
     </div>
 
     @if (IsCompleted)
     {
         <div class="crossmath-success">
-            🎉 Challenge completed! Great work.
+            @(UiPrefs.Language == UiLanguage.Bs ? "🎉 Izazov je završen! Odlično." : "🎉 Challenge completed! Great work.")
         </div>
     }
 </div>

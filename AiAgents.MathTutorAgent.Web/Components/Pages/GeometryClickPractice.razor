@@ -1,16 +1,17 @@
 @using System.Globalization
+@inject UiPreferencesService UiPrefs
 
-<div class="geometry-practice">
+<div class="geometry-practice theme-@UiPrefs.ThemeCode">
     <div class="geometry-practice-head">
-        <h4>🧩 Shape Practice</h4>
-        <span class="geometry-tag">@Model.ShapeLabel · @TargetLabel</span>
+        <h4>🧩 @L("Vježba oblika", "Shape Practice")</h4>
+        <span class="geometry-tag">@DisplayShapeLabel · @TargetLabel</span>
     </div>
 
     <p class="geometry-help">@HelpText</p>
 
     @if (IsCubeVertices)
     {
-        <svg class="geometry-canvas" viewBox="0 0 220 150" role="img" aria-label="Interactive cube vertices">
+        <svg class="geometry-canvas" viewBox="0 0 220 150" role="img" aria-label="@L("Interaktivni vrhovi kocke", "Interactive cube vertices")">
             @foreach (var edge in CubeEdges)
             {
                 <line x1="@F(edge.X1)" y1="@F(edge.Y1)" x2="@F(edge.X2)" y2="@F(edge.Y2)" class="cube-edge" />
@@ -29,7 +30,7 @@
     }
     else if (IsCubeSides)
     {
-        <svg class="geometry-canvas" viewBox="0 0 250 170" role="img" aria-label="Interactive cube faces">
+        <svg class="geometry-canvas" viewBox="0 0 250 170" role="img" aria-label="@L("Interaktivne strane kocke", "Interactive cube faces")">
             @for (var i = 0; i < CubeFaces.Length; i++)
             {
                 var index = i;
@@ -43,7 +44,7 @@
     }
     else
     {
-        <svg class="geometry-canvas" viewBox="0 0 220 150" role="img" aria-label="Interactive polygon">
+        <svg class="geometry-canvas" viewBox="0 0 220 150" role="img" aria-label="@L("Interaktivni mnogougao", "Interactive polygon")">
             @{
                 var points = PolygonPoints;
             }
@@ -90,8 +91,8 @@
     }
 
     <div class="geometry-practice-meta">
-        <strong>Selected: @SelectedCount</strong>
-        <button type="button" class="btn-clear-geometry" @onclick="ClearSelection" disabled="@Disabled">Clear</button>
+        <strong>@L("Odabrano", "Selected"): @SelectedCount</strong>
+        <button type="button" class="btn-clear-geometry" @onclick="ClearSelection" disabled="@Disabled">@L("Očisti", "Clear")</button>
     </div>
 </div>
 
@@ -130,10 +131,12 @@
     private bool IsCubeVertices => string.Equals(Model.ShapeKey, "cube", StringComparison.OrdinalIgnoreCase) && !IsSidesMode;
     private bool IsCubeSides => string.Equals(Model.ShapeKey, "cube", StringComparison.OrdinalIgnoreCase) && IsSidesMode;
     private int SelectedCount => selection.Count(item => item);
-    private string TargetLabel => IsSidesMode ? "Count sides" : "Count vertices";
+    private string TargetLabel => IsSidesMode ? L("Broj stranica", "Count sides") : L("Broj vrhova", "Count vertices");
+    private string DisplayShapeLabel => TranslateShapeLabel(Model.ShapeLabel);
     private string HelpText => IsSidesMode
-        ? "Click each side once. Your selected count is used as the answer."
-        : "Click each vertex (corner) once. Your selected count is used as the answer.";
+        ? L("Klikni svaku stranicu jednom. Tvoj broj odabira se koristi kao odgovor.", "Click each side once. Your selected count is used as the answer.")
+        : L("Klikni svaki vrh (ugao) jednom. Tvoj broj odabira se koristi kao odgovor.", "Click each vertex (corner) once. Your selected count is used as the answer.");
+    private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
     private IReadOnlyList<(double X, double Y)> PolygonPoints
     {
@@ -191,4 +194,29 @@
     }
 
     private static string F(double value) => value.ToString("0.###", CultureInfo.InvariantCulture);
+
+    private string TranslateShapeLabel(string shapeLabel)
+    {
+        if (UiPrefs.Language != UiLanguage.Bs)
+        {
+            return shapeLabel;
+        }
+
+        var key = (Model.ShapeKey ?? string.Empty).Trim().ToLowerInvariant();
+        return key switch
+        {
+            "triangle" => "Trokut",
+            "square" => "Kvadrat",
+            "rectangle" => "Pravougaonik",
+            "quadrilateral" => "Četverougao",
+            "pentagon" => "Pentagon",
+            "hexagon" => "Heksagon",
+            "heptagon" => "Heptagon",
+            "octagon" => "Oktagon",
+            "nonagon" => "Nonagon",
+            "decagon" => "Dekagon",
+            "cube" => "Kocka",
+            _ => shapeLabel
+        };
+    }
 }

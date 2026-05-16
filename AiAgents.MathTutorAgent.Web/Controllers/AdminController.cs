@@ -14,16 +14,27 @@ namespace AiAgents.MathTutorAgent.Web.Controllers;
 public class AdminController(
     IAdminService adminService,
     StudentProfileService studentProfileService,
-    MlTrainingService mlTrainingService)
+    MlTrainingService mlTrainingService,
+    MathContentLocalizationService localizationService)
     : ControllerBase
 {
     // ========== QUESTIONS CRUD ==========
 
     [HttpGet("questions")]
-    public async Task<IActionResult> GetQuestions(CancellationToken ct)
+    public async Task<IActionResult> GetQuestions([FromQuery] string? lang, CancellationToken ct)
     {
         var questions = await adminService.GetAllQuestionsAsync(ct);
-        return Ok(questions);
+        var language = localizationService.NormalizeLanguage(lang);
+        var localized = questions
+            .Select(question => question with
+            {
+                TopicName = localizationService.LocalizeTopicName(question.TopicName, language),
+                QuestionText = localizationService.LocalizeQuestionText(question.QuestionText, language),
+                CorrectAnswer = localizationService.LocalizeAnswerToken(question.CorrectAnswer, language)
+            })
+            .ToList();
+
+        return Ok(localized);
     }
 
     [HttpPost("questions")]
@@ -67,10 +78,19 @@ public class AdminController(
     // ========== TOPICS ==========
 
     [HttpGet("topics")]
-    public async Task<IActionResult> GetTopics(CancellationToken ct)
+    public async Task<IActionResult> GetTopics([FromQuery] string? lang, CancellationToken ct)
     {
         var topics = await adminService.GetAllTopicsAsync(ct);
-        return Ok(topics);
+        var language = localizationService.NormalizeLanguage(lang);
+        var localized = topics
+            .Select(topic => topic with
+            {
+                Name = localizationService.LocalizeTopicName(topic.Name, language),
+                Area = localizationService.LocalizeAreaName(topic.Area, language)
+            })
+            .ToList();
+
+        return Ok(localized);
     }
 
     // ========== STUDENTS ==========

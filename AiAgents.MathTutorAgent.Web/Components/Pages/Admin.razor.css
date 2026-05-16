@@ -354,6 +354,97 @@
     color: #b91c1c;
 }
 
+.admin-page.theme-dark .admin-panel-card {
+    background: #101a2c;
+    border-color: #294060;
+    box-shadow: 0 16px 34px rgba(2, 6, 23, 0.52);
+}
+
+.admin-page.theme-dark .metric-tile {
+    background: linear-gradient(180deg, #15233b, #101b30);
+    border-color: #2d4463;
+    box-shadow: 0 8px 18px rgba(2, 6, 23, 0.42);
+}
+
+.admin-page.theme-dark .metric-label,
+.admin-page.theme-dark .panel-toolbar p,
+.admin-page.theme-dark .perf-meta {
+    color: #94a3b8;
+}
+
+.admin-page.theme-dark .metric-value,
+.admin-page.theme-dark .panel-toolbar h4,
+.admin-page.theme-dark .agent-perf-head h4 {
+    color: #e2e8f0;
+}
+
+.admin-page.theme-dark .agent-perf-card {
+    border-color: #2f4b73;
+    background: linear-gradient(180deg, #102238, #122c45);
+}
+
+.admin-page.theme-dark .agent-perf-head span {
+    color: #7dd3fc;
+}
+
+.admin-page.theme-dark .perf-progress {
+    background: #274363;
+}
+
+.admin-page.theme-dark .id-pill {
+    border-color: #3b82f6;
+    color: #bfdbfe;
+    background: #1e3a5f;
+}
+
+.admin-page.theme-dark .difficulty-pill {
+    border-color: #34d399;
+    color: #a7f3d0;
+    background: #11352e;
+}
+
+.admin-page.theme-dark ::deep .admin-tabs .rz-tabview-nav {
+    border-bottom-color: #294060;
+}
+
+.admin-page.theme-dark ::deep .admin-tabs .rz-tabview-nav li a {
+    color: #94a3b8;
+}
+
+.admin-page.theme-dark ::deep .admin-tabs .rz-tabview-selected a {
+    color: #67e8f9;
+}
+
+.admin-page.theme-dark ::deep .admin-grid {
+    border-color: #2c4564;
+}
+
+.admin-page.theme-dark ::deep .admin-grid .rz-datatable-thead > tr > th {
+    background: linear-gradient(180deg, #172940, #14243a);
+    color: #cbd5e1;
+    border-bottom-color: #2c4564;
+}
+
+.admin-page.theme-dark ::deep .admin-grid .rz-datatable-tbody > tr > td {
+    background: #0f1b2f;
+    color: #dbeafe;
+    border-bottom-color: #223754;
+}
+
+.admin-page.theme-dark ::deep .admin-grid .rz-datatable-tbody > tr:nth-child(even) > td {
+    background: #13223a;
+}
+
+.admin-page.theme-dark ::deep .admin-grid .rz-datatable-tbody > tr:hover > td {
+    background: #19304d;
+}
+
+.admin-page.theme-dark ::deep .admin-grid .rz-paginator {
+    border-top-color: #294060;
+    background: #122035;
+    color: #cbd5e1;
+}
+
 @media (max-width: 720px) {
     .admin-hero {
         border-radius: 16px;

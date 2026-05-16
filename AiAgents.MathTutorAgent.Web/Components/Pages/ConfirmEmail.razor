@@ -4,13 +4,14 @@
 @using System.Text.Json
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
+@inject UiPreferencesService UiPrefs
 
-<PageTitle>Confirm Email - MathTutor AI</PageTitle>
+<PageTitle>@($"{L("Potvrda emaila", "Confirm Email")} - MathTutor AI")</PageTitle>
 
 <div class="auth-page">
     <div class="auth-card">
-        <h1>Confirm Email</h1>
-        <p>Verifying your account email address.</p>
+        <h1>@L("Potvrda emaila", "Confirm Email")</h1>
+        <p>@L("Provjeravam email adresu tvog naloga.", "Verifying your account email address.")</p>
 
         @if (!string.IsNullOrWhiteSpace(message))
         {
@@ -24,11 +25,11 @@
 
         @if (isProcessing)
         {
-            <button class="auth-btn" disabled="true">Confirming...</button>
+            <button class="auth-btn" disabled="true">@L("Potvrđujem...", "Confirming...")</button>
         }
         else
         {
-            <button class="auth-btn" @onclick="GoToLogin">Go to Login</button>
+            <button class="auth-btn" @onclick="GoToLogin">@L("Idi na prijavu", "Go to Login")</button>
         }
     </div>
 </div>
@@ -39,6 +40,7 @@
     private string? message;
     private string? errorMessage;
     private bool isProcessing = true;
+    private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
     protected override async Task OnInitializedAsync()
     {
@@ -56,7 +58,7 @@
 
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(token))
         {
-            errorMessage = "Invalid confirmation link.";
+            errorMessage = L("Neispravan link za potvrdu.", "Invalid confirmation link.");
             isProcessing = false;
             return;
         }
@@ -75,7 +77,7 @@
                     msg = msgEl.ValueKind == JsonValueKind.String ? msgEl.GetString() : null;
                 }
 
-                errorMessage = string.IsNullOrWhiteSpace(msg) ? "Confirmation link is invalid or expired." : msg;
+                errorMessage = string.IsNullOrWhiteSpace(msg) ? L("Link za potvrdu je neispravan ili istekao.", "Confirmation link is invalid or expired.") : msg;
                 return;
             }
 
@@ -87,12 +89,12 @@
             }
 
             message = string.IsNullOrWhiteSpace(okMessage)
-                ? "Email confirmed successfully."
+                ? L("Email je uspješno potvrđen.", "Email confirmed successfully.")
                 : okMessage;
         }
         catch
         {
-            errorMessage = "Unable to confirm email right now.";
+            errorMessage = L("Trenutno nije moguće potvrditi email.", "Unable to confirm email right now.");
         }
         finally
         {

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using AiAgents.MathTutorAgent.Application.DTOs;
+using AiAgents.MathTutorAgent.Web.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.WebUtilities;
 using System.Net.Http.Json;
@@ -13,9 +14,11 @@ public partial class Admin
     private List<StudentDto>? students;
     private string? flashMessage;
     private bool flashIsError;
+    private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
     protected override async Task OnInitializedAsync()
     {
+        UiPrefs.Changed += HandleLanguageChanged;
         ApplyStatusFromQuery();
         await LoadMetrics();
         await LoadQuestions();
@@ -38,7 +41,7 @@ public partial class Admin
     {
         try
         {
-            questions = await Http.GetFromJsonAsync<List<AdminQuestionDto>>("/api/admin/questions");
+            questions = await Http.GetFromJsonAsync<List<AdminQuestionDto>>($"/api/admin/questions?lang={UiPrefs.LanguageCode}");
         }
         catch (Exception ex)
         {
@@ -76,7 +79,7 @@ public partial class Admin
 
     private async Task DeleteQuestion(int id)
     {
-        var confirmed = await JS.InvokeAsync<bool>("confirm", new object?[] { "Delete this question permanently?" });
+        var confirmed = await JS.InvokeAsync<bool>("confirm", new object?[] { L("Trajno obrisati ovo pitanje?", "Delete this question permanently?") });
         if (!confirmed)
         {
             return;
@@ -86,12 +89,12 @@ public partial class Admin
         if (response.IsSuccessStatusCode)
         {
             await LoadQuestions();
-            flashMessage = "Question deleted successfully.";
+            flashMessage = L("Pitanje je uspješno obrisano.", "Question deleted successfully.");
             flashIsError = false;
         }
         else
         {
-            flashMessage = $"Delete failed ({response.StatusCode}).";
+            flashMessage = L("Brisanje nije uspjelo", "Delete failed") + $" ({response.StatusCode}).";
             flashIsError = true;
         }
     }
@@ -108,7 +111,7 @@ public partial class Admin
 
     private async Task DeleteStudent(int studentId, string studentName)
     {
-        var confirmed = await JS.InvokeAsync<bool>("confirm", new object?[] { $"Delete student '{studentName}'?" });
+        var confirmed = await JS.InvokeAsync<bool>("confirm", new object?[] { $"{L("Obrisati učenika", "Delete student")} '{studentName}'?" });
         if (!confirmed)
         {
             return;
@@ -119,14 +122,14 @@ public partial class Admin
         {
             await LoadStudents();
             await LoadMetrics();
-            flashMessage = "Student deleted successfully.";
+            flashMessage = L("Učenik je uspješno obrisan.", "Student deleted successfully.");
             flashIsError = false;
             return;
         }
 
         var errorRaw = await response.Content.ReadAsStringAsync();
         flashMessage = string.IsNullOrWhiteSpace(errorRaw)
-            ? $"Student delete failed ({response.StatusCode})."
+            ? $"{L("Brisanje učenika nije uspjelo", "Student delete failed")} ({response.StatusCode})."
             : ExtractApiErrorMessage(errorRaw);
         flashIsError = true;
     }
@@ -143,19 +146,19 @@ public partial class Admin
         switch (statusValue.ToString())
         {
             case "student-created":
-                flashMessage = "Student created successfully.";
+                flashMessage = L("Učenik je uspješno kreiran.", "Student created successfully.");
                 flashIsError = false;
                 break;
             case "question-created":
-                flashMessage = "Question created successfully.";
+                flashMessage = L("Pitanje je uspješno kreirano.", "Question created successfully.");
                 flashIsError = false;
                 break;
             case "question-updated":
-                flashMessage = "Question updated successfully.";
+                flashMessage = L("Pitanje je uspješno ažurirano.", "Question updated successfully.");
                 flashIsError = false;
                 break;
             case "student-updated":
-                flashMessage = "Student updated successfully.";
+                flashMessage = L("Učenik je uspješno ažuriran.", "Student updated successfully.");
                 flashIsError = false;
                 break;
         }
@@ -191,5 +194,19 @@ public partial class Admin
         }
 
         return raw;
+    }
+
+    private void HandleLanguageChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await LoadQuestions();
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        UiPrefs.Changed -= HandleLanguageChanged;
     }
 }

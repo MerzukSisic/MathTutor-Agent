@@ -2,13 +2,14 @@
 @attribute [AllowAnonymous]
 @using System.Text.Json
 @inject IJSRuntime JS
+@inject UiPreferencesService UiPrefs
 
-<PageTitle>Resend Confirmation - MathTutor AI</PageTitle>
+<PageTitle>@($"{L("Ponovo pošalji potvrdu", "Resend Confirmation")} - MathTutor AI")</PageTitle>
 
 <div class="auth-page">
     <div class="auth-card">
-        <h1>Resend Confirmation</h1>
-        <p>Enter your email and we'll send a new confirmation link.</p>
+        <h1>@L("Ponovo pošalji potvrdu", "Resend Confirmation")</h1>
+        <p>@L("Unesi email i poslat ćemo novi link za potvrdu.", "Enter your email and we'll send a new confirmation link.")</p>
 
         @if (!string.IsNullOrWhiteSpace(message))
         {
@@ -21,15 +22,15 @@
         }
 
         <label>
-            Email
+            @L("Email", "Email")
             <input class="auth-input" type="email" @bind="email" autocomplete="username" />
         </label>
 
         <button class="auth-btn" @onclick="ResendAsync" disabled="@isSubmitting">
-            @(isSubmitting ? "Sending..." : "Send Confirmation Link")
+            @(isSubmitting ? L("Šaljem...", "Sending...") : L("Pošalji link za potvrdu", "Send Confirmation Link"))
         </button>
 
-        <p class="auth-meta"><a href="/login">Back to login</a></p>
+        <p class="auth-meta"><a href="/login">@L("Nazad na prijavu", "Back to login")</a></p>
     </div>
 </div>
 
@@ -38,6 +39,7 @@
     private string? message;
     private string? errorMessage;
     private bool isSubmitting;
+    private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
     private async Task ResendAsync()
     {
@@ -46,7 +48,7 @@
 
         if (string.IsNullOrWhiteSpace(email))
         {
-            errorMessage = "Email is required.";
+            errorMessage = L("Email je obavezan.", "Email is required.");
             return;
         }
 
@@ -63,12 +65,12 @@
             }
 
             message = string.IsNullOrWhiteSpace(msg)
-                ? "If the account exists, a confirmation email has been sent."
+                ? L("Ako nalog postoji, email potvrde je poslan.", "If the account exists, a confirmation email has been sent.")
                 : msg;
         }
         catch
         {
-            errorMessage = "Unable to send confirmation email right now.";
+            errorMessage = L("Trenutno nije moguće poslati email potvrde.", "Unable to send confirmation email right now.");
         }
         finally
         {

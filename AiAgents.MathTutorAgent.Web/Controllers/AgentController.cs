@@ -12,7 +12,9 @@ namespace AiAgents.MathTutorAgent.Web.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class AgentController(WorkQueueService queueService) : ControllerBase
+public class AgentController(
+    WorkQueueService queueService,
+    MathContentLocalizationService localizationService) : ControllerBase
 {
     [HttpPost("next_question")]
     [EnableRateLimiting("agent-ops")]
@@ -28,7 +30,10 @@ public class AgentController(WorkQueueService queueService) : ControllerBase
             StudentId = request.StudentId,
             Type = WorkItemType.NextQuestion,
             Status = WorkStatus.Queued,
-            PayloadJson = "{}",
+            PayloadJson = JsonSerializer.Serialize(new
+            {
+                Language = request.Language
+            }),
             CreatedAt = DateTime.UtcNow
         };
 
@@ -50,7 +55,8 @@ public class AgentController(WorkQueueService queueService) : ControllerBase
             QuestionId = request.QuestionId,
             Answer = request.Answer,
             TimeMs = request.TimeMs,
-            TimedOut = request.TimedOut
+            TimedOut = request.TimedOut,
+            Language = request.Language
         };
 
         var workItem = new WorkItem
@@ -79,7 +85,8 @@ public class AgentController(WorkQueueService queueService) : ControllerBase
         {
             QuestionId = request.QuestionId,
             TopicId = request.TopicId,
-            ErrorTag = request.ErrorTag
+            ErrorTag = request.ErrorTag,
+            Language = request.Language
         };
 
         var workItem = new WorkItem
@@ -108,6 +115,7 @@ public class AgentController(WorkQueueService queueService) : ControllerBase
         }
 
         var nextMilestone = await milestoneService.CompleteMilestoneAsync(request.StudentId, request.ChallengeKey, ct);
+        nextMilestone = localizationService.LocalizeMilestone(nextMilestone, request.Language);
         return Ok(new { NextMilestone = nextMilestone });
     }
 
@@ -160,7 +168,7 @@ public class AgentController(WorkQueueService queueService) : ControllerBase
 }
 
 // Request DTOs
-public record NextQuestionRequest(int StudentId);
-public record SubmitAnswerRequest(int StudentId, int QuestionId, string Answer, int TimeMs, bool TimedOut = false);
-public record ExplainRequest(int StudentId, int? QuestionId, int? TopicId, string? ErrorTag);
-public record CompleteMilestoneRequest(int StudentId, string ChallengeKey);
+public record NextQuestionRequest(int StudentId, string? Language = null);
+public record SubmitAnswerRequest(int StudentId, int QuestionId, string Answer, int TimeMs, bool TimedOut = false, string? Language = null);
+public record ExplainRequest(int StudentId, int? QuestionId, int? TopicId, string? ErrorTag, string? Language = null);
+public record CompleteMilestoneRequest(int StudentId, string ChallengeKey, string? Language = null);

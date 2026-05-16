@@ -116,3 +116,68 @@ window.authFetch = async function(url, body) {
     try { data = JSON.parse(text); } catch {}
     return { ok: response.ok, status: response.status, data };
 };
+
+window.uiPrefs = (function () {
+    const storageKey = "mathtutor.uiPrefs.v1";
+    const defaults = {
+        language: "bs",
+        theme: "light",
+        sidebarCollapsed: false
+    };
+
+    function read() {
+        try {
+            const raw = localStorage.getItem(storageKey);
+            if (!raw) {
+                return { ...defaults };
+            }
+
+            const parsed = JSON.parse(raw);
+            return {
+                language: parsed?.language === "en" ? "en" : "bs",
+                theme: parsed?.theme === "dark" ? "dark" : "light",
+                sidebarCollapsed: Boolean(parsed?.sidebarCollapsed)
+            };
+        } catch {
+            return { ...defaults };
+        }
+    }
+
+    function write(next) {
+        const current = read();
+        const merged = { ...current, ...next };
+        localStorage.setItem(storageKey, JSON.stringify(merged));
+        return merged;
+    }
+
+    function applyTheme(theme) {
+        const normalized = theme === "dark" ? "dark" : "light";
+        document.documentElement.setAttribute("data-theme", normalized);
+
+        if (document.body) {
+            document.body.classList.toggle("theme-dark", normalized === "dark");
+            document.body.classList.toggle("theme-light", normalized !== "dark");
+        }
+    }
+
+    const snapshot = read();
+    applyTheme(snapshot.theme);
+
+    return {
+        getAll() {
+            return read();
+        },
+        setLanguage(language) {
+            write({ language: language === "en" ? "en" : "bs" });
+        },
+        setTheme(theme) {
+            const normalized = theme === "dark" ? "dark" : "light";
+            write({ theme: normalized });
+            applyTheme(normalized);
+        },
+        setSidebarCollapsed(sidebarCollapsed) {
+            write({ sidebarCollapsed: Boolean(sidebarCollapsed) });
+        },
+        applyTheme
+    };
+})();

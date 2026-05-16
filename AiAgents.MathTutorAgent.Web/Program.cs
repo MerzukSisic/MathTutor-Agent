@@ -121,6 +121,7 @@ builder.Services.AddScoped<DialogService>();
 builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<TooltipService>();
 builder.Services.AddScoped<ContextMenuService>();
+builder.Services.AddScoped<UiPreferencesService>();
 
 // ========== HTTP CLIENT (for Blazor Server API calls) ==========
 builder.Services.AddHttpClient();
@@ -203,6 +204,7 @@ builder.Services.AddScoped<ImageIngestionService>();
 builder.Services.AddScoped<StudentProfileService>();
 builder.Services.AddScoped<StudentInsightsCalculatorService>();
 builder.Services.AddScoped<PdfExportService>();
+builder.Services.AddSingleton<MathContentLocalizationService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<ValidationService>();
 builder.Services.AddScoped<MlTrainingDatasetBuilderService>();

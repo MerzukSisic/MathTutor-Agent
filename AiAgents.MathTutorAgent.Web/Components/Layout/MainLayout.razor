@@ -1,80 +1,146 @@
-﻿@using Radzen.Blazor
+@using Radzen.Blazor
+@using System.Text.Json.Serialization
+@using Microsoft.JSInterop
 @inherits LayoutComponentBase
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
+@inject UiPreferencesService UiPrefs
 @implements IDisposable
 
 @if (IsAuthRoute)
 {
-    <main class="auth-layout-main">
+    <main class="auth-layout-main theme-@UiPrefs.ThemeCode">
         @Body
     </main>
 }
 else
 {
-    <div class="app-container @(isSidebarOpen ? "sidebar-open" : string.Empty)">
+    <div class="app-container @(isSidebarOpen ? "sidebar-open" : string.Empty) @(UiPrefs.SidebarCollapsed ? "sidebar-collapsed" : string.Empty) theme-@UiPrefs.ThemeCode">
         <div class="sidebar-overlay" @onclick="CloseSidebar"></div>
 
-        <!-- Sidebar Navigation -->
         <aside class="app-sidebar">
             <div class="sidebar-header">
                 <div class="logo">
                     <span class="logo-icon">🧮</span>
-                    <span class="logo-text">MathTutor AI</span>
+                    <span class="logo-text">@UiPrefs.T("app_name")</span>
                 </div>
             </div>
             <NavMenu />
         </aside>
 
-        <!-- Main Content Area -->
         <div class="app-main">
-            <!-- Top Bar -->
             <header class="app-header">
                 <div class="header-content">
                     <div class="header-left">
-                        <button class="menu-toggle" @onclick="ToggleSidebar" aria-label="Toggle menu">☰</button>
+                        <button class="menu-toggle" @onclick="ToggleSidebar" aria-label="@UiPrefs.T("toggle_menu")">☰</button>
                         <h1 class="page-title">@GetCurrentPageTitle()</h1>
+                    </div>
+
+                    <div class="header-actions">
+                        <button
+                            class="header-icon-btn desktop-menu-toggle"
+                            @onclick="ToggleSidebarCollapsedAsync"
+                            title="@(UiPrefs.SidebarCollapsed ? UiPrefs.T("expand_sidebar") : UiPrefs.T("collapse_sidebar"))"
+                            aria-label="@(UiPrefs.SidebarCollapsed ? UiPrefs.T("expand_sidebar") : UiPrefs.T("collapse_sidebar"))">
+                            @(UiPrefs.SidebarCollapsed ? "⟩" : "⟨")
+                        </button>
+
+                        <button
+                            class="header-icon-btn"
+                            @onclick="ToggleThemeAsync"
+                            title="@UiPrefs.T("switch_theme")"
+                            aria-label="@UiPrefs.T("switch_theme")">
+                            <span>@(UiPrefs.Theme == UiTheme.Dark ? "☀️" : "🌙")</span>
+                            <span class="header-pill-label">@UiPrefs.T(UiPrefs.Theme == UiTheme.Dark ? "theme_dark" : "theme_light")</span>
+                        </button>
+
+                        <button
+                            class="header-icon-btn"
+                            @onclick="ToggleLanguageAsync"
+                            title="@UiPrefs.T("switch_language")"
+                            aria-label="@UiPrefs.T("switch_language")">
+                            <span>@(UiPrefs.Language == UiLanguage.Bs ? "BS" : "EN")</span>
+                            <span class="header-pill-label">@(UiPrefs.Language == UiLanguage.Bs ? UiPrefs.T("language_bs") : UiPrefs.T("language_en"))</span>
+                        </button>
                     </div>
                 </div>
             </header>
 
-            <!-- Page Content -->
             <main class="app-content">
                 <div class="content-wrapper">
                     @Body
                 </div>
             </main>
 
-            <!-- Footer -->
             <footer class="app-footer">
-                <p>MathTutor AI Agent © 2025 | Built with .NET 9 & ML.NET</p>
+                <p>@UiPrefs.T("footer_note")</p>
             </footer>
         </div>
     </div>
 }
 
-<!-- Error UI -->
 <div id="blazor-error-ui">
     <div class="error-content">
         <span class="error-icon">⚠️</span>
-        <span class="error-message">An error occurred</span>
-        <a href="" class="btn-reload">Reload</a>
+        <span class="error-message">@UiPrefs.T("error_occurred")</span>
+        <a href="" class="btn-reload">@UiPrefs.T("reload")</a>
         <button class="btn-dismiss">✕</button>
     </div>
 </div>
 
 @code {
     private bool isSidebarOpen;
+    private bool preferencesLoaded;
     private bool IsAuthRoute => IsAuthPath();
 
     protected override void OnInitialized()
     {
         Navigation.LocationChanged += OnLocationChanged;
+        UiPrefs.Changed += OnUiPreferencesChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !preferencesLoaded)
+        {
+            await LoadPreferencesAsync();
+        }
+    }
+
+    private async Task LoadPreferencesAsync()
+    {
+        try
+        {
+            var stored = await JS.InvokeAsync<StoredUiPreferences?>("uiPrefs.getAll");
+            if (stored is not null)
+            {
+                UiPrefs.SetLanguage(stored.Language, notify: false);
+                UiPrefs.SetTheme(stored.Theme, notify: false);
+                UiPrefs.SetSidebarCollapsed(stored.SidebarCollapsed, notify: false);
+            }
+
+            await JS.InvokeVoidAsync("uiPrefs.applyTheme", UiPrefs.ThemeCode);
+            await PersistPreferencesAsync(applyTheme: false);
+            preferencesLoaded = true;
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (InvalidOperationException)
+        {
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+
+    private void OnUiPreferencesChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         isSidebarOpen = false;
-        InvokeAsync(StateHasChanged);
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private void ToggleSidebar()
@@ -87,26 +153,65 @@ else
         isSidebarOpen = false;
     }
 
+    private async Task ToggleSidebarCollapsedAsync()
+    {
+        UiPrefs.SetSidebarCollapsed(!UiPrefs.SidebarCollapsed);
+        await PersistPreferencesAsync(applyTheme: false);
+    }
+
+    private async Task ToggleThemeAsync()
+    {
+        UiPrefs.ToggleTheme();
+        await PersistPreferencesAsync(applyTheme: true);
+    }
+
+    private async Task ToggleLanguageAsync()
+    {
+        UiPrefs.ToggleLanguage();
+        await PersistPreferencesAsync(applyTheme: false);
+    }
+
+    private async Task PersistPreferencesAsync(bool applyTheme)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("uiPrefs.setLanguage", UiPrefs.LanguageCode);
+            await JS.InvokeVoidAsync("uiPrefs.setTheme", UiPrefs.ThemeCode);
+            await JS.InvokeVoidAsync("uiPrefs.setSidebarCollapsed", UiPrefs.SidebarCollapsed);
+
+            if (applyTheme)
+            {
+                await JS.InvokeVoidAsync("uiPrefs.applyTheme", UiPrefs.ThemeCode);
+            }
+        }
+        catch (InvalidOperationException)
+        {
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+
     private string GetCurrentPageTitle()
     {
         var path = Navigation.ToAbsoluteUri(Navigation.Uri).AbsolutePath.Trim('/').ToLowerInvariant();
         return path switch
         {
-            "" or "dashboard" => "Dashboard",
-            "admin" => "Admin Panel",
-            "admin/add-student" => "Add Student",
-            "admin/add-question" => "Add Question",
-            var p when p.StartsWith("admin/edit-student/") => "Edit Student",
-            var p when p.StartsWith("quiz/") => "Practice Quiz",
-            var p when p.StartsWith("profile/") => "Student Profile",
-            var p when p.StartsWith("admin/edit-question/") => "Edit Question",
-            "login" => "Sign In",
-            "register" => "Register",
-            "confirm_email" => "Confirm Email",
-            "forgot_password" => "Forgot Password",
-            "reset_password" => "Reset Password",
-            "resend_confirmation" => "Resend Confirmation",
-            _ => "MathTutor AI"
+            "" or "dashboard" => UiPrefs.T("page_dashboard"),
+            "admin" => UiPrefs.T("page_admin_panel"),
+            "admin/add-student" => UiPrefs.T("page_add_student"),
+            "admin/add-question" => UiPrefs.T("page_add_question"),
+            var p when p.StartsWith("admin/edit-student/") => UiPrefs.T("page_edit_student"),
+            var p when p.StartsWith("quiz/") => UiPrefs.T("page_practice_quiz"),
+            var p when p.StartsWith("profile/") => UiPrefs.T("page_student_profile"),
+            var p when p.StartsWith("admin/edit-question/") => UiPrefs.T("page_edit_question"),
+            "login" => UiPrefs.T("page_sign_in"),
+            "register" => UiPrefs.T("page_register"),
+            "confirm_email" => UiPrefs.T("page_confirm_email"),
+            "forgot_password" => UiPrefs.T("page_forgot_password"),
+            "reset_password" => UiPrefs.T("page_reset_password"),
+            "resend_confirmation" => UiPrefs.T("page_resend_confirmation"),
+            _ => UiPrefs.T("app_name")
         };
     }
 
@@ -119,5 +224,18 @@ else
     public void Dispose()
     {
         Navigation.LocationChanged -= OnLocationChanged;
+        UiPrefs.Changed -= OnUiPreferencesChanged;
+    }
+
+    private sealed class StoredUiPreferences
+    {
+        [JsonPropertyName("language")]
+        public string? Language { get; init; }
+
+        [JsonPropertyName("theme")]
+        public string? Theme { get; init; }
+
+        [JsonPropertyName("sidebarCollapsed")]
+        public bool SidebarCollapsed { get; init; }
     }
 }

@@ -16,6 +16,7 @@ public class MathTutoringAgentRunner(
     CrossMathMilestoneService crossMathMilestoneService,
     RevisionService revisionService,
     ExplanationService explanationService,
+    MathContentLocalizationService localizationService,
     ImageIngestionService imageIngestionService,
     ValidationService validationService,
     ILogger<MathTutoringAgentRunner> logger)
@@ -23,7 +24,7 @@ public class MathTutoringAgentRunner(
         new WorkQueuePerceptionSource(queueService),
         new MathTutoringPolicy(),
         new MathTutoringActuator(curriculumService, assessmentService, knowledgeTracingService, crossMathMilestoneService, revisionService,
-            explanationService, imageIngestionService, validationService, logger))
+            explanationService, localizationService, imageIngestionService, validationService, logger))
 {
     // ✅ PATCH A: StepAsync with proper error handling
     public override async Task<MathTickResult?> StepAsync(CancellationToken cancellationToken)

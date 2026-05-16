@@ -3,19 +3,20 @@
 @using AiAgents.MathTutorAgent.Application.DTOs
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject UiPreferencesService UiPrefs
 @rendermode InteractiveServer
 
-<PageTitle>Add Student - MathTutor AI</PageTitle>
+<PageTitle>@($"{L("Dodaj učenika", "Add Student")} - MathTutor AI")</PageTitle>
 
 <div class="qform-shell">
     <div class="qform-card">
         <div class="qform-header">
             <div>
-                <h2>➕ Add New Student</h2>
-                <p>Create a student profile and connect it to login account flow.</p>
+                <h2>➕ @L("Dodaj novog učenika", "Add New Student")</h2>
+                <p>@L("Kreiraj profil učenika i poveži ga sa prijavom.", "Create a student profile and connect it to login account flow.")</p>
             </div>
             <button class="qbtn ghost" @onclick="GoBack">
-                ← Back
+                ← @L("Nazad", "Back")
             </button>
         </div>
 
@@ -35,22 +36,22 @@
 
         <div class="qform-grid">
             <label class="full" for="name">
-                Student name
+                @L("Ime učenika", "Student name")
                 <input
                     id="name"
                     type="text"
                     class="qinput"
                     @bind="name"
-                    placeholder="Enter full name"
+                    placeholder="@L("Unesi puno ime", "Enter full name")"
                     disabled="@isSubmitting" />
                 @if (showNameError)
                 {
-                    <span class="q-inline-error">Name is required.</span>
+                    <span class="q-inline-error">@L("Ime je obavezno.", "Name is required.")</span>
                 }
             </label>
 
             <label class="full" for="email">
-                Email address
+                @L("Email adresa", "Email address")
                 <input
                     id="email"
                     type="email"
@@ -60,7 +61,7 @@
                     disabled="@isSubmitting" />
                 @if (showEmailError)
                 {
-                    <span class="q-inline-error">Valid email is required.</span>
+                    <span class="q-inline-error">@L("Ispravan email je obavezan.", "Valid email is required.")</span>
                 }
             </label>
         </div>
@@ -70,13 +71,13 @@
                     class="qbtn ghost"
                     @onclick="GoBack"
                     disabled="@isSubmitting">
-                    Cancel
+                    @L("Otkaži", "Cancel")
                 </button>
                 <button
                     class="qbtn primary"
                     @onclick="CreateStudent"
                     disabled="@(isSubmitting || !IsValid())">
-                    @(isSubmitting ? "Creating..." : "Create Student")
+                    @(isSubmitting ? L("Kreiram...", "Creating...") : L("Kreiraj učenika", "Create Student"))
                 </button>
         </div>
     </div>
@@ -90,6 +91,7 @@
     private bool showEmailError = false;
     private string errorMessage = string.Empty;
     private string successMessage = string.Empty;
+    private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
     private bool IsValid()
     {
@@ -126,7 +128,7 @@
             
             if (response.IsSuccessStatusCode)
             {
-                successMessage = "Student created successfully! Redirecting...";
+                successMessage = L("Učenik je uspješno kreiran! Preusmjeravam...", "Student created successfully! Redirecting...");
                 await Task.Delay(900);
                 Navigation.NavigateTo("/admin?status=student-created");
             }
@@ -134,14 +136,14 @@
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
                 errorMessage = string.IsNullOrWhiteSpace(errorContent)
-                    ? $"Failed to create student ({response.StatusCode})."
+                    ? $"{L("Kreiranje učenika nije uspjelo", "Failed to create student")} ({response.StatusCode})."
                     : ExtractApiErrorMessage(errorContent);
                 Console.WriteLine($"Error: {errorContent}");
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"Error: {ex.Message}";
+            errorMessage = $"{L("Greška", "Error")}: {ex.Message}";
             Console.WriteLine($"Exception: {ex}");
         }
         finally

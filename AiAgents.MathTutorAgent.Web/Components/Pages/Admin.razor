@@ -3,38 +3,40 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject UiPreferencesService UiPrefs
 
-<PageTitle>Admin Panel - MathTutor AI</PageTitle>
-<div class="admin-shell">
-    <div class="admin-hero">
-        <div>
-            <h2>👨‍💼 Admin Panel</h2>
-            <p>Manage students, question bank, and monitor agent performance in real time.</p>
+<PageTitle>@($"{L("Admin panel", "Admin Panel")} - MathTutor AI")</PageTitle>
+<div class="admin-page theme-@UiPrefs.ThemeCode">
+    <div class="admin-shell">
+        <div class="admin-hero">
+            <div>
+                <h2>👨‍💼 @L("Admin panel", "Admin Panel")</h2>
+                <p>@L("Upravljaj učenicima, bankom pitanja i prati rad agenta u realnom vremenu.", "Manage students, question bank, and monitor agent performance in real time.")</p>
+            </div>
+            <div class="admin-hero-actions">
+                <button type="button" class="hero-cta hero-cta-student" @onclick="OpenAddStudentDialog">
+                    <span>👤</span>
+                    <span>@L("Dodaj učenika", "Add Student")</span>
+                </button>
+                <button type="button" class="hero-cta hero-cta-question" @onclick="OpenAddQuestionDialog">
+                    <span>🧩</span>
+                    <span>@L("Dodaj pitanje", "Add Question")</span>
+                </button>
+            </div>
         </div>
-        <div class="admin-hero-actions">
-            <button type="button" class="hero-cta hero-cta-student" @onclick="OpenAddStudentDialog">
-                <span>👤</span>
-                <span>Add Student</span>
-            </button>
-            <button type="button" class="hero-cta hero-cta-question" @onclick="OpenAddQuestionDialog">
-                <span>🧩</span>
-                <span>Add Question</span>
-            </button>
-        </div>
+
+        @if (!string.IsNullOrWhiteSpace(flashMessage))
+        {
+            <div class="admin-flash @(flashIsError ? "error" : "success")">
+                @flashMessage
+            </div>
+        }
     </div>
 
-    @if (!string.IsNullOrWhiteSpace(flashMessage))
-    {
-        <div class="admin-flash @(flashIsError ? "error" : "success")">
-            @flashMessage
-        </div>
-    }
-</div>
-
-<div class="admin-tabs-wrap">
-    <RadzenTabs class="admin-tabs">
-        <Tabs>
-            <RadzenTabsItem Text="Performance Metrics">
+    <div class="admin-tabs-wrap">
+        <RadzenTabs class="admin-tabs">
+            <Tabs>
+                <RadzenTabsItem Text="@L("Metrike performansi", "Performance Metrics")">
                 <div class="admin-panel-card">
                     @if (metrics == null)
                     {
@@ -45,48 +47,48 @@
                         <div class="metrics-grid">
                             <article class="metric-tile">
                                 <span class="metric-icon">👨‍🎓</span>
-                                <p class="metric-label">Total Students</p>
+                                <p class="metric-label">@L("Ukupno učenika", "Total Students")</p>
                                 <p class="metric-value">@metrics.TotalStudents</p>
                             </article>
                             <article class="metric-tile">
                                 <span class="metric-icon">🧩</span>
-                                <p class="metric-label">Total Questions</p>
+                                <p class="metric-label">@L("Ukupno pitanja", "Total Questions")</p>
                                 <p class="metric-value">@metrics.TotalQuestions</p>
                             </article>
                             <article class="metric-tile">
                                 <span class="metric-icon">📝</span>
-                                <p class="metric-label">Total Attempts</p>
+                                <p class="metric-label">@L("Ukupno pokušaja", "Total Attempts")</p>
                                 <p class="metric-value">@metrics.TotalAttempts</p>
                             </article>
                             <article class="metric-tile">
                                 <span class="metric-icon">🎯</span>
-                                <p class="metric-label">Success Rate</p>
+                                <p class="metric-label">@L("Stopa uspjeha", "Success Rate")</p>
                                 <p class="metric-value">@metrics.SuccessRate.ToString("F1")%</p>
                             </article>
                         </div>
 
                         <section class="agent-perf-card">
                             <div class="agent-perf-head">
-                                <h4>Agent Performance</h4>
-                                <span>@metrics.CompletedWorkItems / @metrics.TotalWorkItems completed</span>
+                                <h4>@L("Performanse agenta", "Agent Performance")</h4>
+                                <span>@metrics.CompletedWorkItems / @metrics.TotalWorkItems @L("završeno", "completed")</span>
                             </div>
                             <div class="perf-progress">
                                 <div class="perf-progress-fill" style="width:@GetCompletionRatePercent()"></div>
                             </div>
-                            <p class="perf-meta">Average Processing Time: @metrics.AverageProcessingTimeMs.ToString("F0") ms</p>
+                            <p class="perf-meta">@L("Prosječno vrijeme obrade", "Average Processing Time"): @metrics.AverageProcessingTimeMs.ToString("F0") ms</p>
                         </section>
                     }
                 </div>
-            </RadzenTabsItem>
+                </RadzenTabsItem>
 
-            <RadzenTabsItem Text="Students">
+                <RadzenTabsItem Text="@L("Učenici", "Students")">
                 <div class="admin-panel-card">
                     <div class="panel-toolbar">
                         <div>
-                            <h4>Students</h4>
-                            <p>View, filter and jump to detailed progress profiles.</p>
+                            <h4>@L("Učenici", "Students")</h4>
+                            <p>@L("Pregledaj, filtriraj i idi na detaljne profile napretka.", "View, filter and jump to detailed progress profiles.")</p>
                         </div>
-                        <RadzenButton Text="Add New Student" Click="OpenAddStudentDialog" ButtonStyle="ButtonStyle.Success" Icon="add" class="panel-add-btn panel-add-student" />
+                        <RadzenButton Text="@L("Dodaj novog učenika", "Add New Student")" Click="OpenAddStudentDialog" ButtonStyle="ButtonStyle.Success" Icon="add" class="panel-add-btn panel-add-student" />
                     </div>
 
                     @if (students == null)
@@ -108,34 +110,34 @@
                                         <span class="id-pill">#@student.Id</span>
                                     </Template>
                                 </RadzenDataGridColumn>
-                                <RadzenDataGridColumn TItem="StudentDto" Property="Name" Title="Name" />
-                                <RadzenDataGridColumn TItem="StudentDto" Property="Email" Title="Email" />
-                                <RadzenDataGridColumn TItem="StudentDto" Property="CreatedAt" Title="Created" Width="190px">
+                                <RadzenDataGridColumn TItem="StudentDto" Property="Name" Title="@L("Ime", "Name")" />
+                                <RadzenDataGridColumn TItem="StudentDto" Property="Email" Title="@L("Email", "Email")" />
+                                <RadzenDataGridColumn TItem="StudentDto" Property="CreatedAt" Title="@L("Kreiran", "Created")" Width="190px">
                                     <Template Context="student">
                                         @student.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
                                     </Template>
                                 </RadzenDataGridColumn>
-                                <RadzenDataGridColumn TItem="StudentDto" Title="Actions" Width="300px">
+                                <RadzenDataGridColumn TItem="StudentDto" Title="@L("Akcije", "Actions")" Width="300px">
                                     <Template Context="student">
-                                        <RadzenButton Text="Profile" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small" Click="@(() => ViewProfile(student.Id))" class="grid-action-btn" />
-                                        <RadzenButton Icon="edit" Text="Edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@(() => EditStudent(student.Id))" class="grid-action-btn grid-action-edit" />
-                                        <RadzenButton Icon="delete" Text="Delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Click="@(() => DeleteStudent(student.Id, student.Name))" class="grid-action-btn grid-action-delete" />
+                                        <RadzenButton Text="@L("Profil", "Profile")" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small" Click="@(() => ViewProfile(student.Id))" class="grid-action-btn" />
+                                        <RadzenButton Icon="edit" Text="@L("Uredi", "Edit")" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@(() => EditStudent(student.Id))" class="grid-action-btn grid-action-edit" />
+                                        <RadzenButton Icon="delete" Text="@L("Obriši", "Delete")" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Click="@(() => DeleteStudent(student.Id, student.Name))" class="grid-action-btn grid-action-delete" />
                                     </Template>
                                 </RadzenDataGridColumn>
                             </Columns>
                         </RadzenDataGrid>
                     }
                 </div>
-            </RadzenTabsItem>
+                </RadzenTabsItem>
 
-            <RadzenTabsItem Text="Questions">
+                <RadzenTabsItem Text="@L("Pitanja", "Questions")">
                 <div class="admin-panel-card">
                     <div class="panel-toolbar">
                         <div>
-                            <h4>Question Bank</h4>
-                            <p>Maintain question quality, balance topics and difficulty.</p>
+                            <h4>@L("Banka pitanja", "Question Bank")</h4>
+                            <p>@L("Održavaj kvalitet pitanja, balans tema i težine.", "Maintain question quality, balance topics and difficulty.")</p>
                         </div>
-                        <RadzenButton Text="Add New Question" Click="OpenAddQuestionDialog" ButtonStyle="ButtonStyle.Success" Icon="add" class="panel-add-btn panel-add-question" />
+                        <RadzenButton Text="@L("Dodaj novo pitanje", "Add New Question")" Click="OpenAddQuestionDialog" ButtonStyle="ButtonStyle.Success" Icon="add" class="panel-add-btn panel-add-question" />
                     </div>
 
                     @if (questions == null)
@@ -157,25 +159,26 @@
                                         <span class="id-pill">#@question.Id</span>
                                     </Template>
                                 </RadzenDataGridColumn>
-                                <RadzenDataGridColumn TItem="AdminQuestionDto" Property="TopicName" Title="Topic" />
-                                <RadzenDataGridColumn TItem="AdminQuestionDto" Property="Difficulty" Title="Difficulty" Width="130px">
+                                <RadzenDataGridColumn TItem="AdminQuestionDto" Property="TopicName" Title="@L("Tema", "Topic")" />
+                                <RadzenDataGridColumn TItem="AdminQuestionDto" Property="Difficulty" Title="@L("Težina", "Difficulty")" Width="130px">
                                     <Template Context="question">
-                                        <span class="difficulty-pill">Level @question.Difficulty</span>
+                                        <span class="difficulty-pill">@L("Nivo", "Level") @question.Difficulty</span>
                                     </Template>
                                 </RadzenDataGridColumn>
-                                <RadzenDataGridColumn TItem="AdminQuestionDto" Property="QuestionText" Title="Question" />
-                                <RadzenDataGridColumn TItem="AdminQuestionDto" Property="CorrectAnswer" Title="Answer" Width="140px" />
-                                <RadzenDataGridColumn TItem="AdminQuestionDto" Title="Actions" Width="220px">
+                                <RadzenDataGridColumn TItem="AdminQuestionDto" Property="QuestionText" Title="@L("Pitanje", "Question")" />
+                                <RadzenDataGridColumn TItem="AdminQuestionDto" Property="CorrectAnswer" Title="@L("Odgovor", "Answer")" Width="140px" />
+                                <RadzenDataGridColumn TItem="AdminQuestionDto" Title="@L("Akcije", "Actions")" Width="220px">
                                     <Template Context="question">
-                                        <RadzenButton Icon="edit" Text="Edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@(() => EditQuestion(question))" class="grid-action-btn grid-action-edit" />
-                                        <RadzenButton Icon="delete" Text="Delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Click="@(() => DeleteQuestion(question.Id))" class="grid-action-btn grid-action-delete" />
+                                        <RadzenButton Icon="edit" Text="@L("Uredi", "Edit")" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@(() => EditQuestion(question))" class="grid-action-btn grid-action-edit" />
+                                        <RadzenButton Icon="delete" Text="@L("Obriši", "Delete")" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Click="@(() => DeleteQuestion(question.Id))" class="grid-action-btn grid-action-delete" />
                                     </Template>
                                 </RadzenDataGridColumn>
                             </Columns>
                         </RadzenDataGrid>
                     }
                 </div>
-            </RadzenTabsItem>
-        </Tabs>
-    </RadzenTabs>
+                </RadzenTabsItem>
+            </Tabs>
+        </RadzenTabs>
+    </div>
 </div>

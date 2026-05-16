@@ -6,4 +6,5 @@ public class SubmitAnswerPayloadDto
     public string Answer { get; set; } = string.Empty;
     public int TimeMs { get; set; }
     public bool TimedOut { get; set; }
+    public string? Language { get; set; }
 }

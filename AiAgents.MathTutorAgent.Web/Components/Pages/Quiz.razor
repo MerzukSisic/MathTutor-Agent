@@ -3,11 +3,12 @@
 @using Microsoft.AspNetCore.SignalR.Client
 @inject NavigationManager Navigation
 @inject HttpClient Http
+@inject UiPreferencesService UiPrefs
 @implements IAsyncDisposable
 
-<PageTitle>Quiz - MathTutor AI</PageTitle>
+<PageTitle>@($"{L("Kviz", "Quiz")} - MathTutor AI")</PageTitle>
 
-<div class="quiz-container">
+<div class="quiz-container theme-@UiPrefs.ThemeCode">
     @if (currentQuestion != null)
     {
         <div class="question-card">
@@ -16,22 +17,22 @@
             {
                 <div class="loading-overlay">
                     <div class="spinner"></div>
-                    <p>@(isSubmitting ? "Submitting answer..." : "Loading next question...")</p>
+                    <p>@(isSubmitting ? L("Šaljem odgovor...", "Submitting answer...") : L("Učitavam sljedeće pitanje...", "Loading next question..."))</p>
                 </div>
             }
 
             <div class="question-header">
-                <h2>Question @currentQuestion.Id</h2>
+                <h2>@L("Pitanje", "Question") @currentQuestion.Id</h2>
                 <div class="question-badges">
                     @if (!string.IsNullOrWhiteSpace(currentQuestion.AreaName))
                     {
                         <span class="area-badge">@currentQuestion.AreaName</span>
                     }
                     <span class="difficulty-badge difficulty-@currentQuestion.Difficulty">
-                        Difficulty: @currentQuestion.Difficulty
+                        @L("Težina", "Difficulty"): @currentQuestion.Difficulty
                     </span>
                     <span class="timer-badge @(remainingSeconds <= 10 ? "timer-warning" : string.Empty)">
-                        ⏱️ @remainingSeconds s left
+                        ⏱️ @remainingSeconds @L("s preostalo", "s left")
                     </span>
                 </div>
             </div>
@@ -41,7 +42,7 @@
                      style="width:@($"{TimeProgressPercent:F1}%")"></div>
             </div>
             <div class="timer-meta">
-                <span>Limit: @timeLimitSeconds s</span>
+                <span>@L("Limit", "Limit"): @timeLimitSeconds s</span>
                 <span class="timer-hint">@GetTimerHint()</span>
             </div>
 
@@ -58,7 +59,7 @@
                 @if (visualPractice != null)
                 {
                     <div class="visual-practice">
-                        <h4>🎮 Mini Practice</h4>
+                        <h4>🎮 @L("Mini vježba", "Mini Practice")</h4>
 
                         @if (visualPractice.Mode == "addition")
                         {
@@ -69,10 +70,10 @@
                                 <span class="math-op">=</span>
                                 <span class="math-tile answer">@GetVisualResult()</span>
                             </div>
-                            <p>Drag or click apples to move them into the answer basket.</p>
+                            <p>@L("Prevuci ili klikni jabuke da ih prebaciš u korpu za odgovor.", "Drag or click apples to move them into the answer basket.")</p>
                             <div class="apple-playground">
                                 <div class="apple-source">
-                                    <strong>Group A (@visualPractice.SourceA left)</strong>
+                                    <strong>@L("Grupa A", "Group A") (@visualPractice.SourceA @L("preostalo", "left"))</strong>
                                     <div class="apple-row">
                                         @for (var i = 0; i < visualPractice.SourceA; i++)
                                         {
@@ -84,7 +85,7 @@
                                     </div>
                                 </div>
                                 <div class="apple-source">
-                                    <strong>Group B (@visualPractice.SourceB left)</strong>
+                                    <strong>@L("Grupa B", "Group B") (@visualPractice.SourceB @L("preostalo", "left"))</strong>
                                     <div class="apple-row">
                                         @for (var i = 0; i < visualPractice.SourceB; i++)
                                         {
@@ -99,8 +100,8 @@
                                      @ondragover:preventDefault
                                      @ondrop:preventDefault
                                      @ondrop="DropAppleToAnswer">
-                                    <strong>Answer Basket</strong>
-                                    <p>Apples dropped: @visualPractice.Dropped</p>
+                                    <strong>@L("Korpa za odgovor", "Answer Basket")</strong>
+                                    <p>@L("Ubačeno jabuka", "Apples dropped"): @visualPractice.Dropped</p>
                                 </div>
                             </div>
                         }
@@ -113,10 +114,10 @@
                                 <span class="math-op">=</span>
                                 <span class="math-tile answer">@GetVisualResult()</span>
                             </div>
-                            <p>Drag or click apples away to subtract, then count what remains.</p>
+                            <p>@L("Prevuci ili klikni jabuke da oduzmeš, pa prebroj šta je ostalo.", "Drag or click apples away to subtract, then count what remains.")</p>
                             <div class="apple-playground">
                                 <div class="apple-source">
-                                    <strong>Start Basket (@visualPractice.Remaining left)</strong>
+                                    <strong>@L("Početna korpa", "Start Basket") (@visualPractice.Remaining @L("preostalo", "left"))</strong>
                                     <div class="apple-row">
                                         @for (var i = 0; i < visualPractice.Remaining; i++)
                                         {
@@ -131,14 +132,14 @@
                                      @ondragover:preventDefault
                                      @ondrop:preventDefault
                                      @ondrop="DropAppleToRemove">
-                                    <strong>Remove Basket</strong>
-                                    <p>Removed: @visualPractice.Removed / @visualPractice.B</p>
+                                    <strong>@L("Korpa za oduzimanje", "Remove Basket")</strong>
+                                    <p>@L("Uklonjeno", "Removed"): @visualPractice.Removed / @visualPractice.B</p>
                                 </div>
                             </div>
                         }
 
                         <button class="btn-use-visual" @onclick="ApplyVisualResult">
-                            Use Visual Result (@GetVisualResult())
+                            @L("Iskoristi vizuelni rezultat", "Use Visual Result") (@GetVisualResult())
                         </button>
                     </div>
                 }
@@ -149,7 +150,7 @@
                        class="answer-input"
                        @bind="userAnswer"
                        @bind:event="oninput"
-                       placeholder="@(geometryInteraction != null ? "Click sides/vertices above to fill answer" : "Enter your answer")"
+                       placeholder="@(geometryInteraction != null ? L("Klikni stranice/vrhove iznad da popuniš odgovor", "Click sides/vertices above to fill answer") : L("Unesi odgovor", "Enter your answer"))"
                        readonly="@(geometryInteraction != null)"
                        disabled="@(isSubmitting || isLoading || feedback != null)"
                        @onkeypress="HandleKeyPress"/>
@@ -161,22 +162,22 @@
                         @if (isSubmitting)
                         {
                             <span class="spinner-small"></span>
-                            <span>Submitting...</span>
+                            <span>@L("Šaljem...", "Submitting...")</span>
                         }
                         else
                         {
-                            <span>Submit Answer</span>
+                            <span>@L("Pošalji odgovor", "Submit Answer")</span>
                         }
                     </button>
 
                     <button class="btn-explain"
                             @onclick="RequestExplanation"
                             disabled="@(isSubmitting || isLoading)">
-                        💡 Explain
+                        💡 @L("Objasni", "Explain")
                     </button>
 
                     <button class="btn-back" @onclick="GoBack">
-                        ← Back to Dashboard
+                        ← @L("Nazad na kontrolnu tablu", "Back to Dashboard")
                     </button>
                 </div>
             </div>
@@ -184,11 +185,11 @@
             @if (feedback != null)
             {
                 <div class="feedback-section @(feedback.IsCorrect ? "correct" : "incorrect")">
-                    <h3>@(feedback.IsTimedOut ? "⏰ Time is up!" : feedback.IsCorrect ? "✓ Correct!" : "✗ Incorrect")</h3>
-                    <p><strong>Correct Answer:</strong> @feedback.CorrectAnswer</p>
-                    <p><strong>Time:</strong> @feedback.TimeSpentSeconds.ToString("F1")s / @feedback.TimeLimitSeconds s</p>
-                    <p><strong>Your Mastery:</strong> @feedback.MasteryScore.ToString("F1")%</p>
-                    <p><strong>Decision:</strong>
+                    <h3>@(feedback.IsTimedOut ? L("⏰ Vrijeme je isteklo!", "⏰ Time is up!") : feedback.IsCorrect ? L("✓ Tačno!", "✓ Correct!") : L("✗ Netačno", "✗ Incorrect"))</h3>
+                    <p><strong>@L("Tačan odgovor", "Correct Answer"):</strong> @feedback.CorrectAnswer</p>
+                    <p><strong>@L("Vrijeme", "Time"):</strong> @feedback.TimeSpentSeconds.ToString("F1")s / @feedback.TimeLimitSeconds s</p>
+                    <p><strong>@L("Tvoje znanje", "Your Mastery"):</strong> @feedback.MasteryScore.ToString("F1")%</p>
+                    <p><strong>@L("Odluka", "Decision"):</strong>
                         <span class="decision-badge decision-@feedback.Decision.ToLower()">
                             @feedback.Decision
                         </span>
@@ -197,13 +198,13 @@
                     @if (milestoneChallenge == null)
                     {
                         <button class="btn-next" @onclick="GetNextQuestion">
-                            Next Question →
+                            @L("Sljedeće pitanje", "Next Question") →
                         </button>
                     }
                     else
                     {
                         <div class="challenge-lock">
-                            Complete the chapter challenge below to continue.
+                            @L("Završi izazov poglavlja ispod da nastaviš.", "Complete the chapter challenge below to continue.")
                         </div>
                     }
                 </div>
@@ -219,7 +220,7 @@
             @if (explanation != null)
             {
                 <div class="explanation-section">
-                    <h3>📚 Explanation</h3>
+                    <h3>📚 @L("Objašnjenje", "Explanation")</h3>
                     <p>@explanation.Explanation</p>
 
                     @if (currentQuestion != null)
@@ -232,7 +233,7 @@
                     @if (!string.IsNullOrEmpty(explanation.Example))
                     {
                         <div class="example-box">
-                            <strong>Example:</strong>
+                            <strong>@L("Primjer", "Example"):</strong>
                             <p>@explanation.Example</p>
                         </div>
                     }
@@ -240,7 +241,7 @@
                     @if (explanation.Sources?.Any() == true)
                     {
                         <div class="sources-section">
-                            <strong>📖 Sources:</strong>
+                            <strong>📖 @L("Izvori", "Sources"):</strong>
                             <ul>
                                 @foreach (var source in explanation.Sources)
                                 {
@@ -257,15 +258,15 @@
     {
         <div class="loading-container">
             <div class="spinner-large"></div>
-            <p>Loading your first question...</p>
+            <p>@L("Učitavam prvo pitanje...", "Loading your first question...")</p>
         </div>
     }
     else
     {
         <div class="no-question">
-            <p>No questions available. Click below to get started.</p>
+            <p>@L("Nema dostupnih pitanja. Klikni ispod za početak.", "No questions available. Click below to get started.")</p>
             <button class="btn-primary" @onclick="GetNextQuestion">
-                Get First Question
+                @L("Uzmi prvo pitanje", "Get First Question")
             </button>
         </div>
     }

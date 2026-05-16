@@ -1,5 +1,6 @@
-﻿@implements IDisposable
+@implements IDisposable
 @inject NavigationManager Navigation
+@inject UiPreferencesService UiPrefs
 
 <nav class="sidebar-nav">
     <AuthorizeView>
@@ -7,46 +8,46 @@
             @if (authState.User.IsInRole(UserRoles.Admin))
             {
                 <div class="nav-section">
-                    <span class="nav-section-title">Main</span>
+                    <span class="nav-section-title">@UiPrefs.T("main")</span>
 
                     <NavLink class="nav-item" href="" Match="NavLinkMatch.All">
                         <span class="nav-icon">📊</span>
-                        <span class="nav-text">Dashboard</span>
+                        <span class="nav-text">@UiPrefs.T("dashboard")</span>
                     </NavLink>
                 </div>
 
                 <div class="nav-section">
-                    <span class="nav-section-title">Management</span>
+                    <span class="nav-section-title">@UiPrefs.T("management")</span>
 
                     <NavLink class="nav-item" href="/admin">
                         <span class="nav-icon">⚙️</span>
-                        <span class="nav-text">Admin Panel</span>
+                        <span class="nav-text">@UiPrefs.T("admin_panel")</span>
                     </NavLink>
                 </div>
             }
             else
             {
                 var studentId = GetStudentId(authState.User);
-                <div class="nav-section">
-                    <span class="nav-section-title">Learning</span>
+                @if (studentId.HasValue)
+                {
+                    <div class="nav-section">
+                        <span class="nav-section-title">@UiPrefs.T("learning")</span>
 
-                    @if (studentId.HasValue)
-                    {
                         <NavLink class="nav-item" href="@($"/quiz/{studentId.Value}")">
                             <span class="nav-icon">🧠</span>
-                            <span class="nav-text">Practice Quiz</span>
+                            <span class="nav-text">@UiPrefs.T("practice_quiz")</span>
                         </NavLink>
 
                         <NavLink class="nav-item" href="@($"/profile/{studentId.Value}")">
                             <span class="nav-icon">📈</span>
-                            <span class="nav-text">My Profile</span>
+                            <span class="nav-text">@UiPrefs.T("my_profile")</span>
                         </NavLink>
-                    }
-                </div>
+                    </div>
+                }
             }
 
             <div class="nav-section">
-                <span class="nav-section-title">Account</span>
+                <span class="nav-section-title">@UiPrefs.T("account")</span>
 
                 <div class="nav-item nav-user" title="@authState.User.Identity?.Name">
                     <span class="nav-icon">👤</span>
@@ -56,39 +57,28 @@
         </Authorized>
         <NotAuthorized>
             <div class="nav-section">
-                <span class="nav-section-title">Account</span>
+                <span class="nav-section-title">@UiPrefs.T("account")</span>
 
                 <NavLink class="nav-item" href="/login">
                     <span class="nav-icon">🔐</span>
-                    <span class="nav-text">Login</span>
+                    <span class="nav-text">@UiPrefs.T("login")</span>
                 </NavLink>
 
                 <NavLink class="nav-item" href="/register">
                     <span class="nav-icon">✨</span>
-                    <span class="nav-text">Register</span>
+                    <span class="nav-text">@UiPrefs.T("register")</span>
                 </NavLink>
             </div>
         </NotAuthorized>
     </AuthorizeView>
 
-    <div class="nav-section">
-        <span class="nav-section-title">Resources</span>
-        
-        <a class="nav-item" href="https://matematiranje.in.rs/" target="_blank" rel="noopener noreferrer">
-            <span class="nav-icon">📚</span>
-            <span class="nav-text">Documentation</span>
-            <span class="nav-badge">New</span>
-        </a>
-    </div>
-
-    <!-- Status Indicator -->
     <div class="nav-footer">
         <AuthorizeView>
             <Authorized>
                 <div class="nav-footer-actions">
                     <NavLink class="nav-item nav-item-danger" href="/logout">
                         <span class="nav-icon">↩️</span>
-                        <span class="nav-text">Logout</span>
+                        <span class="nav-text">@UiPrefs.T("logout")</span>
                     </NavLink>
                 </div>
             </Authorized>
@@ -96,7 +86,7 @@
 
         <div class="status-indicator @(isConnected ? "connected" : "disconnected")">
             <span class="status-dot"></span>
-            <span class="status-text">@(isConnected ? "Agent Online" : "Agent Offline")</span>
+            <span class="status-text">@(isConnected ? UiPrefs.T("agent_online") : UiPrefs.T("agent_offline"))</span>
         </div>
     </div>
 </nav>
@@ -107,16 +97,23 @@
     protected override void OnInitialized()
     {
         Navigation.LocationChanged += OnLocationChanged;
+        UiPrefs.Changed += OnUiPreferencesChanged;
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        StateHasChanged();
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private void OnUiPreferencesChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
         Navigation.LocationChanged -= OnLocationChanged;
+        UiPrefs.Changed -= OnUiPreferencesChanged;
     }
 
     private static int? GetStudentId(ClaimsPrincipal user)

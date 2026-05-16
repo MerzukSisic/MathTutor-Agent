@@ -5,13 +5,14 @@
 @using System.Text.RegularExpressions
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
+@inject UiPreferencesService UiPrefs
 
-<PageTitle>Register - MathTutor AI</PageTitle>
+<PageTitle>@($"{L("Registracija", "Register")} - MathTutor AI")</PageTitle>
 
 <div class="auth-page">
     <div class="auth-card">
-        <h1>Create Account</h1>
-        <p>Register and start adaptive math practice.</p>
+        <h1>@L("Kreiraj nalog", "Create Account")</h1>
+        <p>@L("Registruj se i započni adaptivno vježbanje matematike.", "Register and start adaptive math practice.")</p>
 
         @if (!string.IsNullOrWhiteSpace(errorMessage))
         {
@@ -24,29 +25,29 @@
         }
 
         <label>
-            Full Name
+            @L("Puno ime", "Full Name")
             <input class="auth-input" @bind="fullName" @bind:event="oninput" autocomplete="name" />
             @if (showFullNameError)
             {
-                <span class="auth-inline-error">Full name is required.</span>
+                <span class="auth-inline-error">@L("Puno ime je obavezno.", "Full name is required.")</span>
             }
         </label>
 
         <label>
-            Email
+            @L("Email", "Email")
             <input class="auth-input" type="email" @bind="email" @bind:event="oninput" autocomplete="username" />
             @if (showEmailError)
             {
-                <span class="auth-inline-error">Enter a valid email address (example: name@email.com).</span>
+                <span class="auth-inline-error">@L("Unesi ispravnu email adresu (primjer: ime@email.com).", "Enter a valid email address (example: name@email.com).")</span>
             }
         </label>
 
         <label>
-            Password
+            @L("Lozinka", "Password")
             <input class="auth-input" type="password" @bind="password" @bind:event="oninput" autocomplete="new-password" />
             @if (showPasswordError)
             {
-                <span class="auth-inline-error">Password is too weak. Use at least 8 chars with mixed character types.</span>
+                <span class="auth-inline-error">@L("Lozinka je preslaba. Koristi najmanje 8 znakova i različite tipove karaktera.", "Password is too weak. Use at least 8 chars with mixed character types.")</span>
             }
         </label>
 
@@ -57,21 +58,21 @@
                     <span class="auth-strength-bar @(i <= PasswordStrengthScore ? $"active {PasswordStrengthClass}" : string.Empty)"></span>
                 }
             </div>
-            <p class="auth-strength-label">Strength: @PasswordStrengthLabel</p>
+            <p class="auth-strength-label">@L("Jačina", "Strength"): @PasswordStrengthLabel</p>
             <div class="auth-checklist">
-                <span class="auth-check-item @(HasMinLength ? "ok" : string.Empty)">8+ chars</span>
-                <span class="auth-check-item @(HasUpper ? "ok" : string.Empty)">Uppercase</span>
-                <span class="auth-check-item @(HasLower ? "ok" : string.Empty)">Lowercase</span>
-                <span class="auth-check-item @(HasDigit ? "ok" : string.Empty)">Number</span>
-                <span class="auth-check-item @(HasSpecial ? "ok" : string.Empty)">Special char</span>
+                <span class="auth-check-item @(HasMinLength ? "ok" : string.Empty)">@L("8+ znakova", "8+ chars")</span>
+                <span class="auth-check-item @(HasUpper ? "ok" : string.Empty)">@L("Veliko slovo", "Uppercase")</span>
+                <span class="auth-check-item @(HasLower ? "ok" : string.Empty)">@L("Malo slovo", "Lowercase")</span>
+                <span class="auth-check-item @(HasDigit ? "ok" : string.Empty)">@L("Broj", "Number")</span>
+                <span class="auth-check-item @(HasSpecial ? "ok" : string.Empty)">@L("Specijalni znak", "Special char")</span>
             </div>
         </div>
 
         <button class="auth-btn" @onclick="RegisterAsync" disabled="@(!CanSubmit || isSubmitting)">
-            @(isSubmitting ? "Creating..." : "Create Account")
+            @(isSubmitting ? L("Kreiram...", "Creating...") : L("Kreiraj nalog", "Create Account"))
         </button>
 
-        <p class="auth-meta">Already have an account? <a href="/login">Sign in</a></p>
+        <p class="auth-meta">@L("Već imaš nalog?", "Already have an account?") <a href="/login">@L("Prijavi se", "Sign in")</a></p>
     </div>
 </div>
 
@@ -88,6 +89,7 @@
     private static readonly Regex LowerRegex = new(@"[a-z]", RegexOptions.Compiled);
     private static readonly Regex DigitRegex = new(@"\d", RegexOptions.Compiled);
     private static readonly Regex SpecialRegex = new(@"[^a-zA-Z0-9]", RegexOptions.Compiled);
+    private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
     private bool HasMinLength => !string.IsNullOrWhiteSpace(password) && password.Length >= 8;
     private bool HasUpper => !string.IsNullOrWhiteSpace(password) && UpperRegex.IsMatch(password);
@@ -120,13 +122,13 @@
     private bool showPasswordError => (!string.IsNullOrWhiteSpace(password) || attemptedSubmit) && !IsPasswordStrongEnough;
     private string PasswordStrengthClass => PasswordStrengthScore <= 1 ? "weak" : PasswordStrengthScore <= 2 ? "medium" : PasswordStrengthScore == 3 ? "good" : "strong";
     private string PasswordStrengthLabel => string.IsNullOrWhiteSpace(password)
-        ? "No password"
+        ? L("Bez lozinke", "No password")
         : PasswordStrengthClass switch
         {
-            "weak" => "Weak",
-            "medium" => "Medium",
-            "good" => "Good",
-            _ => "Strong"
+            "weak" => L("Slaba", "Weak"),
+            "medium" => L("Srednja", "Medium"),
+            "good" => L("Dobra", "Good"),
+            _ => L("Jaka", "Strong")
         };
 
     private async Task RegisterAsync()
@@ -137,19 +139,19 @@
 
         if (string.IsNullOrWhiteSpace(fullName))
         {
-            errorMessage = "Full name is required.";
+            errorMessage = L("Puno ime je obavezno.", "Full name is required.");
             return;
         }
 
         if (!IsEmailValid)
         {
-            errorMessage = "Please enter a valid email address.";
+            errorMessage = L("Unesi ispravnu email adresu.", "Please enter a valid email address.");
             return;
         }
 
         if (!IsPasswordStrongEnough)
         {
-            errorMessage = "Password is too weak. Add more variety (upper/lower/digit/special).";
+            errorMessage = L("Lozinka je preslaba. Dodaj više različitih karaktera.", "Password is too weak. Add more variety (upper/lower/digit/special).");
             return;
         }
 
@@ -169,7 +171,7 @@
                     data.TryGetProperty("message", out var msgEl);
                     msg = msgEl.ValueKind == JsonValueKind.String ? msgEl.GetString() : null;
                 }
-                errorMessage = string.IsNullOrWhiteSpace(msg) ? "Registration failed. Try another email." : msg;
+                errorMessage = string.IsNullOrWhiteSpace(msg) ? L("Registracija nije uspjela. Probaj drugi email.", "Registration failed. Try another email.") : msg;
                 return;
             }
 
@@ -192,7 +194,7 @@
             }
 
             successMessage = string.IsNullOrWhiteSpace(message)
-                ? "Registration successful. Check your email to confirm account."
+                ? L("Registracija uspješna. Provjeri email za potvrdu naloga.", "Registration successful. Check your email to confirm account.")
                 : message;
             await Task.Delay(1200);
             var status = user?.EmailConfirmed == true ? "registered-ready" : "registered";
@@ -200,7 +202,7 @@
         }
         catch
         {
-            errorMessage = "Registration failed. Please try again.";
+            errorMessage = L("Registracija nije uspjela. Pokušaj ponovo.", "Registration failed. Please try again.");
         }
         finally
         {

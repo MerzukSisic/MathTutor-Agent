@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using AiAgents.MathTutorAgent.Application.DTOs;
+using AiAgents.MathTutorAgent.Web.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.SignalR.Client;
@@ -12,7 +13,7 @@ public partial class Quiz
     [Parameter] public int StudentId { get; set; }
     private static readonly Regex ArithmeticOperationRegex = new(@"(\d+)\s*([+\-])\s*(\d+)", RegexOptions.Compiled);
     private static readonly Regex GeometryCountRegex = new(
-        @"how\s+many\s+(?<target>sides|vertices)\s+does\s+(?:an?\s+)?(?<shape>[a-z\-\s]+?)\s+have\??",
+        @"(?:how\s+many\s+(?<target>sides|vertices)\s+does\s+(?:an?\s+)?(?<shape>[a-z\-\s]+?)\s+have\??)|(?:koliko\s+(?<targetbs>stranica|vrhova)\s+ima\s+(?:[a-zčćžšđ]+\s+)?(?<shapebs>[a-zčćžšđ\-\s]+)\??)",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
     private QuestionDto? currentQuestion;
@@ -31,6 +32,7 @@ public partial class Quiz
     private CrossMathChallengeModel? milestoneChallenge;
     private string? dragSource;
     private double TimeProgressPercent => timeLimitSeconds <= 0 ? 0 : Math.Max(0, remainingSeconds * 100.0 / timeLimitSeconds);
+    private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
     protected override async Task OnInitializedAsync()
     {
@@ -116,7 +118,11 @@ public partial class Quiz
 
         try
         {
-            var response = await Http.PostAsJsonAsync("/api/agent/next_question", new { StudentId });
+            var response = await Http.PostAsJsonAsync("/api/agent/next_question", new
+            {
+                StudentId,
+                Language = UiPrefs.LanguageCode
+            });
             response.EnsureSuccessStatusCode();
         }
         catch (Exception ex)
@@ -146,7 +152,8 @@ public partial class Quiz
                 QuestionId = currentQuestion.Id,
                 Answer = answerToSend,
                 TimeMs = timeMs,
-                TimedOut = timedOut
+                TimedOut = timedOut,
+                Language = UiPrefs.LanguageCode
             });
             response.EnsureSuccessStatusCode();
         }
@@ -171,7 +178,8 @@ public partial class Quiz
                 StudentId,
                 QuestionId = currentQuestion.Id,
                 TopicId = currentQuestion.TopicId,
-                ErrorTag = (string?)null
+                ErrorTag = (string?)null,
+                Language = UiPrefs.LanguageCode
             });
             response.EnsureSuccessStatusCode();
         }
@@ -267,8 +275,17 @@ public partial class Quiz
             return;
         }
 
-        var target = match.Groups["target"].Value.Trim().ToLowerInvariant();
-        var shapeLabel = match.Groups["shape"].Value.Trim().ToLowerInvariant();
+        var target = match.Groups["target"].Success
+            ? match.Groups["target"].Value.Trim().ToLowerInvariant()
+            : match.Groups["targetbs"].Value.Trim().ToLowerInvariant() switch
+            {
+                "stranica" => "sides",
+                "vrhova" => "vertices",
+                _ => string.Empty
+            };
+        var shapeLabel = match.Groups["shape"].Success
+            ? match.Groups["shape"].Value.Trim().ToLowerInvariant()
+            : match.Groups["shapebs"].Value.Trim().ToLowerInvariant();
         var shapeKey = NormalizeShapeKey(shapeLabel);
         if (shapeKey == null)
         {
@@ -301,16 +318,27 @@ public partial class Quiz
         var normalized = rawShape.Trim().ToLowerInvariant();
 
         if (normalized.Contains("triangle")) return "triangle";
+        if (normalized.Contains("trokut") || normalized.Contains("trougao")) return "triangle";
         if (normalized.Contains("square")) return "square";
+        if (normalized.Contains("kvadrat")) return "square";
         if (normalized.Contains("rectangle")) return "rectangle";
+        if (normalized.Contains("pravougaonik") || normalized.Contains("pravokutnik")) return "rectangle";
         if (normalized.Contains("quadrilateral")) return "quadrilateral";
+        if (normalized.Contains("četverougao") || normalized.Contains("cetverougao") || normalized.Contains("četverokut") || normalized.Contains("cetverokut")) return "quadrilateral";
         if (normalized.Contains("pentagon")) return "pentagon";
+        if (normalized.Contains("petougao") || normalized.Contains("petokut")) return "pentagon";
         if (normalized.Contains("hexagon")) return "hexagon";
+        if (normalized.Contains("šesterougao") || normalized.Contains("sesterougao") || normalized.Contains("šesterokut") || normalized.Contains("sesterokut")) return "hexagon";
         if (normalized.Contains("heptagon")) return "heptagon";
+        if (normalized.Contains("sedmerougao") || normalized.Contains("sedmerokut")) return "heptagon";
         if (normalized.Contains("octagon")) return "octagon";
+        if (normalized.Contains("osmerougao") || normalized.Contains("osmerokut")) return "octagon";
         if (normalized.Contains("nonagon")) return "nonagon";
+        if (normalized.Contains("deveterougao") || normalized.Contains("deveterokut")) return "nonagon";
         if (normalized.Contains("decagon")) return "decagon";
+        if (normalized.Contains("deseterougao") || normalized.Contains("deseterokut")) return "decagon";
         if (normalized.Contains("cube")) return "cube";
+        if (normalized.Contains("kocka")) return "cube";
 
         return null;
     }
@@ -366,7 +394,8 @@ public partial class Quiz
             var response = await Http.PostAsJsonAsync("/api/agent/complete_milestone", new
             {
                 StudentId,
-                ChallengeKey = currentKey
+                ChallengeKey = currentKey,
+                Language = UiPrefs.LanguageCode
             });
             response.EnsureSuccessStatusCode();
 
@@ -563,15 +592,15 @@ public partial class Quiz
     {
         if (remainingSeconds <= 10)
         {
-            return "Hurry up!";
+            return L("Požuri!", "Hurry up!");
         }
 
         if (remainingSeconds <= timeLimitSeconds / 3)
         {
-            return "Final stretch";
+            return L("Završnica", "Final stretch");
         }
 
-        return "Steady pace";
+        return L("Samo nastavi", "Steady pace");
     }
 
     public async ValueTask DisposeAsync()

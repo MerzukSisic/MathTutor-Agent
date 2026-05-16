@@ -2,22 +2,23 @@
 @attribute [Authorize(Roles = UserRoles.Admin)]
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject UiPreferencesService UiPrefs
 
-<PageTitle>Edit Question - MathTutor AI</PageTitle>
+<PageTitle>@($"{L("Uredi pitanje", "Edit Question")} - MathTutor AI")</PageTitle>
 
 <div class="qform-shell">
     <div class="qform-card">
         <div class="qform-header">
             <div>
-                <h2>✏️ Edit Question</h2>
-                <p>Update wording, difficulty, and answer quality safely.</p>
+                <h2>✏️ @L("Uredi pitanje", "Edit Question")</h2>
+                <p>@L("Sigurno ažuriraj formulaciju, težinu i kvalitet odgovora.", "Update wording, difficulty, and answer quality safely.")</p>
             </div>
-            <button class="qbtn ghost" @onclick="GoBack">← Back</button>
+            <button class="qbtn ghost" @onclick="GoBack">← @L("Nazad", "Back")</button>
         </div>
 
         @if (isLoading)
         {
-            <div class="q-loading">Loading question...</div>
+            <div class="q-loading">@L("Učitavam pitanje...", "Loading question...")</div>
         }
         else
         {
@@ -33,10 +34,10 @@
 
             <div class="qform-grid">
                 <label>
-                    Topic
+                    @L("Tema", "Topic")
                     <div class="qselect-wrap">
                         <select class="qinput qselect" @bind="topicId" disabled="@isSubmitting">
-                            <option value="0">Select topic</option>
+                            <option value="0">@L("Odaberi temu", "Select topic")</option>
                             @foreach (var topic in topics)
                             {
                                 <option value="@topic.Id">@topic.Name (@topic.Area)</option>
@@ -46,7 +47,7 @@
                 </label>
 
                 <label>
-                    Difficulty (1-5)
+                    @L("Težina (1-5)", "Difficulty (1-5)")
                     <div class="qselect-wrap">
                         <select class="qinput qselect" @bind="difficulty" disabled="@isSubmitting">
                             @for (var i = 1; i <= 5; i++)
@@ -58,30 +59,30 @@
                 </label>
 
                 <label class="full">
-                    Question text
+                    @L("Tekst pitanja", "Question text")
                     <textarea class="qinput" rows="4" @bind="questionText" disabled="@isSubmitting"></textarea>
                 </label>
 
                 <label class="full">
-                    Correct answer
+                    @L("Tačan odgovor", "Correct answer")
                     <input class="qinput" @bind="correctAnswer" disabled="@isSubmitting" />
                 </label>
 
                 <label class="full">
-                    Solution steps (optional)
+                    @L("Koraci rješenja (opcionalno)", "Solution steps (optional)")
                     <textarea class="qinput" rows="3" @bind="solutionSteps" disabled="@isSubmitting"></textarea>
                 </label>
 
                 <label class="full">
-                    Common mistakes (optional, comma separated)
+                    @L("Česte greške (opcionalno, odvojene zarezom)", "Common mistakes (optional, comma separated)")
                     <input class="qinput" @bind="commonMistakesRaw" disabled="@isSubmitting" />
                 </label>
             </div>
 
             <div class="qform-actions">
-                <button class="qbtn ghost" @onclick="GoBack" disabled="@isSubmitting">Cancel</button>
+                <button class="qbtn ghost" @onclick="GoBack" disabled="@isSubmitting">@L("Otkaži", "Cancel")</button>
                 <button class="qbtn primary" @onclick="UpdateQuestion" disabled="@(isSubmitting || !IsValid())">
-                    @(isSubmitting ? "Saving..." : "Save Changes")
+                    @(isSubmitting ? L("Spremam...", "Saving...") : L("Spremi izmjene", "Save Changes"))
                 </button>
             </div>
         }
@@ -104,18 +105,19 @@
 
     private string? errorMessage;
     private string? successMessage;
+    private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            topics = await Http.GetFromJsonAsync<List<TopicDto>>("/api/admin/topics") ?? new List<TopicDto>();
-            var questions = await Http.GetFromJsonAsync<List<AdminQuestionDto>>("/api/admin/questions") ?? new List<AdminQuestionDto>();
+            topics = await Http.GetFromJsonAsync<List<TopicDto>>($"/api/admin/topics?lang={UiPrefs.LanguageCode}") ?? new List<TopicDto>();
+            var questions = await Http.GetFromJsonAsync<List<AdminQuestionDto>>($"/api/admin/questions?lang={UiPrefs.LanguageCode}") ?? new List<AdminQuestionDto>();
             var selected = questions.FirstOrDefault(x => x.Id == Id);
 
             if (selected == null)
             {
-                errorMessage = "Question not found.";
+                errorMessage = L("Pitanje nije pronađeno.", "Question not found.");
                 return;
             }
 
@@ -144,7 +146,7 @@
 
         if (!IsValid())
         {
-            errorMessage = "Please fill all required fields.";
+            errorMessage = L("Popuni sva obavezna polja.", "Please fill all required fields.");
             return;
         }
 
@@ -165,11 +167,11 @@
             var response = await Http.PutAsJsonAsync($"/api/admin/questions/{Id}", dto);
             if (!response.IsSuccessStatusCode)
             {
-                errorMessage = $"Failed to update question ({response.StatusCode}).";
+                errorMessage = $"{L("Ažuriranje pitanja nije uspjelo", "Failed to update question")} ({response.StatusCode}).";
                 return;
             }
 
-            successMessage = "Question updated successfully. Redirecting...";
+            successMessage = L("Pitanje je uspješno ažurirano. Preusmjeravam...", "Question updated successfully. Redirecting...");
             await Task.Delay(800);
             Navigation.NavigateTo("/admin?status=question-updated");
         }

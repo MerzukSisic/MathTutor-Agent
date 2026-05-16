@@ -7,10 +7,12 @@ namespace AiAgents.MathTutorAgent.Application.Services;
 
 public class StudentProfileService(
     MathTutorDbContext context,
-    StudentInsightsCalculatorService insightsCalculator)
+    StudentInsightsCalculatorService insightsCalculator,
+    MathContentLocalizationService localizationService)
 {
-    public async Task<StudentProfileDto> GetProfileAsync(int studentId, CancellationToken ct = default)
+    public async Task<StudentProfileDto> GetProfileAsync(int studentId, string? languageCode = null, CancellationToken ct = default)
     {
+        var language = localizationService.NormalizeLanguage(languageCode);
         var student = await context.Students
             .AsNoTracking()
             .AsSplitQuery()
@@ -30,8 +32,8 @@ public class StudentProfileService(
         var topicProgress = student.TopicStates
             .Select(ts => new TopicProgressDto
             {
-                TopicName = ts.Topic.Name,
-                AreaName = ts.Topic.Area.ToString(),
+                TopicName = localizationService.LocalizeTopicName(ts.Topic.Name, language),
+                AreaName = localizationService.LocalizeAreaName(ts.Topic.Area.ToString(), language),
                 MasteryScore = ts.MasteryScore,
                 Confidence = ts.Confidence,
                 LastPracticed = ts.LastPracticedUtc
@@ -45,9 +47,9 @@ public class StudentProfileService(
             .Select(a => new ActivityDto
             {
                 Date = a.CreatedAt,
-                QuestionText = a.Question.QuestionText,
-                TopicName = a.Question.Topic.Name,
-                AreaName = a.Question.Topic.Area.ToString(),
+                QuestionText = localizationService.LocalizeQuestionText(a.Question.QuestionText, language),
+                TopicName = localizationService.LocalizeTopicName(a.Question.Topic.Name, language),
+                AreaName = localizationService.LocalizeAreaName(a.Question.Topic.Area.ToString(), language),
                 IsCorrect = a.IsCorrect,
                 TimeSeconds = a.TimeMs / 1000.0
             })
@@ -56,6 +58,18 @@ public class StudentProfileService(
         var questionGroups = insightsCalculator.BuildQuestionAttemptInsights(student.Attempts);
         var firstTrySuccessRate = insightsCalculator.CalculateFirstTrySuccessRate(questionGroups);
         var areaInsights = insightsCalculator.BuildAreaAttemptInsights(student.Attempts);
+
+        foreach (var insight in questionGroups)
+        {
+            insight.QuestionText = localizationService.LocalizeQuestionText(insight.QuestionText, language);
+            insight.TopicName = localizationService.LocalizeTopicName(insight.TopicName, language);
+            insight.AreaName = localizationService.LocalizeAreaName(insight.AreaName, language);
+        }
+
+        foreach (var areaInsight in areaInsights)
+        {
+            areaInsight.AreaName = localizationService.LocalizeAreaName(areaInsight.AreaName, language);
+        }
 
         var accuracy = totalAttempts > 0 ? correctAttempts * 100.0 / totalAttempts : 0;
         var suggestedDifficulty = insightsCalculator.CalculateSuggestedDifficulty(accuracy, averageTime);
@@ -72,7 +86,15 @@ public class StudentProfileService(
             AverageTimeSeconds = averageTime,
             FirstTrySuccessRate = firstTrySuccessRate,
             SuggestedDifficulty = suggestedDifficulty,
-            ReadinessLabel = readinessLabel,
+            ReadinessLabel = language == "bs"
+                ? readinessLabel
+                : readinessLabel switch
+                {
+                    "Spreman za teze zadatke" => "Ready for harder tasks",
+                    "Stabilan tempo" => "Stable pace",
+                    "Potrebno jos vjezbe" => "Needs more practice",
+                    _ => readinessLabel
+                },
             TopicProgress = topicProgress,
             RecentActivity = recentActivity,
             QuestionAttemptInsights = questionGroups,
@@ -80,8 +102,9 @@ public class StudentProfileService(
         };
     }
 
-    public async Task<StudySessionStatsDto> GetStudySessionStatsAsync(int studentId, DateTime from, DateTime to, CancellationToken ct = default)
+    public async Task<StudySessionStatsDto> GetStudySessionStatsAsync(int studentId, DateTime from, DateTime to, string? languageCode = null, CancellationToken ct = default)
     {
+        var language = localizationService.NormalizeLanguage(languageCode);
         var attempts = await context.Attempts
             .AsNoTracking()
             .Include(a => a.Question).ThenInclude(q => q.Topic)
@@ -104,7 +127,7 @@ public class StudentProfileService(
             .GroupBy(a => a.Question.Topic.Name)
             .Select(g => new TopicStatsDto
             {
-                TopicName = g.Key,
+                TopicName = localizationService.LocalizeTopicName(g.Key, language),
                 TotalAttempts = g.Count(),
                 CorrectAttempts = g.Count(a => a.IsCorrect),
                 AccuracyPercentage = (g.Count(a => a.IsCorrect) * 100.0 / g.Count())

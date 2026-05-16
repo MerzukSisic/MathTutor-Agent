@@ -14,6 +14,7 @@ public class MathTutoringActuator(
     CrossMathMilestoneService crossMathMilestoneService,
     RevisionService revisionService,
     ExplanationService explanationService,
+    MathContentLocalizationService localizationService,
     ImageIngestionService imageIngestionService,
     ValidationService validationService,
     ILogger logger)
@@ -49,6 +50,18 @@ public class MathTutoringActuator(
 
     private async Task<MathTickResult> HandleNextQuestionAsync(WorkItem workItem, CancellationToken ct)
     {
+        NextQuestionPayloadDto? nextPayload = null;
+        try
+        {
+            nextPayload = JsonSerializer.Deserialize<NextQuestionPayloadDto>(workItem.PayloadJson);
+        }
+        catch (JsonException)
+        {
+            // optional payload - ignore and fallback to BS
+        }
+
+        var language = localizationService.NormalizeLanguage(nextPayload?.Language);
+
         var needsRevision = await revisionService.ShouldInjectRevisionAsync(workItem.StudentId, ct);
         int? topicId = null;
 
@@ -96,6 +109,9 @@ public class MathTutoringActuator(
             topicId.Value,
             ct);
         var timeLimitSeconds = await assessmentService.GetTimeLimitSecondsAsync(workItem.StudentId, question, ct);
+        var localizedQuestionText = localizationService.LocalizeQuestionText(question.QuestionText, language);
+        var localizedTopicName = localizationService.LocalizeTopicName(question.Topic?.Name ?? string.Empty, language);
+        var localizedAreaName = localizationService.LocalizeAreaName(question.Topic?.Area.ToString() ?? string.Empty, language);
 
         return new MathTickResult
         {
@@ -108,9 +124,9 @@ public class MathTutoringActuator(
             {
                 Id = question.Id,
                 TopicId = question.TopicId,
-                TopicName = question.Topic?.Name ?? string.Empty,
-                AreaName = question.Topic?.Area.ToString() ?? string.Empty,
-                QuestionText = question.QuestionText,
+                TopicName = localizedTopicName,
+                AreaName = localizedAreaName,
+                QuestionText = localizedQuestionText,
                 Difficulty = question.Difficulty,
                 TimeLimitSeconds = timeLimitSeconds,
                 IsFirstQuestionInTopicForStudent = isFirstInTopic
@@ -179,6 +195,7 @@ public class MathTutoringActuator(
         var timeLimitSeconds = await assessmentService.GetTimeLimitSecondsAsync(workItem.StudentId, question, ct);
         var isTimedOut = payload.TimedOut || payload.TimeMs > timeLimitSeconds * 1000;
         var isCorrect = !isTimedOut && await assessmentService.EvaluateAnswerAsync(question, payload.Answer, ct);
+        var language = localizationService.NormalizeLanguage(payload.Language);
         var tags = new List<string>();
         if (isTimedOut)
         {
@@ -204,6 +221,7 @@ public class MathTutoringActuator(
             question.TopicId,
             newMastery,
             ct);
+        milestoneChallenge = localizationService.LocalizeMilestone(milestoneChallenge, language);
 
         return new MathTickResult
         {
@@ -218,9 +236,9 @@ public class MathTutoringActuator(
             {
                 IsCorrect = isCorrect,
                 IsTimedOut = isTimedOut,
-                CorrectAnswer = question.CorrectAnswer,
+                CorrectAnswer = localizationService.LocalizeAnswerToken(question.CorrectAnswer, language),
                 MasteryScore = newMastery,
-                Decision = decision.ToString(),
+                Decision = localizationService.LocalizeDecision(decision.ToString(), language),
                 TimeLimitSeconds = timeLimitSeconds,
                 TimeSpentSeconds = Math.Round(payload.TimeMs / 1000.0, 1),
                 MilestoneChallenge = milestoneChallenge
@@ -266,6 +284,7 @@ public class MathTutoringActuator(
             payload.QuestionId,
             payload.TopicId,
             payload.ErrorTag,
+            payload.Language,
             ct);
 
         return new MathTickResult

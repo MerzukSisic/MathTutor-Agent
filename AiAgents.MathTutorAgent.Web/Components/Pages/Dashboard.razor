@@ -1,32 +1,32 @@
-﻿@page "/"
+@page "/"
 @attribute [Authorize(Roles = UserRoles.Admin)]
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject UiPreferencesService UiPrefs
+@using System.Globalization
 
-<PageTitle>Dashboard - MathTutor AI</PageTitle>
+<PageTitle>@($"{UiPrefs.T("dashboard")} - {UiPrefs.T("app_name")}")</PageTitle>
 
 <div class="dashboard">
-    <!-- Welcome Section -->
     <div class="welcome-card">
         <div class="welcome-content">
-            <h2>Welcome to MathTutor AI</h2>
-            <p>Track your learning progress and master mathematics step by step</p>
+            <h2>@UiPrefs.T("welcome_title")</h2>
+            <p>@UiPrefs.T("welcome_subtitle")</p>
         </div>
-        <button class="btn-primary" @onclick="StartNewQuiz">
+        <button class="btn-primary" @onclick="StartNewQuiz" disabled="@(!CanStartAnyQuiz)">
             <span class="btn-icon">🚀</span>
-            Start Learning
+            @UiPrefs.T("start_learning")
         </button>
     </div>
 
-    <!-- Students Grid -->
     <div class="students-section">
         <div class="section-header">
-            <h3>Select Student</h3>
+            <h3>@UiPrefs.T("select_student")</h3>
             <div class="section-actions">
-                <input class="student-search" @bind="studentFilter" @bind:event="oninput" placeholder="Search student..." />
+                <input class="student-search" @bind="studentFilter" @bind:event="oninput" placeholder="@UiPrefs.T("search_student")" />
                 <button class="btn-secondary" @onclick="RefreshAll">
                     <span>🔄</span>
-                    Refresh
+                    @UiPrefs.T("refresh")
                 </button>
             </div>
         </div>
@@ -35,12 +35,12 @@
         {
             <div class="loading-state">
                 <div class="spinner"></div>
-                <p>Loading students...</p>
+                <p>@UiPrefs.T("loading_students")</p>
             </div>
         }
         else if (FilteredStudents.Any())
         {
-            <p class="students-meta">Showing @FilteredStudents.Count / @(students?.Count ?? 0) students</p>
+            <p class="students-meta">@UiPrefs.T("showing_students", FilteredStudents.Count, students?.Count ?? 0)</p>
             <div class="students-grid">
                 @foreach (var student in FilteredStudents)
                 {
@@ -51,11 +51,11 @@
                         <div class="student-info">
                             <h4>@student.Name</h4>
                             <p class="student-email">@student.Email</p>
-                            <p class="student-date">Member since @student.CreatedAt.ToString("MMM dd, yyyy")</p>
+                            <p class="student-date">@UiPrefs.T("member_since", FormatMemberSince(student.CreatedAt))</p>
                         </div>
                         <div class="student-actions">
                             <button class="btn-action" @onclick:stopPropagation="true" @onclick="() => StartQuizForStudent(student.Id)">
-                                Start Quiz
+                                @UiPrefs.T("start_quiz")
                             </button>
                         </div>
                     </div>
@@ -66,44 +66,43 @@
         {
             <div class="empty-state">
                 <span class="empty-icon">👥</span>
-                <p>No students found</p>
-                <button class="btn-secondary" @onclick="OpenAddStudentDialog">Add Students</button>
+                <p>@UiPrefs.T("no_students_found")</p>
+                <button class="btn-secondary" @onclick="OpenAddStudentDialog">@UiPrefs.T("add_students")</button>
             </div>
         }
     </div>
 
-    <!-- Quick Stats -->
     <div class="stats-grid">
         <div class="stat-card">
             <div class="stat-icon">📚</div>
             <div class="stat-content">
-                <p class="stat-label">Total Students</p>
+                <p class="stat-label">@UiPrefs.T("total_students")</p>
                 <p class="stat-value">@(dashboardStats?.TotalStudents ?? 0)</p>
             </div>
         </div>
-        
+
         <div class="stat-card">
             <div class="stat-icon">✅</div>
             <div class="stat-content">
-                <p class="stat-label">Active Sessions</p>
+                <p class="stat-label">@UiPrefs.T("active_sessions")</p>
                 <p class="stat-value">@(dashboardStats?.ActiveSessions ?? 0)</p>
             </div>
         </div>
-        
+
         <div class="stat-card">
             <div class="stat-icon">🎯</div>
             <div class="stat-content">
-                <p class="stat-label">Questions Completed</p>
+                <p class="stat-label">@UiPrefs.T("questions_completed")</p>
                 <p class="stat-value">@(dashboardStats?.QuestionsCompleted ?? 0)</p>
             </div>
         </div>
-        
+
         <div class="stat-card">
             <div class="stat-icon">⚡</div>
             <div class="stat-content">
-                <p class="stat-label">Agent Status</p>
+                <p class="stat-label">@UiPrefs.T("agent_status")</p>
                 <p class="stat-value @GetStatusClass()">
-                    @(dashboardStats?.AgentStatus ?? "Loading...")
+                    @GetStatusLabel()
                 </p>
             </div>
         </div>
@@ -115,6 +114,8 @@
     private DashboardStatsDto? dashboardStats;
     private bool isLoading = true;
     private string studentFilter = string.Empty;
+
+    private bool CanStartAnyQuiz => students?.Any() == true;
 
     private List<StudentDto> FilteredStudents
         => students?
@@ -134,13 +135,12 @@
         try
         {
             isLoading = true;
-            
-            // Load both students and stats in parallel
+
             var studentsTask = Http.GetFromJsonAsync<List<StudentDto>>("/api/admin/students");
             var statsTask = Http.GetFromJsonAsync<DashboardStatsDto>("/api/admin/dashboard/stats");
-            
+
             await Task.WhenAll(studentsTask, statsTask);
-            
+
             students = await studentsTask;
             dashboardStats = await statsTask;
         }
@@ -181,10 +181,13 @@
     {
         var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length >= 2)
-            return $"{parts[0][0]}{parts[1][0]}".ToUpper();
-        return parts.Length > 0 ? parts[0][..Math.Min(2, parts[0].Length)].ToUpper() : "??";
+            return $"{parts[0][0]}{parts[1][0]}".ToUpperInvariant();
+
+        return parts.Length > 0
+            ? parts[0][..Math.Min(2, parts[0].Length)].ToUpperInvariant()
+            : "??";
     }
-    
+
     private void OpenAddStudentDialog()
     {
         Navigation.NavigateTo("/admin/add-student");
@@ -192,11 +195,45 @@
 
     private string GetStatusClass()
     {
-        return dashboardStats?.AgentStatus switch
+        if (string.Equals(dashboardStats?.AgentStatus, "Processing", StringComparison.OrdinalIgnoreCase))
         {
-            "Processing" => "status-processing",
-            "Online" => "status-online",
-            _ => "status-offline"
-        };
+            return "status-processing";
+        }
+
+        if (string.Equals(dashboardStats?.AgentStatus, "Online", StringComparison.OrdinalIgnoreCase))
+        {
+            return "status-online";
+        }
+
+        return "status-offline";
+    }
+
+    private string GetStatusLabel()
+    {
+        if (isLoading)
+        {
+            return UiPrefs.T("loading");
+        }
+
+        if (string.Equals(dashboardStats?.AgentStatus, "Processing", StringComparison.OrdinalIgnoreCase))
+        {
+            return UiPrefs.T("status_processing");
+        }
+
+        if (string.Equals(dashboardStats?.AgentStatus, "Online", StringComparison.OrdinalIgnoreCase))
+        {
+            return UiPrefs.T("status_online");
+        }
+
+        return UiPrefs.T("status_offline");
+    }
+
+    private string FormatMemberSince(DateTime createdAt)
+    {
+        var culture = UiPrefs.Language == UiLanguage.Bs
+            ? CultureInfo.GetCultureInfo("bs-BA")
+            : CultureInfo.GetCultureInfo("en-US");
+
+        return createdAt.ToString("dd MMM yyyy", culture);
     }
 }

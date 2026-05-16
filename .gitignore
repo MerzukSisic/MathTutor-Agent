@@ -167,3 +167,9 @@ desktop.ini
 
 # Other
 *.stackdump
+
+# Local assistant runtime metadata
+.config/
+
+# Rider / Roslyn local cache artifacts
+*.lscache

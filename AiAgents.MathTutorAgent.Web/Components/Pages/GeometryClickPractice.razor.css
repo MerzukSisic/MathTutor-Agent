@@ -141,6 +141,62 @@
     cursor: not-allowed;
 }
 
+.geometry-practice.theme-dark {
+    border-color: #3b82f6;
+    background: linear-gradient(180deg, #13253d, #12263f);
+    color: #dbeafe;
+}
+
+.geometry-practice.theme-dark h4 {
+    color: #e2e8f0;
+}
+
+.geometry-practice.theme-dark .geometry-tag {
+    border-color: #38bdf8;
+    background: #16314f;
+    color: #7dd3fc;
+}
+
+.geometry-practice.theme-dark .geometry-help {
+    color: #a8bfd9;
+}
+
+.geometry-practice.theme-dark .geometry-canvas {
+    background: #102038;
+    border-color: #355175;
+}
+
+.geometry-practice.theme-dark .polygon-edge,
+.geometry-practice.theme-dark .cube-edge {
+    stroke: #8ea7c4;
+}
+
+.geometry-practice.theme-dark .vertex-node {
+    fill: #12263f;
+    stroke: #38bdf8;
+}
+
+.geometry-practice.theme-dark .vertex-node:hover {
+    fill: #16314f;
+    stroke: #67e8f9;
+}
+
+.geometry-practice.theme-dark .cube-face {
+    fill: #12263f;
+    stroke: #8ea7c4;
+}
+
+.geometry-practice.theme-dark .cube-face:hover {
+    fill: #16314f;
+    stroke: #38bdf8;
+}
+
+.geometry-practice.theme-dark .btn-clear-geometry {
+    border-color: #355175;
+    background: #12263f;
+    color: #cbd5e1;
+}
+
 @keyframes popNode {
     0% {
         transform: scale(0.9);
