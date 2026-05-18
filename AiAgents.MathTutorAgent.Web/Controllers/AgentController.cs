@@ -10,7 +10,7 @@ using System.Security.Claims;
 namespace AiAgents.MathTutorAgent.Web.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/agent")]
 [Authorize]
 public class AgentController(
     WorkQueueService queueService,

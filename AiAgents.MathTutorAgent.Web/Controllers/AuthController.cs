@@ -12,7 +12,7 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace AiAgents.MathTutorAgent.Web.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/auth")]
 [EnableRateLimiting("auth")]
 public class AuthController(
     IAuthService authService,
@@ -100,7 +100,7 @@ public class AuthController(
     public async Task<IActionResult> Logout()
     {
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        return Ok(new { Success = true });
+        return NoContent();
     }
 
     [AllowAnonymous]

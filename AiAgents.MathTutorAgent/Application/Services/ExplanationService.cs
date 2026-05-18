@@ -47,26 +47,57 @@ public class ExplanationService(
         var keywords = ExtractKeywords(questionText);
         if (keywords.Any())
         {
-            // Smanji skeniranje: prvo pretraga po tekstu u bazi, pa fallback po tagovima u memoriji.
-            var textMatchedChunks = new List<Domain.Entities.KnowledgeChunk>();
+            var effectiveKeywords = keywords
+                .Where(k => !string.IsNullOrWhiteSpace(k))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .Take(5)
+                .ToList();
 
-            foreach (var keyword in keywords.Take(5))
+            IQueryable<int> matchedChunkIdsQuery = context.KnowledgeChunks
+                .Where(_ => false)
+                .Select(c => c.Id);
+
+            foreach (var keyword in effectiveKeywords)
             {
-                var chunksByKeyword = await context.KnowledgeChunks
-                    .Include(c => c.Document)
-                    .Where(c => EF.Functions.Like(c.ChunkText, $"%{keyword}%"))
-                    .Take(6)
-                    .ToListAsync(ct);
-
-                textMatchedChunks.AddRange(chunksByKeyword);
+                var localKeyword = keyword;
+                matchedChunkIdsQuery = matchedChunkIdsQuery.Union(
+                    context.KnowledgeChunks
+                        .Where(c => EF.Functions.Like(c.ChunkText, $"%{localKeyword}%"))
+                        .OrderBy(c => c.Id)
+                        .Select(c => c.Id)
+                        .Take(6));
             }
 
-            var matchedChunks = textMatchedChunks
-                .GroupBy(c => c.Id)
-                .Select(g => g.First())
-                .Where(c => keywords.Any(k =>
+            var matchedChunkIds = await matchedChunkIdsQuery
+                .Take(30)
+                .ToListAsync(ct);
+
+            if (matchedChunkIds.Count == 0)
+            {
+                return new ExplanationDto
+                {
+                    Explanation = localizationService.LocalizeExplanationText(explanation, languageCode),
+                    Example = localizationService.LocalizeExplanationText(example, languageCode),
+                    Sources = references
+                };
+            }
+
+            var idOrder = matchedChunkIds
+                .Select((id, index) => new { id, index })
+                .ToDictionary(x => x.id, x => x.index);
+
+            var matchedIdSet = matchedChunkIds.ToHashSet();
+
+            var matchedChunks = await context.KnowledgeChunks
+                .Include(c => c.Document)
+                .Where(c => matchedIdSet.Contains(c.Id))
+                .ToListAsync(ct);
+
+            matchedChunks = matchedChunks
+                .Where(c => effectiveKeywords.Any(k =>
                     c.ChunkText.Contains(k, StringComparison.OrdinalIgnoreCase) ||
                     c.Tags.Any(t => t.Contains(k, StringComparison.OrdinalIgnoreCase))))
+                .OrderBy(c => idOrder[c.Id])
                 .Take(2)
                 .ToList();
             

@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace AiAgents.MathTutorAgent.Web.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/admin")]
 [Authorize(Roles = UserRoles.Admin)]
 public class AdminController(
     IAdminService adminService,

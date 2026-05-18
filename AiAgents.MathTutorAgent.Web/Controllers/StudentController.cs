@@ -7,7 +7,7 @@ using System.Security.Claims;
 namespace AiAgents.MathTutorAgent.Web.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/student")]
 [Authorize]
 public class StudentController(StudentProfileService profileService, PdfExportService pdfService)
     : ControllerBase
@@ -32,23 +32,23 @@ public class StudentController(StudentProfileService profileService, PdfExportSe
     }
 
     [HttpGet("{studentId}/stats")]
-    public async Task<IActionResult> GetStudyStats(int studentId, [FromQuery] DateTime? from, [FromQuery] DateTime? to, [FromQuery] string? lang = null)
+    public async Task<IActionResult> GetStudyStats(int studentId, [FromQuery] GetStudyStatsQuery query)
     {
         if (!CanAccessStudent(studentId))
         {
             return Forbid();
         }
 
-        var fromDate = from ?? DateTime.UtcNow.AddMonths(-1);
-        var toDate = to ?? DateTime.UtcNow;
+        var fromDate = query.From ?? DateTime.UtcNow.AddMonths(-1);
+        var toDate = query.To ?? DateTime.UtcNow;
 
         // Ako klijent pošalje samo datum (00:00:00), tretiraj "to" kao kraj tog dana.
-        if (to.HasValue && to.Value.TimeOfDay == TimeSpan.Zero)
+        if (query.To.HasValue && query.To.Value.TimeOfDay == TimeSpan.Zero)
         {
-            toDate = to.Value.Date.AddDays(1).AddTicks(-1);
+            toDate = query.To.Value.Date.AddDays(1).AddTicks(-1);
         }
 
-        var stats = await profileService.GetStudySessionStatsAsync(studentId, fromDate, toDate, lang, HttpContext.RequestAborted);
+        var stats = await profileService.GetStudySessionStatsAsync(studentId, fromDate, toDate, query.Lang, HttpContext.RequestAborted);
         return Ok(stats);
     }
 
@@ -89,5 +89,12 @@ public class StudentController(StudentProfileService profileService, PdfExportSe
 
         var claimValue = User.FindFirstValue("student_id");
         return int.TryParse(claimValue, out var currentStudentId) && currentStudentId == studentId;
+    }
+
+    public sealed class GetStudyStatsQuery
+    {
+        public DateTime? From { get; init; }
+        public DateTime? To { get; init; }
+        public string? Lang { get; init; }
     }
 }
