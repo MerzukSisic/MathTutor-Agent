@@ -54,6 +54,15 @@ public static class AnswerNormalizer
 
         // 3. Lowercase (for text comparisons)
         normalized = normalized.ToLowerInvariant();
+        normalized = normalized.Trim(' ', '.', ',', '!', '?', ':', ';', '"', '\'');
+
+        // 4. Canonicalize yes/no style answers across EN/BS variants
+        normalized = normalized switch
+        {
+            "yes" or "y" or "da" or "d" or "true" or "tacno" or "tačno" => "yes",
+            "no" or "n" or "ne" or "false" or "netacno" or "netačno" => "no",
+            _ => normalized
+        };
 
         return normalized;
     }

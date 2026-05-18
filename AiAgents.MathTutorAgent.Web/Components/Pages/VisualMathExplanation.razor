@@ -1,9 +1,11 @@
 @using System.Text.RegularExpressions
+@using AiAgents.MathTutorAgent.Web.Services
+@inject UiPreferencesService UiPrefs
 
 @if (model != null)
 {
     <div class="visual-explain">
-        <h4>🎨 Visual Explanation</h4>
+        <h4>🎨 @L("Vizuelno objašnjenje", "Visual Explanation")</h4>
 
         <div class="ve-equation">
             <span class="ve-chip">@model.A</span>
@@ -16,10 +18,10 @@
         @if (model.Operator == '+')
         {
             <div class="ve-block">
-                <p>Join two groups of apples, then count all apples together.</p>
+                <p>@L("Spoji dvije grupe jabuka, pa prebroj ukupan broj.", "Join two groups of apples, then count all apples together.")</p>
                 <div class="ve-group-wrap">
                     <div class="ve-group">
-                        <strong>Group A (@model.A)</strong>
+                        <strong>@L("Grupa A", "Group A") (@model.A)</strong>
                         <div class="ve-items">
                             @for (var i = 0; i < model.A; i++)
                             {
@@ -28,7 +30,7 @@
                         </div>
                     </div>
                     <div class="ve-group">
-                        <strong>Group B (@model.B)</strong>
+                        <strong>@L("Grupa B", "Group B") (@model.B)</strong>
                         <div class="ve-items">
                             @for (var i = 0; i < model.B; i++)
                             {
@@ -37,7 +39,7 @@
                         </div>
                     </div>
                     <div class="ve-group answer">
-                        <strong>Total (@model.Result)</strong>
+                        <strong>@L("Ukupno", "Total") (@model.Result)</strong>
                         <div class="ve-items">
                             @for (var i = 0; i < model.Result; i++)
                             {
@@ -51,9 +53,9 @@
         else if (model.Operator == '-')
         {
             <div class="ve-block">
-                <p>Start with all apples, remove some, then count what remains.</p>
+                <p>@L("Počni sa svim jabukama, ukloni dio, pa prebroj šta ostaje.", "Start with all apples, remove some, then count what remains.")</p>
                 <div class="ve-group">
-                    <strong>Start with @model.A apples</strong>
+                    <strong>@L($"Počni sa {model.A} jabuka", $"Start with {model.A} apples")</strong>
                     <div class="ve-items subtraction">
                         @for (var i = 0; i < model.A; i++)
                         {
@@ -64,7 +66,7 @@
                 </div>
 
                 <div class="ve-steps">
-                    <strong>Count down:</strong>
+                    <strong>@L("Broji unazad:", "Count down:")</strong>
                     @for (var i = 0; i <= model.B; i++)
                     {
                         <span class="ve-step">@(model.A - i)</span>
@@ -79,9 +81,9 @@
         else if (model.Operator == '*')
         {
             <div class="ve-block">
-                <p>Multiplication means repeated groups.</p>
+                <p>@L("Množenje znači ponavljanje jednakih grupa.", "Multiplication means repeated groups.")</p>
                 <div class="ve-group">
-                    <strong>@model.B groups, each with @model.A apples</strong>
+                    <strong>@L($"{model.B} grupa, svaka sa {model.A} jabuka", $"{model.B} groups, each with {model.A} apples")</strong>
                     <div class="ve-rows">
                         @for (var row = 0; row < model.B; row++)
                         {
@@ -99,14 +101,14 @@
         else if (model.Operator == '/')
         {
             <div class="ve-block">
-                <p>Division means sharing equally into groups.</p>
+                <p>@L("Dijeljenje znači ravnomjerno raspoređivanje u grupe.", "Division means sharing equally into groups.")</p>
                 <div class="ve-group">
-                    <strong>@model.A apples shared into @model.B equal groups</strong>
+                    <strong>@L($"{model.A} jabuka podijeljeno u {model.B} jednakih grupa", $"{model.A} apples shared into {model.B} equal groups")</strong>
                     <div class="ve-group-wrap">
                         @for (var group = 0; group < model.B; group++)
                         {
                             <div class="ve-group small">
-                                <span class="ve-group-label">Group @(group + 1)</span>
+                                <span class="ve-group-label">@L("Grupa", "Group") @(group + 1)</span>
                                 <div class="ve-items">
                                     @for (var i = 0; i < model.Result; i++)
                                     {
@@ -126,6 +128,7 @@
     [Parameter] public string? QuestionText { get; set; }
 
     private VisualModel? model;
+    private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
     protected override void OnParametersSet()
     {

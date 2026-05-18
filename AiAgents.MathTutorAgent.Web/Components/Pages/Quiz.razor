@@ -1,9 +1,11 @@
 ﻿@page "/quiz/{studentId:int}"
 @attribute [Authorize]
 @using Microsoft.AspNetCore.SignalR.Client
+@using AiAgents.MathTutorAgent.Application.Services
 @inject NavigationManager Navigation
 @inject HttpClient Http
 @inject UiPreferencesService UiPrefs
+@inject MathContentLocalizationService ContentLocalization
 @implements IAsyncDisposable
 
 <PageTitle>@($"{L("Kviz", "Quiz")} - MathTutor AI")</PageTitle>
@@ -47,7 +49,7 @@
             </div>
 
             <div class="question-body">
-                <p class="question-text">@currentQuestion.QuestionText</p>
+                <p class="question-text">@GetQuestionTextForDisplay(currentQuestion.QuestionText)</p>
 
                 @if (geometryInteraction != null)
                 {
@@ -227,7 +229,7 @@
                     {
                         <AreaVisualGuide AreaName="@currentQuestion.AreaName"
                                          TopicName="@currentQuestion.TopicName"
-                                         QuestionText="@currentQuestion.QuestionText" />
+                                         QuestionText="@GetQuestionTextForDisplay(currentQuestion.QuestionText)" />
                     }
 
                     @if (!string.IsNullOrEmpty(explanation.Example))

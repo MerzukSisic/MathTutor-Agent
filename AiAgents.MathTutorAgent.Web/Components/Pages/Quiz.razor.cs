@@ -33,6 +33,8 @@ public partial class Quiz
     private string? dragSource;
     private double TimeProgressPercent => timeLimitSeconds <= 0 ? 0 : Math.Max(0, remainingSeconds * 100.0 / timeLimitSeconds);
     private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
+    private string GetQuestionTextForDisplay(string? rawText) =>
+        ContentLocalization.LocalizeQuestionText(rawText, UiPrefs.LanguageCode);
 
     protected override async Task OnInitializedAsync()
     {

@@ -5,16 +5,17 @@
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 @inject UiPreferencesService UiPrefs
+@inject AiAgents.MathTutorAgent.Application.Services.MathContentLocalizationService ContentLocalization
 @implements IDisposable
 
-<PageTitle>Student Profile - MathTutor AI</PageTitle>
+<PageTitle>@($"{L("Profil učenika", "Student Profile")} - MathTutor AI")</PageTitle>
 
 <div class="profile-container theme-@UiPrefs.ThemeCode">
     @if (profile == null)
     {
-        <div class="loading-container">
-            <div class="spinner-large"></div>
-            <p class="loading-text">Loading profile...</p>
+            <div class="loading-container">
+                <div class="spinner-large"></div>
+            <p class="loading-text">@L("Učitavanje profila...", "Loading profile...")</p>
         </div>
     }
     else
@@ -32,7 +33,7 @@
                         <div class="profile-badges">
                             <span class="badge badge-primary">
                                 <span class="badge-icon">🎯</span>
-                                @profile.AccuracyPercentage.ToString("F1")% Accuracy
+                                @profile.AccuracyPercentage.ToString("F1")% @L("Tačnost", "Accuracy")
                             </span>
                             <span class="badge badge-secondary">
                                 <span class="badge-icon">🧠</span>
@@ -42,22 +43,22 @@
                             {
                                 <span class="badge badge-gold">
                                     <span class="badge-icon">🏆</span>
-                                    Century Club
+                                    @L("Klub 100+", "Century Club")
                                 </span>
                             }
                         </div>
                     </div>
                 </div>
                 <div class="profile-actions">
-                    <button class="btn-icon-primary" @onclick="ExportPdf" title="Export PDF">
+                    <button class="btn-icon-primary" @onclick="ExportPdf" title="@L("Izvezi PDF", "Export PDF")">
                         <span class="icon">📄</span>
-                        <span class="text">Export PDF</span>
+                        <span class="text">@L("Izvezi PDF", "Export PDF")</span>
                     </button>
                     @if (isAdmin)
                     {
-                        <button class="btn-icon-secondary" @onclick="BackToDashboard" title="Back">
+                        <button class="btn-icon-secondary" @onclick="BackToDashboard" title="@L("Nazad", "Back")">
                             <span class="icon">←</span>
-                            <span class="text">Dashboard</span>
+                            <span class="text">@L("Kontrolna tabla", "Dashboard")</span>
                         </button>
                     }
                 </div>
@@ -71,11 +72,11 @@
                     <span class="stat-icon">📝</span>
                 </div>
                 <div class="stat-details">
-                    <p class="stat-label">Total Attempts</p>
+                    <p class="stat-label">@L("Ukupno pokušaja", "Total Attempts")</p>
                     <p class="stat-value">@profile.TotalAttempts</p>
                     <p class="stat-trend">
                         <span class="trend-indicator">↑</span>
-                        Keep going!
+                        @L("Samo nastavi!", "Keep going!")
                     </p>
                 </div>
             </div>
@@ -85,7 +86,7 @@
                     <span class="stat-icon">✅</span>
                 </div>
                 <div class="stat-details">
-                    <p class="stat-label">Correct Answers</p>
+                    <p class="stat-label">@L("Tačni odgovori", "Correct Answers")</p>
                     <p class="stat-value">@profile.CorrectAttempts</p>
                     <p class="stat-trend">
                         <span class="trend-indicator">✓</span>
@@ -99,11 +100,11 @@
                     <span class="stat-icon">⚡</span>
                 </div>
                 <div class="stat-details">
-                    <p class="stat-label">Avg Response Time</p>
+                    <p class="stat-label">@L("Prosj. vrijeme odgovora", "Avg Response Time")</p>
                     <p class="stat-value">@profile.AverageTimeSeconds.ToString("F1")s</p>
                     <p class="stat-trend">
                         <span class="trend-indicator">⏱️</span>
-                        Per question
+                        @L("Po pitanju", "Per question")
                     </p>
                 </div>
             </div>
@@ -113,7 +114,7 @@
                     <span class="stat-icon">🎯</span>
                 </div>
                 <div class="stat-details">
-                    <p class="stat-label">Overall Accuracy</p>
+                    <p class="stat-label">@L("Ukupna tačnost", "Overall Accuracy")</p>
                     <p class="stat-value">@profile.AccuracyPercentage.ToString("F1")%</p>
                     <p class="stat-trend">
                         <span class="trend-indicator">📈</span>
@@ -127,11 +128,11 @@
                     <span class="stat-icon">🥇</span>
                 </div>
                 <div class="stat-details">
-                    <p class="stat-label">First Try Success</p>
+                    <p class="stat-label">@L("Uspjeh iz prve", "First Try Success")</p>
                     <p class="stat-value">@profile.FirstTrySuccessRate.ToString("F1")%</p>
                     <p class="stat-trend">
                         <span class="trend-indicator">📌</span>
-                        Per question
+                        @L("Po pitanju", "Per question")
                     </p>
                 </div>
             </div>
@@ -141,11 +142,11 @@
                     <span class="stat-icon">🎚️</span>
                 </div>
                 <div class="stat-details">
-                    <p class="stat-label">Suggested Difficulty</p>
+                    <p class="stat-label">@L("Preporučena težina", "Suggested Difficulty")</p>
                     <p class="stat-value">@profile.SuggestedDifficulty / 5</p>
                     <p class="stat-trend">
                         <span class="trend-indicator">⚙️</span>
-                        Adaptive recommendation
+                        @L("Adaptivna preporuka", "Adaptive recommendation")
                     </p>
                 </div>
             </div>
@@ -158,7 +159,7 @@
                 <div class="card-header">
                     <h3 class="card-title">
                         <span class="title-icon">📊</span>
-                        Topic Mastery
+                        @L("Vladanje temama", "Topic Mastery")
                     </h3>
                 </div>
                 <div class="card-body">
@@ -182,10 +183,10 @@
                                     <div class="topic-meta">
                                         <span class="confidence-indicator">
                                             @GetConfidenceIcon(topic.Confidence) 
-                                            @((topic.Confidence * 100).ToString("F0"))% confidence
+                                            @((topic.Confidence * 100).ToString("F0"))% @L("pouzdanost", "confidence")
                                         </span>
                                         <span class="last-practiced">
-                                            Last: @GetRelativeTime(topic.LastPracticed)
+                                            @L("Zadnje", "Last"): @GetRelativeTime(topic.LastPracticed)
                                         </span>
                                     </div>
                                 </button>
@@ -201,8 +202,8 @@
                     {
                         <div class="empty-state-small">
                             <span class="empty-icon">📚</span>
-                            <p>No topics mastered yet</p>
-                            <p class="empty-subtitle">Start solving questions to see your progress</p>
+                            <p>@L("Još nema savladanih tema", "No topics mastered yet")</p>
+                            <p class="empty-subtitle">@L("Počni rješavati pitanja da vidiš napredak", "Start solving questions to see your progress")</p>
                         </div>
                     }
                 </div>
@@ -213,13 +214,13 @@
                 <div class="card-header">
                     <h3 class="card-title">
                         <span class="title-icon">⚡</span>
-                        Recent Activity
+                        @L("Nedavne aktivnosti", "Recent Activity")
                     </h3>
                     @if (HasAnyFilter)
                     {
                         <div class="filter-pill">
                             @ActiveFilterLabel
-                            <button type="button" class="clear-filter-btn" @onclick="ClearFilters">Clear</button>
+                            <button type="button" class="clear-filter-btn" @onclick="ClearFilters">@L("Očisti", "Clear")</button>
                         </div>
                     }
                 </div>
@@ -241,7 +242,7 @@
                                         }
                                     </div>
                                     <div class="activity-content">
-                                        <p class="activity-question">@activity.QuestionText</p>
+                                        <p class="activity-question">@LocalizeQuestionForUi(activity.QuestionText)</p>
                                         <div class="activity-meta">
                                             <span class="activity-time">
                                                 🕒 @activity.TimeSeconds.ToString("F1")s
@@ -261,8 +262,8 @@
                     {
                         <div class="empty-state-small">
                             <span class="empty-icon">📝</span>
-                            <p>@(HasAnyFilter ? "No activity for selected filter" : "No activity yet")</p>
-                            <p class="empty-subtitle">@(HasAnyFilter ? "Try another topic/area or clear filter" : "Start solving questions to build your history")</p>
+                            <p>@(HasAnyFilter ? L("Nema aktivnosti za izabrani filter", "No activity for selected filter") : L("Još nema aktivnosti", "No activity yet"))</p>
+                            <p class="empty-subtitle">@(HasAnyFilter ? L("Probaj drugu temu/oblast ili očisti filter", "Try another topic/area or clear filter") : L("Počni rješavati pitanja da izgradiš historiju", "Start solving questions to build your history"))</p>
                         </div>
                     }
                 </div>
@@ -276,7 +277,7 @@
                 <div class="card-header">
                     <h3 class="card-title">
                         <span class="title-icon">📈</span>
-                        Daily Performance (Last 30 Days)
+                        @L("Dnevni učinak (zadnjih 30 dana)", "Daily Performance (Last 30 Days)")
                     </h3>
                 </div>
                 <div class="card-body">
@@ -293,7 +294,7 @@
                 <div class="card-header">
                     <h3 class="card-title">
                         <span class="title-icon">🧩</span>
-                        Attempts by Area
+                        @L("Pokušaji po oblasti", "Attempts by Area")
                     </h3>
                 </div>
                 <div class="card-body">
@@ -301,11 +302,11 @@
                         <table class="table table-elevated">
                             <thead class="table-head">
                                 <tr>
-                                    <th>Area</th>
-                                    <th>Total Attempts</th>
-                                    <th>Unique Questions</th>
-                                    <th>Accuracy</th>
-                                    <th>First Try</th>
+                                    <th>@L("Oblast", "Area")</th>
+                                    <th>@L("Ukupno pokušaja", "Total Attempts")</th>
+                                    <th>@L("Jedinstvena pitanja", "Unique Questions")</th>
+                                    <th>@L("Tačnost", "Accuracy")</th>
+                                    <th>@L("Iz prve", "First Try")</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -333,7 +334,7 @@
                 <div class="card-header">
                     <h3 class="card-title">
                         <span class="title-icon">🔁</span>
-                        Most Retried Questions
+                        @L("Najčešće ponavljana pitanja", "Most Retried Questions")
                     </h3>
                 </div>
                 <div class="card-body">
@@ -341,29 +342,29 @@
                         <table class="table table-elevated">
                             <thead class="table-head">
                                 <tr>
-                                    <th>Question</th>
-                                    <th>Area</th>
-                                    <th>Attempts</th>
-                                    <th>Accuracy</th>
-                                    <th>Solved First Try</th>
+                                    <th>@L("Pitanje", "Question")</th>
+                                    <th>@L("Oblast", "Area")</th>
+                                    <th>@L("Pokušaji", "Attempts")</th>
+                                    <th>@L("Tačnost", "Accuracy")</th>
+                                    <th>@L("Riješeno iz prve", "Solved First Try")</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @if (!FilteredQuestionInsights.Any())
                                 {
                                     <tr class="table-empty-row">
-                                        <td colspan="5">No questions for selected area.</td>
+                                        <td colspan="5">@L("Nema pitanja za izabranu oblast.", "No questions for selected area.")</td>
                                     </tr>
                                 }
 
                                 @foreach (var q in FilteredQuestionInsights.OrderByDescending(x => x.AttemptsCount).Take(8))
                                 {
                                     <tr class="question-row">
-                                        <td>@q.QuestionText</td>
+                                        <td>@LocalizeQuestionForUi(q.QuestionText)</td>
                                         <td><span class="table-area-badge">@q.AreaName</span></td>
                                         <td>@q.AttemptsCount</td>
                                         <td>@q.AccuracyPercentage.ToString("F1")%</td>
-                                        <td>@(q.SolvedFromFirstTry ? "Yes" : "No")</td>
+                                        <td>@(q.SolvedFromFirstTry ? L("Da", "Yes") : L("Ne", "No"))</td>
                                     </tr>
                                 }
                             </tbody>
@@ -385,14 +386,17 @@
     private string? selectedAreaFilter;
     private string? selectedTopicNameFilter;
     private string? selectedTopicAreaFilter;
+    private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
+    private string LocalizeQuestionForUi(string? questionText) =>
+        ContentLocalization.LocalizeQuestionText(questionText, UiPrefs.LanguageCode);
 
     private bool HasAreaFilter => !string.IsNullOrWhiteSpace(selectedAreaFilter);
     private bool HasTopicFilter => !string.IsNullOrWhiteSpace(selectedTopicNameFilter)
         && !string.IsNullOrWhiteSpace(selectedTopicAreaFilter);
     private bool HasAnyFilter => HasAreaFilter || HasTopicFilter;
     private string ActiveFilterLabel => HasTopicFilter
-        ? $"Topic: {selectedTopicNameFilter} ({selectedTopicAreaFilter})"
-        : $"Area: {selectedAreaFilter}";
+        ? $"{L("Tema", "Topic")}: {selectedTopicNameFilter} ({selectedTopicAreaFilter})"
+        : $"{L("Oblast", "Area")}: {selectedAreaFilter}";
 
     private IEnumerable<ActivityDto> FilteredRecentActivity => profile?.RecentActivity
         .Where(a =>
@@ -534,11 +538,11 @@
     {
         return accuracy switch
         {
-            >= 90 => "Excellent!",
-            >= 75 => "Very Good",
-            >= 60 => "Good",
-            >= 50 => "Keep Practicing",
-            _ => "More Practice Needed"
+            >= 90 => L("Odlično!", "Excellent!"),
+            >= 75 => L("Vrlo dobro", "Very Good"),
+            >= 60 => L("Dobro", "Good"),
+            >= 50 => L("Nastavi vježbati", "Keep Practicing"),
+            _ => L("Potrebno je još vježbe", "More Practice Needed")
         };
     }
 
@@ -562,11 +566,19 @@
     {
         var span = DateTime.UtcNow - date;
         
-        if (span.TotalMinutes < 1) return "just now";
-        if (span.TotalMinutes < 60) return $"{(int)span.TotalMinutes}m ago";
-        if (span.TotalHours < 24) return $"{(int)span.TotalHours}h ago";
-        if (span.TotalDays < 7) return $"{(int)span.TotalDays}d ago";
-        if (span.TotalDays < 30) return $"{(int)(span.TotalDays / 7)}w ago";
+        if (span.TotalMinutes < 1) return L("upravo sada", "just now");
+        if (span.TotalMinutes < 60) return UiPrefs.Language == UiLanguage.Bs
+            ? $"prije {(int)span.TotalMinutes} min"
+            : $"{(int)span.TotalMinutes}m ago";
+        if (span.TotalHours < 24) return UiPrefs.Language == UiLanguage.Bs
+            ? $"prije {(int)span.TotalHours} h"
+            : $"{(int)span.TotalHours}h ago";
+        if (span.TotalDays < 7) return UiPrefs.Language == UiLanguage.Bs
+            ? $"prije {(int)span.TotalDays} d"
+            : $"{(int)span.TotalDays}d ago";
+        if (span.TotalDays < 30) return UiPrefs.Language == UiLanguage.Bs
+            ? $"prije {(int)(span.TotalDays / 7)} sedm"
+            : $"{(int)(span.TotalDays / 7)}w ago";
         
         return date.ToString("MMM dd, yyyy");
     }

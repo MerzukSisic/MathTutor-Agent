@@ -1,10 +1,12 @@
 @using System.Text.RegularExpressions
+@using AiAgents.MathTutorAgent.Web.Services
+@inject UiPreferencesService UiPrefs
 
 @if (!string.IsNullOrWhiteSpace(normalizedArea))
 {
     <div class="area-visual-guide">
         <div class="avg-head">
-            <h4>🧠 Visual Guide</h4>
+            <h4>🧠 @L("Vizuelni vodič", "Visual Guide")</h4>
             <span class="avg-tag">@AreaName · @TopicName</span>
         </div>
 
@@ -24,10 +26,10 @@
                         </div>
                         @if (op == '+')
                         {
-                            <p>Count apples from both groups, then write the total.</p>
+                            <p>@L("Prebroj jabuke iz obje grupe, pa upiši ukupan broj.", "Count apples from both groups, then write the total.")</p>
                             <div class="avg-group-wrap">
                                 <div class="avg-group">
-                                    <strong>Group A (@a)</strong>
+                                    <strong>@L("Grupa A", "Group A") (@a)</strong>
                                     <div class="avg-items">
                                         @for (var i = 0; i < a; i++)
                                         {
@@ -36,7 +38,7 @@
                                     </div>
                                 </div>
                                 <div class="avg-group">
-                                    <strong>Group B (@b)</strong>
+                                    <strong>@L("Grupa B", "Group B") (@b)</strong>
                                     <div class="avg-items">
                                         @for (var i = 0; i < b; i++)
                                         {
@@ -48,7 +50,7 @@
                         }
                         else if (op == '-')
                         {
-                            <p>Cross out @b apples, then count what remains.</p>
+                            <p>@L($"Precrtaj {b} jabuka, pa prebroj koliko je ostalo.", $"Cross out {b} apples, then count what remains.")</p>
                             <div class="avg-items">
                                 @for (var i = 0; i < a; i++)
                                 {
@@ -59,12 +61,12 @@
                         }
                         else if (op == '*')
                         {
-                            <p>Count equal groups, then find total apples.</p>
+                            <p>@L("Prebroj jednake grupe, pa odredi ukupan broj jabuka.", "Count equal groups, then find total apples.")</p>
                             <div class="avg-group-wrap">
                                 @for (var row = 0; row < b; row++)
                                 {
                                     <div class="avg-group">
-                                        <strong>Group @(row + 1)</strong>
+                                        <strong>@L("Grupa", "Group") @(row + 1)</strong>
                                         <div class="avg-items">
                                             @for (var i = 0; i < a; i++)
                                             {
@@ -77,12 +79,12 @@
                         }
                         else if (op == '/')
                         {
-                            <p>Share @a apples into @b equal groups. Count apples per group.</p>
+                            <p>@L($"Podijeli {a} jabuka u {b} jednake grupe. Prebroj jabuke po grupi.", $"Share {a} apples into {b} equal groups. Count apples per group.")</p>
                             <div class="avg-group-wrap">
                                 @for (var g = 0; g < b; g++)
                                 {
                                     <div class="avg-group">
-                                        <strong>Group @(g + 1)</strong>
+                                        <strong>@L("Grupa", "Group") @(g + 1)</strong>
                                         <div class="avg-items">
                                             @for (var i = 0; i < result; i++)
                                             {
@@ -96,14 +98,14 @@
                     }
                     else
                     {
-                        <p>For larger numbers, use step-by-step explanation instead of object counting.</p>
+                        <p>@L("Za veće brojeve koristi objašnjenje korak-po-korak umjesto brojanja objekata.", "For larger numbers, use step-by-step explanation instead of object counting.")</p>
                     }
                 </div>
                 break;
 
             case "prealgebra":
                 <div class="avg-card">
-                    <p>Think of the unknown as a box and keep both sides balanced.</p>
+                    <p>@L("Posmatraj nepoznatu kao kutiju i drži obje strane jednačine u ravnoteži.", "Think of the unknown as a box and keep both sides balanced.")</p>
                     <div class="avg-balance">
                         <div class="avg-pan">📦 + 3</div>
                         <div class="avg-center">⚖️</div>
@@ -114,7 +116,7 @@
 
             case "algebra":
                 <div class="avg-card">
-                    <p>Isolate the variable by doing the same operation on both sides.</p>
+                    <p>@L("Izoluj promjenljivu tako što radiš istu operaciju na obje strane.", "Isolate the variable by doing the same operation on both sides.")</p>
                     <div class="avg-steps">
                         <span class="avg-step">x + 4 = 11</span>
                         <span class="avg-arrow">→</span>
@@ -127,18 +129,18 @@
 
             case "logic":
                 <div class="avg-card">
-                    <p>Test the statement with true/false cases.</p>
+                    <p>@L("Provjeri tvrdnju kroz tačno/netačno slučajeve.", "Test the statement with true/false cases.")</p>
                     <div class="avg-logic-grid">
-                        <div class="logic-cell true">A = true</div>
-                        <div class="logic-cell false">B = false</div>
-                        <div class="logic-cell result">A AND B = false</div>
+                        <div class="logic-cell true">A = @L("tačno", "true")</div>
+                        <div class="logic-cell false">B = @L("netačno", "false")</div>
+                        <div class="logic-cell result">A AND B = @L("netačno", "false")</div>
                     </div>
                 </div>
                 break;
 
             case "settheory":
                 <div class="avg-card">
-                    <p>Use two sets and highlight intersection/union visually.</p>
+                    <p>@L("Koristi dva skupa i vizuelno istakni presjek/uniju.", "Use two sets and highlight intersection/union visually.")</p>
                     <div class="avg-venn">
                         <div class="venn a">A</div>
                         <div class="venn b">B</div>
@@ -149,7 +151,7 @@
 
             case "geometry":
                 <div class="avg-card">
-                    <p>Recognize shape properties first, then apply formula.</p>
+                    <p>@L("Prvo prepoznaj osobine oblika, zatim primijeni formulu.", "Recognize shape properties first, then apply formula.")</p>
                     <div class="avg-geo">
                         <div class="shape square"></div>
                         <div class="shape triangle"></div>
@@ -160,20 +162,20 @@
 
             case "proofs":
                 <div class="avg-card">
-                    <p>Build proof as a chain of justified steps.</p>
+                    <p>@L("Gradi dokaz kao lanac opravdanih koraka.", "Build proof as a chain of justified steps.")</p>
                     <div class="avg-proof">
-                        <span class="proof-node">Given</span>
+                        <span class="proof-node">@L("Dato", "Given")</span>
                         <span class="avg-arrow">→</span>
-                        <span class="proof-node">Rule</span>
+                        <span class="proof-node">@L("Pravilo", "Rule")</span>
                         <span class="avg-arrow">→</span>
-                        <span class="proof-node answer">Conclusion</span>
+                        <span class="proof-node answer">@L("Zaključak", "Conclusion")</span>
                     </div>
                 </div>
                 break;
 
             default:
                 <div class="avg-card">
-                    <p>Visual practice is available for this topic.</p>
+                    <p>@L("Vizuelna vježba je dostupna za ovu temu.", "Visual practice is available for this topic.")</p>
                 </div>
                 break;
         }
@@ -186,6 +188,7 @@
     [Parameter] public string? QuestionText { get; set; }
 
     private string normalizedArea = string.Empty;
+    private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
     protected override void OnParametersSet()
     {

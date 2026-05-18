@@ -130,9 +130,24 @@ public class MathContentLocalizationService
 
         var text = questionText.Trim();
 
-        text = Regex.Replace(text, @"^What\s+is\s+(.+?)\?$", "Koliko je $1?", RegexOptions.IgnoreCase);
+        // High-confidence full-template translations first (prevents mixed EN/BS text).
+        text = Regex.Replace(text, @"^What\s+is\s+the\s+sum\s+of\s+angles\s+in\s+a\s+triangle\?$", "Koliki je zbir uglova u trouglu?", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"^What\s+shape\s+has\s+all\s+sides\s+equal\?$", "Koji oblik ima sve stranice jednake?", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"^What\s+is\s+the\s+power\s+set\s+of\s+(.+?)\?$", "Koji je partitivni skup od $1?", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"^Triangle\s+has\s+angles\s+(.+?)\s+and\s+(.+?)\.\s*What\s+is\s+the\s+third\s+angle\?$", "Trougao ima uglove $1 i $2. Koliki je treći ugao?", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"^Right\s+triangle\s+legs\s+(.+?)\s+and\s+(.+?)\.\s*Hypotenuse\?$", "Pravougli trougao ima katete $1 i $2. Kolika je hipotenuza?", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"^Complete\s+the\s+proportion:\s*(.+)$", "Dovrši proporciju: $1", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"^Evaluate:\s*(.+)$", "Izračunaj: $1", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"^If\s+all\s+even\s+numbers\s+are\s+divisible\s+by\s+2\s+and\s+n\s+is\s+even,\s*is\s+n\s+divisible\s+by\s+2\?$", "Ako su svi parni brojevi djeljivi sa 2 i n je paran, da li je n djeljiv sa 2?", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"^In\s+proof\s+by\s+contradiction,\s*do\s+we\s+assume\s+the\s+opposite\s+of\s+the\s+claim\s+first\?$", "U dokazu kontradikcijom, da li prvo pretpostavljamo suprotno od tvrdnje?", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"^Is\s+p\s*∨\s*¬p\s+always\s+true\?$", "Da li je p ∨ ¬p uvijek tačno?", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"^What\s+is\s+True\s*∧\s*False\?$", "Koliko je Tačno ∧ Netačno?", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"^What\s+is\s+True\s*∨\s*False\?$", "Koliko je Tačno ∨ Netačno?", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"^What\s+is\s+¬False\?$", "Koliko je ¬Netačno?", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"^Is\s+(.+?)\?$", "Da li je $1?", RegexOptions.IgnoreCase);
         text = Regex.Replace(text, @"^How\s+many\s+sides\s+does\s+(?:an?\s+|the\s+)?(.+?)\s+have\?$", "Koliko stranica ima $1?", RegexOptions.IgnoreCase);
         text = Regex.Replace(text, @"^How\s+many\s+vertices\s+does\s+(?:an?\s+|the\s+)?(.+?)\s+have\?$", "Koliko vrhova ima $1?", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"^What\s+is\s+(.+?)\?$", "Koliko je $1?", RegexOptions.IgnoreCase);
 
         text = Regex.Replace(text, @"^Perimeter\s+of\s+(.+?)\?$", "Koliki je obim za $1?", RegexOptions.IgnoreCase);
         text = Regex.Replace(text, @"^Area\s+of\s+(.+?)\?$", "Kolika je površina za $1?", RegexOptions.IgnoreCase);
@@ -151,6 +166,24 @@ public class MathContentLocalizationService
         text = text.Replace("sum of angles", "zbir uglova", StringComparison.OrdinalIgnoreCase);
         text = text.Replace("all sides equal", "sve stranice jednake", StringComparison.OrdinalIgnoreCase);
         text = text.Replace("third", "treći ugao", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("power set", "partitivni skup", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("What shape has", "Koji oblik ima", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("What type is", "Koji tip je", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("What is the", "Koliko je", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("What is", "Koliko je", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("How many", "Koliko", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("always true", "uvijek tačno", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("true", "tačno", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("false", "netačno", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace(" and ", " i ", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace(" of ", " od ", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace(" with ", " sa ", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace(" has ", " ima ", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace(" have ", " ima ", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("the sum of", "zbir", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("in a", "u", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("in an", "u", StringComparison.OrdinalIgnoreCase);
+        text = text.Replace("in the", "u", StringComparison.OrdinalIgnoreCase);
 
         foreach (var shape in ShapeTranslationsBs)
         {
@@ -164,7 +197,21 @@ public class MathContentLocalizationService
         text = Regex.Replace(text, @"\bYes\b", "Da", RegexOptions.IgnoreCase);
         text = Regex.Replace(text, @"\bNo\b", "Ne", RegexOptions.IgnoreCase);
 
-        return text;
+        // Basic grammar cleanups for common shapes after Bosnian prepositions.
+        text = Regex.Replace(text, @"\bu\s+trougao\b", "u trouglu", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"\bu\s+kvadrat\b", "u kvadratu", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"\bu\s+pravougaonik\b", "u pravougaoniku", RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"\bthe\b", string.Empty, RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"\bdoes\b", string.Empty, RegexOptions.IgnoreCase);
+        text = Regex.Replace(text, @"\bdo\b", string.Empty, RegexOptions.IgnoreCase);
+
+        // Cleanup after replacements.
+        text = Regex.Replace(text, @"\s+", " ");
+        text = text.Replace(" ?",
+            "?",
+            StringComparison.Ordinal);
+
+        return text.Trim();
     }
 
     public string LocalizeExplanationText(string? text, string? languageCode)

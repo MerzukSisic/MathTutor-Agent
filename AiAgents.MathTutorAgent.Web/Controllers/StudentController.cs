@@ -70,7 +70,7 @@ public class StudentController(StudentProfileService profileService, PdfExportSe
                 lang,
                 HttpContext.RequestAborted);
 
-            var pdfBytes = pdfService.GenerateStudentReport(profile, stats);
+            var pdfBytes = pdfService.GenerateStudentReport(profile, stats, lang);
 
             return File(pdfBytes, "application/pdf", $"MathTutor_Report_{studentId}_{DateTime.Now:yyyyMMdd}.pdf");
         }
