@@ -20,6 +20,8 @@ public class MathTutoringActuator(
     ILogger logger)
     : IActuator<MathAction, MathTickResult>
 {
+    private const int MaxImageSizeBytes = 5 * 1024 * 1024;
+
     public async Task<MathTickResult> ExecuteAsync(MathAction action, CancellationToken ct)
     {
         var workItem = action.WorkItem;
@@ -34,7 +36,10 @@ public class MathTutoringActuator(
                 Type = workItem.Type,
                 StudentId = workItem.StudentId,
                 Outcome = TickOutcome.ValidationFailed,
-                UiPayload = new { Error = action.Reason }
+                UiPayload = new ValidationErrorPayloadDto
+                {
+                    Error = action.Reason ?? "Invalid request"
+                }
             };
         }
 
@@ -151,7 +156,11 @@ public class MathTutoringActuator(
                 Type = workItem.Type,
                 StudentId = workItem.StudentId,
                 Outcome = TickOutcome.ValidationFailed,
-                UiPayload = new { Error = "Invalid JSON payload", Details = ex.Message }
+                UiPayload = new ValidationErrorPayloadDto
+                {
+                    Error = "Invalid JSON payload",
+                    Details = ex.Message
+                }
             };
         }
 
@@ -163,7 +172,10 @@ public class MathTutoringActuator(
                 Type = workItem.Type,
                 StudentId = workItem.StudentId,
                 Outcome = TickOutcome.ValidationFailed,
-                UiPayload = new { Error = "Payload is null after deserialization" }
+                UiPayload = new ValidationErrorPayloadDto
+                {
+                    Error = "Payload is null after deserialization"
+                }
             };
         }
 
@@ -180,7 +192,7 @@ public class MathTutoringActuator(
                 Type = workItem.Type,
                 StudentId = workItem.StudentId,
                 Outcome = TickOutcome.ValidationFailed,
-                UiPayload = new
+                UiPayload = new ValidationErrorPayloadDto
                 {
                     Error = errorMessage,
                     Errors = errors
@@ -232,7 +244,7 @@ public class MathTutoringActuator(
             TopicId = question.TopicId,
             Decision = decision,
             MasteryDelta = newMastery - previousMastery,
-            UiPayload = new
+            UiPayload = new AnswerEvaluationPayloadDto
             {
                 IsCorrect = isCorrect,
                 IsTimedOut = isTimedOut,
@@ -263,7 +275,11 @@ public class MathTutoringActuator(
                 Type = workItem.Type,
                 StudentId = workItem.StudentId,
                 Outcome = TickOutcome.ValidationFailed,
-                UiPayload = new { Error = "Invalid JSON payload", Details = ex.Message }
+                UiPayload = new ValidationErrorPayloadDto
+                {
+                    Error = "Invalid JSON payload",
+                    Details = ex.Message
+                }
             };
         }
 
@@ -275,7 +291,10 @@ public class MathTutoringActuator(
                 Type = workItem.Type,
                 StudentId = workItem.StudentId,
                 Outcome = TickOutcome.ValidationFailed,
-                UiPayload = new { Error = "Payload is null after deserialization" }
+                UiPayload = new ValidationErrorPayloadDto
+                {
+                    Error = "Payload is null after deserialization"
+                }
             };
         }
 
@@ -314,7 +333,11 @@ public class MathTutoringActuator(
                 Type = workItem.Type,
                 StudentId = workItem.StudentId,
                 Outcome = TickOutcome.ValidationFailed,
-                UiPayload = new { Error = "Invalid JSON payload", Details = ex.Message }
+                UiPayload = new ValidationErrorPayloadDto
+                {
+                    Error = "Invalid JSON payload",
+                    Details = ex.Message
+                }
             };
         }
 
@@ -326,7 +349,29 @@ public class MathTutoringActuator(
                 Type = workItem.Type,
                 StudentId = workItem.StudentId,
                 Outcome = TickOutcome.ValidationFailed,
-                UiPayload = new { Error = "Payload is null after deserialization" }
+                UiPayload = new ValidationErrorPayloadDto
+                {
+                    Error = "Payload is null after deserialization"
+                }
+            };
+        }
+
+        var (isValidImagePayload, imageValidationErrors) = await validationService.ValidateAsync(payload, ct);
+        if (!isValidImagePayload)
+        {
+            var imageError = string.Join("; ", imageValidationErrors);
+            logger.LogWarning("Upload image validation failed for WorkItem {WorkItemId}: {Errors}", workItem.Id, imageError);
+            return new MathTickResult
+            {
+                WorkItemId = workItem.Id,
+                Type = workItem.Type,
+                StudentId = workItem.StudentId,
+                Outcome = TickOutcome.ValidationFailed,
+                UiPayload = new ValidationErrorPayloadDto
+                {
+                    Error = imageError,
+                    Errors = imageValidationErrors
+                }
             };
         }
 
@@ -344,7 +389,26 @@ public class MathTutoringActuator(
                 Type = workItem.Type,
                 StudentId = workItem.StudentId,
                 Outcome = TickOutcome.ValidationFailed,
-                UiPayload = new { Error = "Invalid Base64 image data", Details = ex.Message }
+                UiPayload = new ValidationErrorPayloadDto
+                {
+                    Error = "Invalid Base64 image data",
+                    Details = ex.Message
+                }
+            };
+        }
+
+        if (imageBytes.Length > MaxImageSizeBytes)
+        {
+            return new MathTickResult
+            {
+                WorkItemId = workItem.Id,
+                Type = workItem.Type,
+                StudentId = workItem.StudentId,
+                Outcome = TickOutcome.ValidationFailed,
+                UiPayload = new ValidationErrorPayloadDto
+                {
+                    Error = "Image is too large. Maximum size is 5 MB."
+                }
             };
         }
 
@@ -360,12 +424,12 @@ public class MathTutoringActuator(
             Type = workItem.Type,
             StudentId = workItem.StudentId,
             Outcome = TickOutcome.ImageIndexed,
-            UiPayload = new
+            UiPayload = new ImageIndexedPayloadDto
             {
                 ImageNoteId = imageNote.Id,
                 ExtractedText = imageNote.ExtractedText,
                 Summary = imageNote.Summary,
-                Tags = imageNote.Tags
+                Tags = imageNote.Tags.ToArray()
             }
         };
     }

@@ -49,6 +49,10 @@ public class MathTutoringAgentRunner(
 
             return result;
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error in agent tick for WorkItem {WorkItemId}", workItem?.Id ?? 0);
@@ -66,7 +70,11 @@ public class MathTutoringAgentRunner(
                 Type = workItem?.Type ?? WorkItemType.NextQuestion,
                 StudentId = workItem?.StudentId ?? 0,
                 Outcome = TickOutcome.Failed,
-                UiPayload = new { Error = ex.Message, ErrorType = ex.GetType().Name }
+                UiPayload = new ValidationErrorPayloadDto
+                {
+                    Error = ex.Message,
+                    Details = ex.GetType().Name
+                }
             };
         }
     }

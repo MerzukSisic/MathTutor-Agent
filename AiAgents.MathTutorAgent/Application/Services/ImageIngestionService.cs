@@ -19,7 +19,7 @@ public class ImageIngestionService(
         CancellationToken ct = default)
     {
         // 1. Save image to disk
-        var relativePath = await SaveImageAsync(fileName, imageBytes);
+        var relativePath = await SaveImageAsync(fileName, imageBytes, ct);
 
         // 2. Extract text using ML-powered OCR
         var extractionResult = await ocrService.ExtractAsync(imageBytes, ct);
@@ -54,12 +54,13 @@ public class ImageIngestionService(
         return imageNote;
     }
 
-    private async Task<string> SaveImageAsync(string fileName, byte[] imageBytes)
+    private async Task<string> SaveImageAsync(string fileName, byte[] imageBytes, CancellationToken ct)
     {
         Directory.CreateDirectory(_imageStoragePath);
-        var uniqueFileName = $"{Guid.NewGuid()}_{fileName}";
+        var sanitizedFileName = Path.GetFileName(fileName);
+        var uniqueFileName = $"{Guid.NewGuid()}_{sanitizedFileName}";
         var fullPath = Path.Combine(_imageStoragePath, uniqueFileName);
-        await File.WriteAllBytesAsync(fullPath, imageBytes);
+        await File.WriteAllBytesAsync(fullPath, imageBytes, ct);
         
         // ✅ FIX: Return relative path for web serving
         return $"/uploads/images/{uniqueFileName}";
