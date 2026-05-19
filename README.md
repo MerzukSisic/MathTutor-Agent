@@ -32,20 +32,6 @@ It provides adaptive quizzes, geometry click practice, milestone challenges, stu
 - `AiAgents.Core` - shared primitives
 - `AiAgents.MathTutor.sln` - root solution
 
-## Quick Start
-
-```bash
-dotnet restore
-dotnet build
-cd AiAgents.MathTutorAgent.Web
-dotnet run
-```
-
-Default local URLs:
-
-- `http://localhost:5297`
-- `https://localhost:7152`
-
 ## Configuration
 
 Primary config file:
@@ -85,16 +71,6 @@ Override via environment variables:
 
 For non-local environments, set strong secrets via environment variables or secret manager.
 
-## Useful Commands
-
-```bash
-# Build whole solution
-dotnet build AiAgents.MathTutor.sln
-
-# Run web app from root
-dotnet run --project AiAgents.MathTutorAgent.Web/AiAgents.MathTutorAgent.Web.csproj
-```
-
 ## Logging
 
 Serilog writes to:
@@ -109,4 +85,6 @@ Serilog writes to:
 
 ## License
 
-Licensed under the MIT License. See [LICENSE](LICENSE).
+This project is proprietary and confidential. All rights reserved.
+
+No use, copying, modification, distribution, or resale is allowed without prior written permission from the owner.

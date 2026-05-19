@@ -160,10 +160,7 @@ desktop.ini
 .cursor/rules/bugbot-dotnet.mdc
 
 # GitHub folder (usually auto-generated)
-.github/
-
-# Git index issues
-.git/index
+# .github/
 
 # Other
 *.stackdump
@@ -173,3 +170,11 @@ desktop.ini
 
 # Rider / Roslyn local cache artifacts
 *.lscache
+
+# Local env files
+.env
+.env.*
+!.env.example
+
+# Local generated datasets / exports
+data/
