@@ -142,7 +142,7 @@ public static class AnswerNormalizer
     private static bool AreEquivalentSets(string set1, string set2)
     {
         // Check if both strings look like sets: "{...}"
-        if (!set1.StartsWith("{") || !set2.StartsWith("{"))
+        if (!set1.StartsWith('{') || !set2.StartsWith('{'))
             return false;
 
         // Extract elements

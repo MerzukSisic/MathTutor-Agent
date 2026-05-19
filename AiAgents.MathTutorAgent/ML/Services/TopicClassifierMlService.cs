@@ -6,6 +6,18 @@ namespace AiAgents.MathTutorAgent.ML.Services;
 
 public class TopicClassifierMlService(ILogger<TopicClassifierMlService> logger)
 {
+    private static readonly Action<ILogger, string, Exception?> LogTopicClassifierMissingMessage =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(1100, nameof(LogTopicClassifierMissingMessage)),
+            "Topic classifier not found at {Path}");
+
+    private static readonly Action<ILogger, string, Exception?> LogTopicClassifierLoadedMessage =
+        LoggerMessage.Define<string>(
+            LogLevel.Information,
+            new EventId(1101, nameof(LogTopicClassifierLoadedMessage)),
+            "Topic classifier loaded from {Path}");
+
     private readonly MLContext _mlContext = new();
     private PredictionEngine<TopicClassificationData, TopicPrediction>? _predictionEngine;
 
@@ -13,14 +25,14 @@ public class TopicClassifierMlService(ILogger<TopicClassifierMlService> logger)
     {
         if (!File.Exists(modelPath))
         {
-            logger.LogWarning("Topic classifier not found at {Path}", modelPath);
+            LogTopicClassifierMissingMessage(logger, modelPath, null);
             return;
         }
 
         var model = _mlContext.Model.Load(modelPath, out var schema);
         _predictionEngine = _mlContext.Model.CreatePredictionEngine<TopicClassificationData, TopicPrediction>(model);
 
-        logger.LogInformation("Topic classifier loaded from {Path}", modelPath);
+        LogTopicClassifierLoadedMessage(logger, modelPath, null);
     }
 
     public string PredictTopic(string questionText)
@@ -28,12 +40,16 @@ public class TopicClassifierMlService(ILogger<TopicClassifierMlService> logger)
         if (_predictionEngine == null)
         {
             // Fallback: keyword matching
-            var lower = questionText.ToLower();
-            if (lower.Contains("solve") || lower.Contains("x"))
+            var lower = questionText.ToLowerInvariant();
+            if (lower.Contains("solve", StringComparison.Ordinal) || lower.Contains('x'))
                 return "Algebra";
-            if (lower.Contains("area") || lower.Contains("circle") || lower.Contains("triangle"))
+            if (lower.Contains("area", StringComparison.Ordinal) ||
+                lower.Contains("circle", StringComparison.Ordinal) ||
+                lower.Contains("triangle", StringComparison.Ordinal))
                 return "Geometry";
-            if (lower.Contains("plus") || lower.Contains("minus") || lower.Contains("add"))
+            if (lower.Contains("plus", StringComparison.Ordinal) ||
+                lower.Contains("minus", StringComparison.Ordinal) ||
+                lower.Contains("add", StringComparison.Ordinal))
                 return "Arithmetic";
 
             return "General";

@@ -6,8 +6,8 @@ namespace AiAgents.MathTutorAgent.Application.Runners;
 
 public class WorkQueuePerceptionSource(WorkQueueService queueService) : IPerceptionSource<WorkItem>
 {
-    public async Task<WorkItem?> GetNextPerceptAsync(CancellationToken ct)
+    public async Task<WorkItem?> GetNextPerceptAsync(CancellationToken cancellationToken)
     {
-        return await queueService.DequeueNextAsync(ct);
+        return await queueService.DequeueNextAsync(cancellationToken);
     }
 }
