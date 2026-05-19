@@ -12,14 +12,14 @@ It provides adaptive quizzes, geometry click practice, milestone challenges, stu
 - Student profile insights and PDF export
 - Admin workflows for students, questions, and ML training triggers
 - Background work queue with SignalR push updates
-- Dual DB support: SQLite (default) and SQL Server
+- PostgreSQL-first database setup (Render-ready)
 - UI localization support (Bosnian / English)
 
 ## Tech Stack
 
 - .NET 9 (`net9.0`)
 - ASP.NET Core + Blazor Server
-- Entity Framework Core (SQLite / SQL Server)
+- Entity Framework Core (PostgreSQL)
 - SignalR
 - ML.NET
 - Radzen Blazor
@@ -40,22 +40,16 @@ Primary config file:
 
 Key settings:
 
-- `DatabaseProvider`: `Sqlite` or `SqlServer`
-- `ConnectionStrings:SqliteConnection`
-- `ConnectionStrings:SqlServerConnection`
+- `ConnectionStrings:PostgresConnection`
 - `App:PublicBaseUrl`
 - `Email:*` (SMTP)
+- `AgentBackground:*` (idle/error delay configuration)
 
 ## Database Startup Behavior
 
-- **SQLite**: startup calls `EnsureCreated` and applies `CREATE TABLE IF NOT EXISTS` for missing tables.
-- **SQL Server**: startup runs EF Core migrations.
+- **PostgreSQL**: startup runs EF Core migrations.
 - Seed routines run on startup.
 - Existing DB is **not dropped** during normal startup.
-
-Default SQLite file:
-
-- `AiAgents.MathTutorAgent.Web/mathtutor.db`
 
 ## Auth and Default Admin (Development)
 
@@ -80,7 +74,7 @@ Serilog writes to:
 
 ## Troubleshooting
 
-- If app appears to "start with empty data", verify you are running from expected working directory and using the intended SQLite file path.
+- If app appears to start with empty data, verify the `PostgresConnection` value and selected database.
 - If package restore warns about Radzen exact version resolution, restore still succeeds with the nearest available compatible version.
 
 ## License

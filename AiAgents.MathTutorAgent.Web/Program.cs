@@ -19,10 +19,6 @@ using Serilog;
 using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
-var configuredDbProvider = builder.Configuration["DatabaseProvider"];
-var databaseProvider = string.IsNullOrWhiteSpace(configuredDbProvider)
-    ? (OperatingSystem.IsWindows() ? "SqlServer" : "Sqlite")
-    : configuredDbProvider.Trim();
 
 // ========== LOGGING ==========
 Log.Logger = new LoggerConfiguration()
@@ -57,7 +53,9 @@ builder.Services
         options.Cookie.Name = "MathTutor.Auth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Strict;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.Cookie.SecurePolicy = builder.Environment.IsDevelopment()
+            ? CookieSecurePolicy.SameAsRequest
+            : CookieSecurePolicy.Always;
         options.SlidingExpiration = true;
         options.ExpireTimeSpan = TimeSpan.FromDays(14);
         options.Events = new CookieAuthenticationEvents
@@ -144,33 +142,17 @@ builder.Services.AddScoped(sp =>
 // ========== DATABASE ==========
 builder.Services.AddDbContext<MathTutorDbContext>(options =>
 {
-    if (databaseProvider.Equals("SqlServer", StringComparison.OrdinalIgnoreCase))
-    {
-        var sqlServerConnectionString = builder.Configuration.GetConnectionString("SqlServerConnection")
-            ?? builder.Configuration.GetConnectionString("DefaultConnection")
-            ?? throw new InvalidOperationException("SQL Server connection string not found. Configure ConnectionStrings:SqlServerConnection or ConnectionStrings:DefaultConnection.");
+    var postgresConnectionString = builder.Configuration.GetConnectionString("PostgresConnection")
+        ?? throw new InvalidOperationException("PostgreSQL connection string not found. Configure ConnectionStrings:PostgresConnection.");
 
-        options.UseSqlServer(
-            sqlServerConnectionString,
-            sqlOptions =>
-            {
-                sqlOptions.EnableRetryOnFailure(
-                    maxRetryCount: 5,
-                    maxRetryDelay: TimeSpan.FromSeconds(30),
-                    errorNumbersToAdd: null);
-                sqlOptions.CommandTimeout(60);
-            });
-    }
-    else if (databaseProvider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
+    options.UseNpgsql(postgresConnectionString, pgOptions =>
     {
-        var sqliteConnectionString = builder.Configuration.GetConnectionString("SqliteConnection")
-            ?? "Data Source=mathtutor.db";
-        options.UseSqlite(sqliteConnectionString);
-    }
-    else
-    {
-        throw new InvalidOperationException($"Unsupported DatabaseProvider '{databaseProvider}'. Use 'SqlServer' or 'Sqlite'.");
-    }
+        pgOptions.EnableRetryOnFailure(
+            maxRetryCount: 5,
+            maxRetryDelay: TimeSpan.FromSeconds(30),
+            errorCodesToAdd: null);
+        pgOptions.CommandTimeout(60);
+    });
     
     // Log SQL queries in development
     if (builder.Environment.IsDevelopment())
@@ -213,6 +195,7 @@ builder.Services.AddScoped<PasswordHashingService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
 builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+builder.Services.Configure<AgentBackgroundOptions>(builder.Configuration.GetSection("AgentBackground"));
 
 // ========== AGENT RUNNER ==========
 builder.Services.AddScoped<MathTutoringAgentRunner>();
@@ -226,11 +209,23 @@ builder.Services.AddHostedService<AgentBackgroundService>();
 // ========== CORS (optional - if needed for external API calls) ==========
 builder.Services.AddCors(options =>
 {
+    var allowedOrigins = builder.Configuration
+        .GetSection("Cors:AllowedOrigins")
+        .Get<string[]>() ?? [];
+
     options.AddDefaultPolicy(policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        if (allowedOrigins.Length == 0)
+        {
+            policy.WithOrigins("http://localhost:5297", "https://localhost:7152")
+                .AllowAnyMethod()
+                .AllowAnyHeader();
+            return;
+        }
+
+        policy.WithOrigins(allowedOrigins)
+            .AllowAnyMethod()
+            .AllowAnyHeader();
     });
 });
 
@@ -269,60 +264,8 @@ await using (var scope = app.Services.CreateAsyncScope())
     {
         var context = scope.ServiceProvider.GetRequiredService<MathTutorDbContext>();
 
-        if (context.Database.IsSqlite())
-        {
-            Log.Information("📦 Creating SQLite database schema...");
-            await context.Database.EnsureCreatedAsync();
-            await context.Database.ExecuteSqlRawAsync("""
-                CREATE TABLE IF NOT EXISTS "UserAccounts" (
-                    "Id" INTEGER NOT NULL CONSTRAINT "PK_UserAccounts" PRIMARY KEY AUTOINCREMENT,
-                    "FullName" TEXT NOT NULL,
-                    "Email" TEXT NOT NULL,
-                    "PasswordHash" TEXT NOT NULL,
-                    "Role" TEXT NOT NULL,
-                    "EmailConfirmed" INTEGER NOT NULL,
-                    "CreatedAt" TEXT NOT NULL,
-                    "StudentId" INTEGER NULL,
-                    CONSTRAINT "FK_UserAccounts_Students_StudentId"
-                        FOREIGN KEY ("StudentId") REFERENCES "Students" ("Id")
-                        ON DELETE SET NULL
-                );
-                CREATE UNIQUE INDEX IF NOT EXISTS "IX_UserAccounts_Email" ON "UserAccounts" ("Email");
-                CREATE INDEX IF NOT EXISTS "IX_UserAccounts_StudentId" ON "UserAccounts" ("StudentId");
-                CREATE TABLE IF NOT EXISTS "AuthTokens" (
-                    "Id" INTEGER NOT NULL CONSTRAINT "PK_AuthTokens" PRIMARY KEY AUTOINCREMENT,
-                    "UserAccountId" INTEGER NOT NULL,
-                    "Purpose" TEXT NOT NULL,
-                    "TokenHash" TEXT NOT NULL,
-                    "CreatedAtUtc" TEXT NOT NULL,
-                    "ExpiresAtUtc" TEXT NOT NULL,
-                    "ConsumedAtUtc" TEXT NULL,
-                    CONSTRAINT "FK_AuthTokens_UserAccounts_UserAccountId"
-                        FOREIGN KEY ("UserAccountId") REFERENCES "UserAccounts" ("Id")
-                        ON DELETE CASCADE
-                );
-                CREATE UNIQUE INDEX IF NOT EXISTS "IX_AuthTokens_TokenHash" ON "AuthTokens" ("TokenHash");
-                CREATE INDEX IF NOT EXISTS "IX_AuthTokens_UserAccountId" ON "AuthTokens" ("UserAccountId");
-                CREATE TABLE IF NOT EXISTS "StudentChallengeProgress" (
-                    "Id" INTEGER NOT NULL CONSTRAINT "PK_StudentChallengeProgress" PRIMARY KEY AUTOINCREMENT,
-                    "StudentId" INTEGER NOT NULL,
-                    "ChallengeKey" TEXT NOT NULL,
-                    "CompletedAtUtc" TEXT NOT NULL,
-                    CONSTRAINT "FK_StudentChallengeProgress_Students_StudentId"
-                        FOREIGN KEY ("StudentId") REFERENCES "Students" ("Id")
-                        ON DELETE CASCADE
-                );
-                CREATE UNIQUE INDEX IF NOT EXISTS "IX_StudentChallengeProgress_StudentId_ChallengeKey"
-                    ON "StudentChallengeProgress" ("StudentId", "ChallengeKey");
-                CREATE INDEX IF NOT EXISTS "IX_StudentChallengeProgress_StudentId"
-                    ON "StudentChallengeProgress" ("StudentId");
-                """);
-        }
-        else
-        {
-            Log.Information("📦 Applying database migrations...");
-            await context.Database.MigrateAsync();
-        }
+        Log.Information("📦 Applying database migrations...");
+        await context.Database.MigrateAsync();
         
         Log.Information("🌱 Seeding database...");
         await DatabaseSeeder.SeedAsync(context);
