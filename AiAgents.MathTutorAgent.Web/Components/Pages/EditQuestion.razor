@@ -3,6 +3,7 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject UiPreferencesService UiPrefs
+@implements IDisposable
 
 <PageTitle>@($"{L("Uredi pitanje", "Edit Question")} - MathTutor AI")</PageTitle>
 
@@ -107,11 +108,16 @@
     private string? successMessage;
     private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
+    protected override void OnInitialized()
+    {
+        UiPrefs.Changed += HandleLanguageChanged;
+    }
+
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            topics = await Http.GetFromJsonAsync<List<TopicDto>>($"/api/admin/topics?lang={UiPrefs.LanguageCode}") ?? new List<TopicDto>();
+            await LoadTopicsAsync();
             var questions = await Http.GetFromJsonAsync<List<AdminQuestionDto>>($"/api/admin/questions?lang={UiPrefs.LanguageCode}") ?? new List<AdminQuestionDto>();
             var selected = questions.FirstOrDefault(x => x.Id == Id);
 
@@ -134,6 +140,20 @@
         {
             isLoading = false;
         }
+    }
+
+    private async Task LoadTopicsAsync()
+    {
+        topics = await Http.GetFromJsonAsync<List<TopicDto>>($"/api/admin/topics?lang={UiPrefs.LanguageCode}") ?? new List<TopicDto>();
+    }
+
+    private void HandleLanguageChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await LoadTopicsAsync();
+            StateHasChanged();
+        });
     }
 
     private bool IsValid()
@@ -189,4 +209,9 @@
         => raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
 
     private void GoBack() => Navigation.NavigateTo("/admin");
+
+    public void Dispose()
+    {
+        UiPrefs.Changed -= HandleLanguageChanged;
+    }
 }

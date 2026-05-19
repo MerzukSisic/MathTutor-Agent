@@ -5,6 +5,7 @@
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject UiPreferencesService UiPrefs
+@implements IDisposable
 
 <PageTitle>@($"{L("Potvrda emaila", "Confirm Email")} - MathTutor AI")</PageTitle>
 
@@ -41,6 +42,11 @@
     private string? errorMessage;
     private bool isProcessing = true;
     private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
+
+    protected override void OnInitialized()
+    {
+        UiPrefs.Changed += HandleLanguageChanged;
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -102,8 +108,18 @@
         }
     }
 
+    private void HandleLanguageChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
     private void GoToLogin()
     {
         Navigation.NavigateTo("/login?status=confirmed", forceLoad: true);
+    }
+
+    public void Dispose()
+    {
+        UiPrefs.Changed -= HandleLanguageChanged;
     }
 }

@@ -114,9 +114,9 @@ else
             var stored = await JS.InvokeAsync<StoredUiPreferences?>("uiPrefs.getAll");
             if (stored is not null)
             {
-                UiPrefs.SetLanguage(stored.Language, notify: false);
-                UiPrefs.SetTheme(stored.Theme, notify: false);
-                UiPrefs.SetSidebarCollapsed(stored.SidebarCollapsed, notify: false);
+                UiPrefs.SetLanguage(stored.Language);
+                UiPrefs.SetTheme(stored.Theme);
+                UiPrefs.SetSidebarCollapsed(stored.SidebarCollapsed);
             }
 
             await JS.InvokeVoidAsync("uiPrefs.applyTheme", UiPrefs.ThemeCode);

@@ -3,6 +3,7 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject UiPreferencesService UiPrefs
+@implements IDisposable
 
 <PageTitle>@($"{L("Uredi učenika", "Edit Student")} - MathTutor AI")</PageTitle>
 
@@ -65,6 +66,11 @@
     private string? successMessage;
     private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
+    protected override void OnInitialized()
+    {
+        UiPrefs.Changed += HandleLanguageChanged;
+    }
+
     protected override async Task OnInitializedAsync()
     {
         try
@@ -87,6 +93,11 @@
         {
             isLoading = false;
         }
+    }
+
+    private void HandleLanguageChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private bool IsValid()
@@ -156,5 +167,10 @@
         }
 
         return raw;
+    }
+
+    public void Dispose()
+    {
+        UiPrefs.Changed -= HandleLanguageChanged;
     }
 }

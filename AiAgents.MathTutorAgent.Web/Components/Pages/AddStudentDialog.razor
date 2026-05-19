@@ -5,6 +5,7 @@
 @inject NavigationManager Navigation
 @inject UiPreferencesService UiPrefs
 @rendermode InteractiveServer
+@implements IDisposable
 
 <PageTitle>@($"{L("Dodaj učenika", "Add Student")} - MathTutor AI")</PageTitle>
 
@@ -93,6 +94,16 @@
     private string successMessage = string.Empty;
     private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
+    protected override void OnInitialized()
+    {
+        UiPrefs.Changed += HandleLanguageChanged;
+    }
+
+    private void HandleLanguageChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
     private bool IsValid()
     {
         return !string.IsNullOrWhiteSpace(name) && !string.IsNullOrWhiteSpace(email) && email.Contains("@");
@@ -174,5 +185,10 @@
         }
 
         return raw;
+    }
+
+    public void Dispose()
+    {
+        UiPrefs.Changed -= HandleLanguageChanged;
     }
 }

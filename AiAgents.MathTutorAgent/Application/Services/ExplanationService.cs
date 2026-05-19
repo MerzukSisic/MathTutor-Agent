@@ -107,8 +107,8 @@ public class ExplanationService(
                 {
                     Type = "Document",
                     Id = chunk.DocumentId,
-                    Title = chunk.Document.Title,
-                    PageOrTime = $"Page {chunk.PageNumber}"
+                    Title = localizationService.LocalizeReferenceTitle(chunk.Document.Title, languageCode),
+                    PageOrTime = localizationService.LocalizeReferenceLocation(chunk.PageNumber, languageCode)
                 });
             }
         }

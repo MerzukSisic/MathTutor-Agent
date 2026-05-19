@@ -3,6 +3,7 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject UiPreferencesService UiPrefs
+@implements IDisposable
 
 <PageTitle>@($"{L("Dodaj pitanje", "Add Question")} - MathTutor AI")</PageTitle>
 
@@ -111,7 +112,17 @@
     private string? successMessage;
     private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
+    protected override void OnInitialized()
+    {
+        UiPrefs.Changed += HandleLanguageChanged;
+    }
+
     protected override async Task OnInitializedAsync()
+    {
+        await LoadTopicsAsync();
+    }
+
+    private async Task LoadTopicsAsync()
     {
         try
         {
@@ -121,6 +132,15 @@
         {
             errorMessage = L("Učitavanje tema nije uspjelo. Osvježi stranicu.", "Failed to load topics. Please refresh.");
         }
+    }
+
+    private void HandleLanguageChanged()
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await LoadTopicsAsync();
+            StateHasChanged();
+        });
     }
 
     private bool IsValid()
@@ -187,4 +207,9 @@
         => raw.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
 
     private void GoBack() => Navigation.NavigateTo("/admin");
+
+    public void Dispose()
+    {
+        UiPrefs.Changed -= HandleLanguageChanged;
+    }
 }

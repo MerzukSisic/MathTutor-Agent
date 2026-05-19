@@ -512,6 +512,19 @@
     line-height: 1.4;
 }
 
+.activity-answers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+    margin-bottom: 0.45rem;
+    font-size: 0.83rem;
+    color: var(--pf-text);
+}
+
+.answer-item strong {
+    font-weight: 700;
+}
+
 .activity-meta {
     display: flex;
     gap: 1rem;

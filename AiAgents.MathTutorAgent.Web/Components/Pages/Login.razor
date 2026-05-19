@@ -5,6 +5,7 @@
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject UiPreferencesService UiPrefs
+@implements IDisposable
 
 <PageTitle>@($"{L("Prijava", "Login")} - MathTutor AI")</PageTitle>
 
@@ -53,6 +54,8 @@
 
     protected override void OnInitialized()
     {
+        UiPrefs.Changed += HandleLanguageChanged;
+
         var uri = Navigation.ToAbsoluteUri(Navigation.Uri);
         var query = QueryHelpers.ParseQuery(uri.Query);
         if (!query.TryGetValue("status", out var statusValue))
@@ -75,6 +78,11 @@
                 infoMessage = L("Lozinka je uspješno promijenjena. Prijavi se novom lozinkom.", "Password changed successfully. Sign in with your new password.");
                 break;
         }
+    }
+
+    private void HandleLanguageChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private async Task LoginAsync()
@@ -158,5 +166,10 @@
         }
 
         return user.StudentId.HasValue ? $"/quiz/{user.StudentId.Value}" : "/";
+    }
+
+    public void Dispose()
+    {
+        UiPrefs.Changed -= HandleLanguageChanged;
     }
 }

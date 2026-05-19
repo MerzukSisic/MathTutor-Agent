@@ -6,6 +6,7 @@
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject UiPreferencesService UiPrefs
+@implements IDisposable
 
 <PageTitle>@($"{L("Registracija", "Register")} - MathTutor AI")</PageTitle>
 
@@ -131,6 +132,16 @@
             _ => L("Jaka", "Strong")
         };
 
+    protected override void OnInitialized()
+    {
+        UiPrefs.Changed += HandleLanguageChanged;
+    }
+
+    private void HandleLanguageChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+
     private async Task RegisterAsync()
     {
         errorMessage = null;
@@ -208,5 +219,10 @@
         {
             isSubmitting = false;
         }
+    }
+
+    public void Dispose()
+    {
+        UiPrefs.Changed -= HandleLanguageChanged;
     }
 }

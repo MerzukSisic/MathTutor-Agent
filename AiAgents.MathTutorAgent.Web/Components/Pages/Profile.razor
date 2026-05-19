@@ -243,6 +243,16 @@
                                     </div>
                                     <div class="activity-content">
                                         <p class="activity-question">@LocalizeQuestionForUi(activity.QuestionText)</p>
+                                        <div class="activity-answers">
+                                            <span class="answer-item">
+                                                <strong>@L("Tvoj odgovor", "Your answer"):</strong>
+                                                @FormatSubmittedAnswer(activity.SubmittedAnswer)
+                                            </span>
+                                            <span class="answer-item">
+                                                <strong>@L("Tačan odgovor", "Correct answer"):</strong>
+                                                @activity.CorrectAnswer
+                                            </span>
+                                        </div>
                                         <div class="activity-meta">
                                             <span class="activity-time">
                                                 🕒 @activity.TimeSeconds.ToString("F1")s
@@ -389,6 +399,17 @@
     private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
     private string LocalizeQuestionForUi(string? questionText) =>
         ContentLocalization.LocalizeQuestionText(questionText, UiPrefs.LanguageCode);
+    private string FormatSubmittedAnswer(string? submittedAnswer)
+    {
+        if (string.IsNullOrWhiteSpace(submittedAnswer))
+        {
+            return L("—", "—");
+        }
+
+        return string.Equals(submittedAnswer, "__TIMEOUT__", StringComparison.OrdinalIgnoreCase)
+            ? L("Isteklo vrijeme", "Timed out")
+            : submittedAnswer;
+    }
 
     private bool HasAreaFilter => !string.IsNullOrWhiteSpace(selectedAreaFilter);
     private bool HasTopicFilter => !string.IsNullOrWhiteSpace(selectedTopicNameFilter)

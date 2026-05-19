@@ -4,6 +4,7 @@
 @inject NavigationManager Navigation
 @inject UiPreferencesService UiPrefs
 @using System.Globalization
+@implements IDisposable
 
 <PageTitle>@($"{UiPrefs.T("dashboard")} - {UiPrefs.T("app_name")}")</PageTitle>
 
@@ -125,9 +126,19 @@
             .ToList()
             ?? new List<StudentDto>();
 
+    protected override void OnInitialized()
+    {
+        UiPrefs.Changed += HandleLanguageChanged;
+    }
+
     protected override async Task OnInitializedAsync()
     {
         await LoadData();
+    }
+
+    private void HandleLanguageChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private async Task LoadData()
@@ -235,5 +246,10 @@
             : CultureInfo.GetCultureInfo("en-US");
 
         return createdAt.ToString("dd MMM yyyy", culture);
+    }
+
+    public void Dispose()
+    {
+        UiPrefs.Changed -= HandleLanguageChanged;
     }
 }

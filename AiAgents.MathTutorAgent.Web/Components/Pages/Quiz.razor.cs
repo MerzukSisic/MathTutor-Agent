@@ -38,8 +38,14 @@ public partial class Quiz
 
     protected override async Task OnInitializedAsync()
     {
+        UiPrefs.Changed += HandleLanguageChanged;
         await InitializeSignalR();
         await GetNextQuestion();
+    }
+
+    private void HandleLanguageChanged()
+    {
+        _ = InvokeAsync(StateHasChanged);
     }
 
     private async Task InitializeSignalR()
@@ -607,6 +613,7 @@ public partial class Quiz
 
     public async ValueTask DisposeAsync()
     {
+        UiPrefs.Changed -= HandleLanguageChanged;
         StopCountdown();
         if (hubConnection != null)
         {
