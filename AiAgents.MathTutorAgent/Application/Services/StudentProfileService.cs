@@ -43,13 +43,15 @@ public class StudentProfileService(
 
         var recentActivity = student.Attempts
             .OrderByDescending(a => a.CreatedAt)
-            .Take(10)
+            .Take(500)
             .Select(a => new ActivityDto
             {
                 Date = a.CreatedAt,
                 QuestionText = localizationService.LocalizeQuestionText(a.Question.QuestionText, language),
                 TopicName = localizationService.LocalizeTopicName(a.Question.Topic.Name, language),
                 AreaName = localizationService.LocalizeAreaName(a.Question.Topic.Area.ToString(), language),
+                SubmittedAnswer = localizationService.LocalizeAnswerToken(a.AnswerRaw, language),
+                CorrectAnswer = localizationService.LocalizeAnswerToken(a.Question.CorrectAnswer, language),
                 IsCorrect = a.IsCorrect,
                 TimeSeconds = a.TimeMs / 1000.0
             })

@@ -326,6 +326,9 @@ await using (var scope = app.Services.CreateAsyncScope())
         
         Log.Information("🌱 Seeding database...");
         await DatabaseSeeder.SeedAsync(context);
+
+        Log.Information("🎲 Generating Bogus synthetic dataset (if enabled)...");
+        await BogusTrainingDataSeeder.SeedAsync(context);
         
         Log.Information("✅ Database ready!");
     }

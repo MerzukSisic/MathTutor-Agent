@@ -576,4 +576,5 @@ public static class DatabaseSeeder
         context.UserAccounts.Add(admin);
         await context.SaveChangesAsync();
     }
+
 }

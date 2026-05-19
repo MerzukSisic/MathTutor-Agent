@@ -33,6 +33,8 @@ public class ActivityDto
     public string QuestionText { get; set; } = string.Empty;
     public string TopicName { get; set; } = string.Empty;
     public string AreaName { get; set; } = string.Empty;
+    public string SubmittedAnswer { get; set; } = string.Empty;
+    public string CorrectAnswer { get; set; } = string.Empty;
     public bool IsCorrect { get; set; }
     public double TimeSeconds { get; set; }
 }
