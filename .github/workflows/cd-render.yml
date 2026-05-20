@@ -20,7 +20,7 @@ jobs:
         github.event.workflow_run.head_branch == 'main'
       ) || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    environment: RENDER_DEPLOY_HOOK_URL
+    environment: MathTutor
 
     steps:
       - name: Trigger Render deploy hook
