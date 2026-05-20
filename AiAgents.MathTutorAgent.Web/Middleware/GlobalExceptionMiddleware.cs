@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Text.Json;
+using Microsoft.AspNetCore.Antiforgery;
 
 namespace AiAgents.MathTutorAgent.Web.Middleware;
 
@@ -24,15 +25,27 @@ public class GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExcep
         }
     }
 
-    private static Task HandleExceptionAsync(HttpContext context, Exception _)
+    private static Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
+        if (context.Response.HasStarted)
+        {
+            return Task.CompletedTask;
+        }
+
+        var (statusCode, message) = exception switch
+        {
+            AntiforgeryValidationException => ((int)HttpStatusCode.BadRequest, "Invalid request verification token. Refresh and try again."),
+            BadHttpRequestException => ((int)HttpStatusCode.BadRequest, "Bad request."),
+            _ => ((int)HttpStatusCode.InternalServerError, "Internal Server Error")
+        };
+
         context.Response.ContentType = "application/json";
-        context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
+        context.Response.StatusCode = statusCode;
 
         var response = new
         {
             statusCode = context.Response.StatusCode,
-            message = "Internal Server Error",
+            message,
             traceId = context.TraceIdentifier
         };
 

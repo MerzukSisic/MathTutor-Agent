@@ -8,25 +8,53 @@ public class CurriculumService(MathTutorDbContext context)
 {
     public async Task<Topic?> GetNextTopicAsync(int studentId, CancellationToken ct = default)
     {
-        var completedTopics = await context.StudentTopicStates
-            .Where(s => s.StudentId == studentId && s.MasteryScore >= 75)
-            .Select(s => s.TopicId)
+        var topicStates = await context.StudentTopicStates
+            .Where(s => s.StudentId == studentId)
+            .Select(s => new { s.TopicId, s.MasteryScore })
             .ToListAsync(ct);
+
+        var completedTopics = topicStates
+            .Where(s => s.MasteryScore >= 75)
+            .Select(s => s.TopicId)
+            .ToHashSet();
 
         var availableTopics = await context.Topics
             .Where(t => !completedTopics.Contains(t.Id))
             .Include(t => t.Prerequisites)
             .ToListAsync(ct);
 
-        foreach (var topic in availableTopics.OrderBy(t => t.DifficultyBand))
-        {
-            var prerequisites = topic.Prerequisites.Select(p => p.PrerequisiteTopicId).ToList();
-            var allPrerequisitesMet = !prerequisites.Any() || prerequisites.All(p => completedTopics.Contains(p));
+        var unlockedTopics = availableTopics
+            .Where(t =>
+            {
+                var prerequisites = t.Prerequisites.Select(p => p.PrerequisiteTopicId).ToList();
+                return prerequisites.Count == 0 || prerequisites.All(p => completedTopics.Contains(p));
+            })
+            .ToList();
 
-            if (allPrerequisitesMet)
-                return topic;
+        if (unlockedTopics.Count == 0)
+        {
+            return null;
         }
 
-        return null;
+        var attemptsByTopic = await context.Attempts
+            .Where(a => a.StudentId == studentId)
+            .GroupBy(a => a.Question.TopicId)
+            .Select(g => new { TopicId = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+
+        var masteryByTopic = topicStates.ToDictionary(x => x.TopicId, x => x.MasteryScore);
+        var attemptsCountByTopic = attemptsByTopic.ToDictionary(x => x.TopicId, x => x.Count);
+
+        var minDifficultyBand = unlockedTopics.Min(t => t.DifficultyBand);
+        var candidateTopics = unlockedTopics
+            .Where(t => t.DifficultyBand <= minDifficultyBand + 1)
+            .ToList();
+
+        return candidateTopics
+            .OrderBy(t => masteryByTopic.GetValueOrDefault(t.Id, 0))
+            .ThenBy(t => attemptsCountByTopic.GetValueOrDefault(t.Id, 0))
+            .ThenBy(t => t.DifficultyBand)
+            .ThenBy(_ => Guid.NewGuid())
+            .FirstOrDefault();
     }
 }

@@ -107,7 +107,7 @@ window.authFetch = async function(url, body) {
         body: JSON.stringify(body ?? {})
     });
 
-    if (response.status === 400) {
+    if (response.status === 400 || response.status === 403 || response.status >= 500) {
         antiForgeryTokenCache = null;
     }
 

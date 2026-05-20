@@ -51,7 +51,15 @@ public partial class Quiz
 
     private void HandleLanguageChanged()
     {
-        _ = InvokeAsync(StateHasChanged);
+        _ = InvokeAsync(async () =>
+        {
+            if (currentQuestion != null && explanation != null && !isLoading && !isSubmitting)
+            {
+                await RequestExplanation();
+            }
+
+            StateHasChanged();
+        });
     }
 
     private async Task InitializeSignalR()

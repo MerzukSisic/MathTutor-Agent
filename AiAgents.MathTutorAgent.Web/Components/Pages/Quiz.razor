@@ -227,7 +227,8 @@
 
                     @if (currentQuestion != null)
                     {
-                        <AreaVisualGuide AreaName="@currentQuestion.AreaName"
+                        <AreaVisualGuide @key="@($"{UiPrefs.LanguageCode}:{currentQuestion.Id}")"
+                                         AreaName="@currentQuestion.AreaName"
                                          TopicName="@currentQuestion.TopicName"
                                          QuestionText="@GetQuestionTextForDisplay(currentQuestion.QuestionText)" />
                     }

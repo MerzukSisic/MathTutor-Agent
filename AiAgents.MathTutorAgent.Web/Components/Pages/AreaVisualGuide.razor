@@ -174,9 +174,6 @@
                 break;
 
             default:
-                <div class="avg-card">
-                    <p>@L("Vizuelna vježba je dostupna za ovu temu.", "Visual practice is available for this topic.")</p>
-                </div>
                 break;
         }
     </div>
@@ -202,7 +199,19 @@
             return string.Empty;
         }
 
-        return area.Replace(" ", string.Empty).ToLowerInvariant();
+        var normalized = area.Replace(" ", string.Empty).ToLowerInvariant();
+
+        return normalized switch
+        {
+            "arithmetic" or "aritmetika" => "arithmetic",
+            "prealgebra" or "predalgebra" => "prealgebra",
+            "algebra" => "algebra",
+            "logic" or "logika" => "logic",
+            "settheory" or "teorijaskupova" => "settheory",
+            "geometry" or "geometrija" => "geometry",
+            "proofs" or "dokazi" => "proofs",
+            _ => string.Empty
+        };
     }
 
     private static string OperatorToText(char op)
