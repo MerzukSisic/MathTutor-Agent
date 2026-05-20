@@ -4,6 +4,7 @@
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @inject UiPreferencesService UiPrefs
+@inject NotificationService Notifications
 
 <PageTitle>@($"{L("Admin panel", "Admin Panel")} - MathTutor AI")</PageTitle>
 <div class="admin-page theme-@UiPrefs.ThemeCode">
@@ -25,12 +26,6 @@
             </div>
         </div>
 
-        @if (!string.IsNullOrWhiteSpace(flashMessage))
-        {
-            <div class="admin-flash @(flashIsError ? "error" : "success")">
-                @flashMessage
-            </div>
-        }
     </div>
 
     <div class="admin-tabs-wrap">

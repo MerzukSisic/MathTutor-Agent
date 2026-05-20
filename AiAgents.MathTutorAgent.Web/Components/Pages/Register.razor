@@ -6,6 +6,7 @@
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject UiPreferencesService UiPrefs
+@inject NotificationService Notifications
 @implements IDisposable
 
 <PageTitle>@($"{L("Registracija", "Register")} - MathTutor AI")</PageTitle>
@@ -14,16 +15,6 @@
     <div class="auth-card">
         <h1>@L("Kreiraj nalog", "Create Account")</h1>
         <p>@L("Registruj se i započni adaptivno vježbanje matematike.", "Register and start adaptive math practice.")</p>
-
-        @if (!string.IsNullOrWhiteSpace(errorMessage))
-        {
-            <div class="auth-alert error">@errorMessage</div>
-        }
-
-        @if (!string.IsNullOrWhiteSpace(successMessage))
-        {
-            <div class="auth-alert info">@successMessage</div>
-        }
 
         <label>
             @L("Puno ime", "Full Name")
@@ -45,7 +36,16 @@
 
         <label>
             @L("Lozinka", "Password")
-            <input class="auth-input" type="password" @bind="password" @bind:event="oninput" autocomplete="new-password" />
+            <div class="auth-password-wrap">
+                <input class="auth-input" type="@(showPassword ? "text" : "password")" @bind="password" @bind:event="oninput" autocomplete="new-password" />
+                <button type="button"
+                        class="auth-password-toggle"
+                        @onclick="TogglePasswordVisibility"
+                        aria-label="@(showPassword ? L("Sakrij lozinku", "Hide password") : L("Prikaži lozinku", "Show password"))"
+                        aria-pressed="@showPassword">
+                    @(showPassword ? L("Sakrij", "Hide") : L("Prikaži", "Show"))
+                </button>
+            </div>
             @if (showPasswordError)
             {
                 <span class="auth-inline-error">@L("Lozinka je preslaba. Koristi najmanje 8 znakova i različite tipove karaktera.", "Password is too weak. Use at least 8 chars with mixed character types.")</span>
@@ -81,10 +81,9 @@
     private string fullName = string.Empty;
     private string email = string.Empty;
     private string password = string.Empty;
-    private string? errorMessage;
-    private string? successMessage;
     private bool isSubmitting;
     private bool attemptedSubmit;
+    private bool showPassword;
     private static readonly Regex EmailRegex = new(@"^[^\s@]+@[^\s@]+\.[^\s@]+$", RegexOptions.Compiled);
     private static readonly Regex UpperRegex = new(@"[A-Z]", RegexOptions.Compiled);
     private static readonly Regex LowerRegex = new(@"[a-z]", RegexOptions.Compiled);
@@ -142,27 +141,30 @@
         _ = InvokeAsync(StateHasChanged);
     }
 
+    private void TogglePasswordVisibility()
+    {
+        showPassword = !showPassword;
+    }
+
     private async Task RegisterAsync()
     {
-        errorMessage = null;
-        successMessage = null;
         attemptedSubmit = true;
 
         if (string.IsNullOrWhiteSpace(fullName))
         {
-            errorMessage = L("Puno ime je obavezno.", "Full name is required.");
+            NotifyWarning(L("Puno ime je obavezno.", "Full name is required."));
             return;
         }
 
         if (!IsEmailValid)
         {
-            errorMessage = L("Unesi ispravnu email adresu.", "Please enter a valid email address.");
+            NotifyWarning(L("Unesi ispravnu email adresu.", "Please enter a valid email address."));
             return;
         }
 
         if (!IsPasswordStrongEnough)
         {
-            errorMessage = L("Lozinka je preslaba. Dodaj više različitih karaktera.", "Password is too weak. Add more variety (upper/lower/digit/special).");
+            NotifyWarning(L("Lozinka je preslaba. Dodaj više različitih karaktera.", "Password is too weak. Add more variety (upper/lower/digit/special)."));
             return;
         }
 
@@ -182,9 +184,10 @@
                     data.TryGetProperty("message", out var msgEl);
                     msg = msgEl.ValueKind == JsonValueKind.String ? msgEl.GetString() : null;
                 }
-                errorMessage = string.IsNullOrWhiteSpace(msg)
+                var errorMessage = string.IsNullOrWhiteSpace(msg)
                     ? L("Registracija nije uspjela. Probaj drugi email.", "Registration failed. Try another email.")
                     : LocalizeServerMessage(msg);
+                NotifyError(errorMessage);
                 return;
             }
 
@@ -206,16 +209,17 @@
                 }
             }
 
-            successMessage = string.IsNullOrWhiteSpace(message)
+            var successMessage = string.IsNullOrWhiteSpace(message)
                 ? L("Registracija uspješna. Provjeri email za potvrdu naloga.", "Registration successful. Check your email to confirm account.")
                 : message;
+            NotifySuccess(successMessage);
             await Task.Delay(1200);
             var status = user?.EmailConfirmed == true ? "registered-ready" : "registered";
             Navigation.NavigateTo($"/login?status={status}", forceLoad: true);
         }
         catch
         {
-            errorMessage = L("Registracija nije uspjela. Pokušaj ponovo.", "Registration failed. Please try again.");
+            NotifyError(L("Registracija nije uspjela. Pokušaj ponovo.", "Registration failed. Please try again."));
         }
         finally
         {
@@ -242,4 +246,13 @@
 
         return message;
     }
+
+    private void NotifySuccess(string detail)
+        => Notifications.Notify(NotificationSeverity.Success, L("Uspješno", "Success"), detail, 5000);
+
+    private void NotifyWarning(string detail)
+        => Notifications.Notify(NotificationSeverity.Warning, L("Provjeri unos", "Check input"), detail, 5000);
+
+    private void NotifyError(string detail)
+        => Notifications.Notify(NotificationSeverity.Error, L("Neuspješno", "Failed"), detail, 6500);
 }

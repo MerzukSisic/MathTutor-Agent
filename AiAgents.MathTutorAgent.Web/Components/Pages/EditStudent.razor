@@ -3,6 +3,7 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject UiPreferencesService UiPrefs
+@inject NotificationService Notifications
 @implements IDisposable
 
 <PageTitle>@($"{L("Uredi učenika", "Edit Student")} - MathTutor AI")</PageTitle>
@@ -23,16 +24,6 @@
         }
         else
         {
-            @if (!string.IsNullOrWhiteSpace(errorMessage))
-            {
-                <div class="q-alert error">@errorMessage</div>
-            }
-
-            @if (!string.IsNullOrWhiteSpace(successMessage))
-            {
-                <div class="q-alert success">@successMessage</div>
-            }
-
             <div class="qform-grid">
                 <label>
                     @L("Puno ime", "Full name")
@@ -62,8 +53,6 @@
     private string email = string.Empty;
     private bool isLoading = true;
     private bool isSubmitting;
-    private string? errorMessage;
-    private string? successMessage;
     private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
     protected override void OnInitialized()
@@ -78,7 +67,7 @@
             var student = await Http.GetFromJsonAsync<StudentDto>($"/api/admin/students/{Id}");
             if (student == null)
             {
-                errorMessage = L("Učenik nije pronađen.", "Student not found.");
+                NotifyError(L("Učenik nije pronađen.", "Student not found."));
                 return;
             }
 
@@ -87,7 +76,7 @@
         }
         catch (HttpRequestException ex)
         {
-            errorMessage = $"{L("Ne mogu učitati učenika", "Unable to load student")} ({ex.Message}).";
+            NotifyError($"{L("Ne mogu učitati učenika", "Unable to load student")} ({ex.Message}).");
         }
         finally
         {
@@ -105,12 +94,9 @@
 
     private async Task UpdateStudent()
     {
-        errorMessage = null;
-        successMessage = null;
-
         if (!IsValid())
         {
-            errorMessage = L("Unesi ispravno ime učenika i email.", "Please enter valid student name and email.");
+            NotifyWarning(L("Unesi ispravno ime učenika i email.", "Please enter valid student name and email."));
             return;
         }
 
@@ -128,19 +114,20 @@
             if (!response.IsSuccessStatusCode)
             {
                 var error = await response.Content.ReadAsStringAsync();
-                errorMessage = string.IsNullOrWhiteSpace(error)
+                var errorMessage = string.IsNullOrWhiteSpace(error)
                     ? $"{L("Ažuriranje nije uspjelo", "Update failed")} ({response.StatusCode})."
                     : ExtractApiErrorMessage(error);
+                NotifyError(errorMessage);
                 return;
             }
 
-            successMessage = L("Učenik je uspješno ažuriran. Preusmjeravam...", "Student updated successfully. Redirecting...");
+            NotifySuccess(L("Uspješno ste editovali učenika.", "You successfully edited the student."));
             await Task.Delay(800);
             Navigation.NavigateTo("/admin?status=student-updated");
         }
         catch (Exception ex)
         {
-            errorMessage = ex.Message;
+            NotifyError(ex.Message);
         }
         finally
         {
@@ -173,4 +160,13 @@
     {
         UiPrefs.Changed -= HandleLanguageChanged;
     }
+
+    private void NotifySuccess(string detail)
+        => Notifications.Notify(NotificationSeverity.Success, L("Uspješno", "Success"), detail, 4500);
+
+    private void NotifyWarning(string detail)
+        => Notifications.Notify(NotificationSeverity.Warning, L("Provjeri unos", "Check input"), detail, 4500);
+
+    private void NotifyError(string detail)
+        => Notifications.Notify(NotificationSeverity.Error, L("Neuspješno", "Failed"), detail, 6000);
 }

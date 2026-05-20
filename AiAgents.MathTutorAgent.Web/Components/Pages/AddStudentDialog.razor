@@ -4,6 +4,7 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject UiPreferencesService UiPrefs
+@inject NotificationService Notifications
 @rendermode InteractiveServer
 @implements IDisposable
 
@@ -21,23 +22,9 @@
             </button>
         </div>
 
-        @if (!string.IsNullOrEmpty(errorMessage))
-        {
-            <div class="q-alert error">
-                @errorMessage
-            </div>
-        }
-
-        @if (!string.IsNullOrEmpty(successMessage))
-        {
-            <div class="q-alert success">
-                @successMessage
-            </div>
-        }
-
         @if (!string.IsNullOrWhiteSpace(inviteLink))
         {
-            <div class="q-alert info">
+            <div class="q-invite-note">
                 <div>@L("Email servis je isključen ili slanje nije uspjelo. Pošalji ovaj invite link učeniku ručno:", "Email service is disabled or sending failed. Share this invite link with the student manually:")</div>
                 <a href="@inviteLink" target="_blank" rel="noopener noreferrer">@inviteLink</a>
             </div>
@@ -98,8 +85,6 @@
     private bool isSubmitting = false;
     private bool showNameError = false;
     private bool showEmailError = false;
-    private string errorMessage = string.Empty;
-    private string successMessage = string.Empty;
     private string? inviteLink;
     private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
@@ -123,20 +108,20 @@
         // Reset errors
         showNameError = false;
         showEmailError = false;
-        errorMessage = string.Empty;
-        successMessage = string.Empty;
         inviteLink = null;
 
         // Validate
         if (string.IsNullOrWhiteSpace(name))
         {
             showNameError = true;
+            NotifyWarning(L("Ime učenika je obavezno.", "Student name is required."));
             return;
         }
 
         if (string.IsNullOrWhiteSpace(email) || !email.Contains("@"))
         {
             showEmailError = true;
+            NotifyWarning(L("Unesi ispravnu email adresu učenika.", "Please enter a valid student email."));
             return;
         }
 
@@ -151,9 +136,10 @@
             {
                 var payload = await response.Content.ReadFromJsonAsync<CreateStudentResultDto>();
                 inviteLink = payload?.InviteLink;
-                successMessage = payload?.InviteSent == true
-                    ? L("Učenik je kreiran i invite email za postavljanje šifre je poslan.", "Student created and invite email for password setup was sent.")
-                    : L("Učenik je kreiran. Pozivnica nije poslana emailom.", "Student created. Invite was not sent by email.");
+                var successMessage = payload?.InviteSent == true
+                    ? L("Uspješno ste kreirali učenika i poslali invite email.", "You successfully created the student and sent the invite email.")
+                    : L("Uspješno ste kreirali učenika. Invite email nije poslan.", "You successfully created the student. Invite email was not sent.");
+                NotifySuccess(successMessage);
 
                 if (payload?.InviteSent == true)
                 {
@@ -164,16 +150,15 @@
             else
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
-                errorMessage = string.IsNullOrWhiteSpace(errorContent)
+                var errorMessage = string.IsNullOrWhiteSpace(errorContent)
                     ? $"{L("Kreiranje učenika nije uspjelo", "Failed to create student")} ({response.StatusCode})."
                     : ExtractApiErrorMessage(errorContent);
-                Console.WriteLine($"Error: {errorContent}");
+                NotifyError(errorMessage);
             }
         }
         catch (Exception ex)
         {
-            errorMessage = $"{L("Greška", "Error")}: {ex.Message}";
-            Console.WriteLine($"Exception: {ex}");
+            NotifyError($"{L("Greška", "Error")}: {ex.Message}");
         }
         finally
         {
@@ -209,4 +194,13 @@
     {
         UiPrefs.Changed -= HandleLanguageChanged;
     }
+
+    private void NotifySuccess(string detail)
+        => Notifications.Notify(NotificationSeverity.Success, L("Uspješno", "Success"), detail, 4500);
+
+    private void NotifyWarning(string detail)
+        => Notifications.Notify(NotificationSeverity.Warning, L("Provjeri unos", "Check input"), detail, 4500);
+
+    private void NotifyError(string detail)
+        => Notifications.Notify(NotificationSeverity.Error, L("Neuspješno", "Failed"), detail, 6000);
 }

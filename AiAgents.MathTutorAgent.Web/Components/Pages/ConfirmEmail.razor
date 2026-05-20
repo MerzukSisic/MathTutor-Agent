@@ -5,6 +5,7 @@
 @inject IJSRuntime JS
 @inject NavigationManager Navigation
 @inject UiPreferencesService UiPrefs
+@inject NotificationService Notifications
 @implements IDisposable
 
 <PageTitle>@($"{L("Potvrda emaila", "Confirm Email")} - MathTutor AI")</PageTitle>
@@ -13,16 +14,6 @@
     <div class="auth-card">
         <h1>@L("Potvrda emaila", "Confirm Email")</h1>
         <p>@L("Provjeravam email adresu tvog naloga.", "Verifying your account email address.")</p>
-
-        @if (!string.IsNullOrWhiteSpace(message))
-        {
-            <div class="auth-alert info">@message</div>
-        }
-
-        @if (!string.IsNullOrWhiteSpace(errorMessage))
-        {
-            <div class="auth-alert error">@errorMessage</div>
-        }
 
         @if (isProcessing)
         {
@@ -38,8 +29,6 @@
 @code {
     private string email = string.Empty;
     private string token = string.Empty;
-    private string? message;
-    private string? errorMessage;
     private bool isProcessing = true;
     private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
@@ -64,7 +53,7 @@
 
         if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(token))
         {
-            errorMessage = L("Neispravan link za potvrdu.", "Invalid confirmation link.");
+            NotifyError(L("Neispravan link za potvrdu.", "Invalid confirmation link."));
             isProcessing = false;
             return;
         }
@@ -83,7 +72,8 @@
                     msg = msgEl.ValueKind == JsonValueKind.String ? msgEl.GetString() : null;
                 }
 
-                errorMessage = string.IsNullOrWhiteSpace(msg) ? L("Link za potvrdu je neispravan ili istekao.", "Confirmation link is invalid or expired.") : msg;
+                var errorMessage = string.IsNullOrWhiteSpace(msg) ? L("Link za potvrdu je neispravan ili istekao.", "Confirmation link is invalid or expired.") : msg;
+                NotifyError(errorMessage);
                 return;
             }
 
@@ -94,13 +84,14 @@
                 okMessage = msgEl.ValueKind == JsonValueKind.String ? msgEl.GetString() : null;
             }
 
-            message = string.IsNullOrWhiteSpace(okMessage)
+            var successMessage = string.IsNullOrWhiteSpace(okMessage)
                 ? L("Email je uspješno potvrđen.", "Email confirmed successfully.")
                 : okMessage;
+            NotifySuccess(successMessage);
         }
         catch
         {
-            errorMessage = L("Trenutno nije moguće potvrditi email.", "Unable to confirm email right now.");
+            NotifyError(L("Trenutno nije moguće potvrditi email.", "Unable to confirm email right now."));
         }
         finally
         {
@@ -122,4 +113,10 @@
     {
         UiPrefs.Changed -= HandleLanguageChanged;
     }
+
+    private void NotifySuccess(string detail)
+        => Notifications.Notify(NotificationSeverity.Success, L("Uspješno", "Success"), detail, 5000);
+
+    private void NotifyError(string detail)
+        => Notifications.Notify(NotificationSeverity.Error, L("Neuspješno", "Failed"), detail, 6500);
 }

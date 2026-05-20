@@ -4,6 +4,7 @@ using AiAgents.MathTutorAgent.Web.Services;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.WebUtilities;
 using System.Net.Http.Json;
+using Radzen;
 
 namespace AiAgents.MathTutorAgent.Web.Components.Pages;
 
@@ -12,8 +13,6 @@ public partial class Admin
     private PerformanceMetricsDto? metrics;
     private List<AdminQuestionDto>? questions;
     private List<StudentDto>? students;
-    private string? flashMessage;
-    private bool flashIsError;
     private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
     protected override async Task OnInitializedAsync()
@@ -34,6 +33,7 @@ public partial class Admin
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading metrics: {ex.Message}");
+            NotifyError(L("Ne mogu učitati metrike performansi.", "Unable to load performance metrics."));
         }
     }
 
@@ -46,6 +46,7 @@ public partial class Admin
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading questions: {ex.Message}");
+            NotifyError(L("Ne mogu učitati listu pitanja.", "Unable to load questions."));
         }
     }
 
@@ -58,6 +59,7 @@ public partial class Admin
         catch (Exception ex)
         {
             Console.WriteLine($"Error loading students: {ex.Message}");
+            NotifyError(L("Ne mogu učitati listu učenika.", "Unable to load students."));
         }
     }
 
@@ -89,13 +91,11 @@ public partial class Admin
         if (response.IsSuccessStatusCode)
         {
             await LoadQuestions();
-            flashMessage = L("Pitanje je uspješno obrisano.", "Question deleted successfully.");
-            flashIsError = false;
+            NotifySuccess(L("Uspješno ste obrisali pitanje.", "You successfully deleted the question."));
         }
         else
         {
-            flashMessage = L("Brisanje nije uspjelo", "Delete failed") + $" ({response.StatusCode}).";
-            flashIsError = true;
+            NotifyError($"{L("Brisanje pitanja nije uspjelo.", "Failed to delete question.")} ({response.StatusCode})");
         }
     }
 
@@ -122,16 +122,15 @@ public partial class Admin
         {
             await LoadStudents();
             await LoadMetrics();
-            flashMessage = L("Učenik je uspješno obrisan.", "Student deleted successfully.");
-            flashIsError = false;
+            NotifySuccess(L("Uspješno ste obrisali učenika.", "You successfully deleted the student."));
             return;
         }
 
         var errorRaw = await response.Content.ReadAsStringAsync();
-        flashMessage = string.IsNullOrWhiteSpace(errorRaw)
+        var errorMessage = string.IsNullOrWhiteSpace(errorRaw)
             ? $"{L("Brisanje učenika nije uspjelo", "Student delete failed")} ({response.StatusCode})."
             : ExtractApiErrorMessage(errorRaw);
-        flashIsError = true;
+        NotifyError(errorMessage);
     }
 
     private void ApplyStatusFromQuery()
@@ -146,20 +145,16 @@ public partial class Admin
         switch (statusValue.ToString())
         {
             case "student-created":
-                flashMessage = L("Učenik je uspješno kreiran.", "Student created successfully.");
-                flashIsError = false;
+                NotifySuccess(L("Uspješno ste kreirali učenika.", "You successfully created the student."));
                 break;
             case "question-created":
-                flashMessage = L("Pitanje je uspješno kreirano.", "Question created successfully.");
-                flashIsError = false;
+                NotifySuccess(L("Uspješno ste kreirali pitanje.", "You successfully created the question."));
                 break;
             case "question-updated":
-                flashMessage = L("Pitanje je uspješno ažurirano.", "Question updated successfully.");
-                flashIsError = false;
+                NotifySuccess(L("Uspješno ste editovali pitanje.", "You successfully edited the question."));
                 break;
             case "student-updated":
-                flashMessage = L("Učenik je uspješno ažuriran.", "Student updated successfully.");
-                flashIsError = false;
+                NotifySuccess(L("Uspješno ste editovali učenika.", "You successfully edited the student."));
                 break;
         }
 
@@ -209,4 +204,10 @@ public partial class Admin
     {
         UiPrefs.Changed -= HandleLanguageChanged;
     }
+
+    private void NotifySuccess(string detail)
+        => Notifications.Notify(NotificationSeverity.Success, L("Uspješno", "Success"), detail, 4500);
+
+    private void NotifyError(string detail)
+        => Notifications.Notify(NotificationSeverity.Error, L("Neuspješno", "Failed"), detail, 6000);
 }
