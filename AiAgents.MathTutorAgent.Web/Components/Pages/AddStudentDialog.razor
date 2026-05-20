@@ -35,6 +35,14 @@
             </div>
         }
 
+        @if (!string.IsNullOrWhiteSpace(inviteLink))
+        {
+            <div class="q-alert info">
+                <div>@L("Email servis je isključen ili slanje nije uspjelo. Pošalji ovaj invite link učeniku ručno:", "Email service is disabled or sending failed. Share this invite link with the student manually:")</div>
+                <a href="@inviteLink" target="_blank" rel="noopener noreferrer">@inviteLink</a>
+            </div>
+        }
+
         <div class="qform-grid">
             <label class="full" for="name">
                 @L("Ime učenika", "Student name")
@@ -92,6 +100,7 @@
     private bool showEmailError = false;
     private string errorMessage = string.Empty;
     private string successMessage = string.Empty;
+    private string? inviteLink;
     private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
     protected override void OnInitialized()
@@ -116,6 +125,7 @@
         showEmailError = false;
         errorMessage = string.Empty;
         successMessage = string.Empty;
+        inviteLink = null;
 
         // Validate
         if (string.IsNullOrWhiteSpace(name))
@@ -139,9 +149,17 @@
             
             if (response.IsSuccessStatusCode)
             {
-                successMessage = L("Učenik je uspješno kreiran! Preusmjeravam...", "Student created successfully! Redirecting...");
-                await Task.Delay(900);
-                Navigation.NavigateTo("/admin?status=student-created");
+                var payload = await response.Content.ReadFromJsonAsync<CreateStudentResultDto>();
+                inviteLink = payload?.InviteLink;
+                successMessage = payload?.InviteSent == true
+                    ? L("Učenik je kreiran i invite email za postavljanje šifre je poslan.", "Student created and invite email for password setup was sent.")
+                    : L("Učenik je kreiran. Pozivnica nije poslana emailom.", "Student created. Invite was not sent by email.");
+
+                if (payload?.InviteSent == true)
+                {
+                    await Task.Delay(1200);
+                    Navigation.NavigateTo("/admin?status=student-created");
+                }
             }
             else
             {

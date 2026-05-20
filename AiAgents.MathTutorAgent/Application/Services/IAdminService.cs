@@ -12,7 +12,7 @@ public interface IAdminService
     Task<List<StudentDto>> GetAllStudentsAsync(CancellationToken ct = default);
     Task<StudentDto?> GetStudentByIdAsync(int id, CancellationToken ct = default);
     Task<PerformanceMetricsDto> GetPerformanceMetricsAsync(CancellationToken ct = default);
-    Task<StudentDto> CreateStudentAsync(CreateStudentDto dto, CancellationToken ct = default);
+    Task<CreateStudentResultDto> CreateStudentAsync(CreateStudentDto dto, string appBaseUrl, CancellationToken ct = default);
     Task<StudentDto> UpdateStudentAsync(int id, UpdateStudentDto dto, CancellationToken ct = default);
     Task DeleteStudentAsync(int id, CancellationToken ct = default);
 }

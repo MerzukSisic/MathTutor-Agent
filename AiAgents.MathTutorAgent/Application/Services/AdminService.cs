@@ -2,10 +2,15 @@
 using AiAgents.MathTutorAgent.Domain.Entities;
 using AiAgents.MathTutorAgent.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace AiAgents.MathTutorAgent.Application.Services;
 
-public class AdminService(MathTutorDbContext context) : IAdminService
+public class AdminService(
+    MathTutorDbContext context,
+    PasswordHashingService passwordHashingService,
+    IEmailService emailService) : IAdminService
 {
     // ========== QUESTIONS ==========
     public async Task<List<AdminQuestionDto>> GetAllQuestionsAsync(CancellationToken ct = default)
@@ -172,7 +177,7 @@ public class AdminService(MathTutorDbContext context) : IAdminService
             AverageProcessingTimeMs = avgProcessingTime
         };
     }
-    public async Task<StudentDto> CreateStudentAsync(CreateStudentDto dto, CancellationToken ct = default)
+    public async Task<CreateStudentResultDto> CreateStudentAsync(CreateStudentDto dto, string appBaseUrl, CancellationToken ct = default)
     {
         var name = dto.Name.Trim();
         var email = dto.Email.Trim();
@@ -183,25 +188,101 @@ public class AdminService(MathTutorDbContext context) : IAdminService
             throw new InvalidOperationException("Valid email is required.");
 
         var normalizedEmail = StringNormalizer.NormalizeEmail(email);
-        if (await context.Students.AnyAsync(s => s.Email == normalizedEmail, ct))
-            throw new InvalidOperationException("Student with this email already exists.");
+        var existingStudent = await context.Students
+            .FirstOrDefaultAsync(s => s.Email == normalizedEmail, ct);
+        var existingAccount = await context.UserAccounts
+            .FirstOrDefaultAsync(a => a.Email == normalizedEmail, ct);
 
-        var student = new Student
+        Student student;
+        var accountCreated = false;
+
+        if (existingStudent == null)
         {
-            Name = name,
-            Email = normalizedEmail,
-            CreatedAt = DateTime.UtcNow
-        };
-
-        context.Students.Add(student);
-        await context.SaveChangesAsync(ct);
-
-        return new StudentDto
+            student = new Student
+            {
+                Name = name,
+                Email = normalizedEmail,
+                CreatedAt = DateTime.UtcNow
+            };
+            context.Students.Add(student);
+            await context.SaveChangesAsync(ct);
+        }
+        else
         {
-            Id = student.Id,
-            Name = student.Name,
-            Email = student.Email,
-            CreatedAt = student.CreatedAt
+            student = existingStudent;
+            student.Name = name;
+        }
+
+        UserAccount account;
+        if (existingAccount == null)
+        {
+            account = new UserAccount
+            {
+                FullName = student.Name,
+                Email = normalizedEmail,
+                PasswordHash = passwordHashingService.HashPassword(GenerateTemporaryPassword()),
+                Role = UserRoles.Student,
+                EmailConfirmed = true,
+                StudentId = student.Id,
+                CreatedAt = DateTime.UtcNow
+            };
+            context.UserAccounts.Add(account);
+            await context.SaveChangesAsync(ct);
+            accountCreated = true;
+        }
+        else
+        {
+            if (existingAccount.StudentId.HasValue && existingAccount.StudentId.Value != student.Id)
+            {
+                throw new InvalidOperationException("Email already belongs to another student account.");
+            }
+
+            existingAccount.StudentId ??= student.Id;
+            existingAccount.FullName = student.Name;
+            existingAccount.EmailConfirmed = true;
+            account = existingAccount;
+            await context.SaveChangesAsync(ct);
+        }
+
+        var token = await CreatePasswordResetTokenAsync(account.Id, TimeSpan.FromHours(72), ct);
+        var inviteLink = BuildPublicLink(appBaseUrl, "reset_password",
+            ("email", account.Email),
+            ("token", token));
+
+        var inviteSent = false;
+        if (emailService.IsEnabled)
+        {
+            try
+            {
+                var subject = "Set your MathTutor AI password";
+                var body = $"""
+                            <h2>Welcome to MathTutor AI</h2>
+                            <p>Hello {student.Name},</p>
+                            <p>Your teacher created your account. Click the link below to set your password:</p>
+                            <p><a href="{inviteLink}">{inviteLink}</a></p>
+                            <p>This invite link expires in 72 hours.</p>
+                            """;
+                await emailService.SendEmailAsync(account.Email, subject, body, ct);
+                inviteSent = true;
+            }
+            catch
+            {
+                inviteSent = false;
+            }
+        }
+
+        return new CreateStudentResultDto
+        {
+            Student = new StudentDto
+            {
+                Id = student.Id,
+                Name = student.Name,
+                Email = student.Email,
+                CreatedAt = student.CreatedAt
+            },
+            AccountCreated = accountCreated,
+            InviteSent = inviteSent,
+            InviteLink = inviteSent ? null : inviteLink
         };
     }
 
@@ -281,4 +362,64 @@ public class AdminService(MathTutorDbContext context) : IAdminService
         context.Students.Remove(student);
         await context.SaveChangesAsync(ct);
     }
+
+    private async Task<string> CreatePasswordResetTokenAsync(int userAccountId, TimeSpan lifetime, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        await InvalidateActiveTokensAsync(userAccountId, AuthTokenPurposes.PasswordReset, now, ct);
+
+        var token = GenerateToken();
+        context.AuthTokens.Add(new AuthToken
+        {
+            UserAccountId = userAccountId,
+            Purpose = AuthTokenPurposes.PasswordReset,
+            TokenHash = HashToken(token),
+            CreatedAtUtc = now,
+            ExpiresAtUtc = now.Add(lifetime)
+        });
+        await context.SaveChangesAsync(ct);
+        return token;
+    }
+
+    private async Task InvalidateActiveTokensAsync(int userAccountId, string purpose, DateTime utcNow, CancellationToken ct)
+    {
+        var activeTokens = await context.AuthTokens
+            .Where(t => t.UserAccountId == userAccountId
+                        && t.Purpose == purpose
+                        && t.ConsumedAtUtc == null
+                        && t.ExpiresAtUtc > utcNow)
+            .ToListAsync(ct);
+
+        foreach (var item in activeTokens)
+        {
+            item.ConsumedAtUtc = utcNow;
+        }
+    }
+
+    private static string BuildPublicLink(string appBaseUrl, string path, params (string Key, string Value)[] queryParts)
+    {
+        var baseUrl = string.IsNullOrWhiteSpace(appBaseUrl)
+            ? "http://localhost:5297"
+            : appBaseUrl.TrimEnd('/');
+
+        var query = string.Join("&", queryParts.Select(x =>
+            $"{Uri.EscapeDataString(x.Key)}={Uri.EscapeDataString(x.Value)}"));
+        return $"{baseUrl}/{path}?{query}";
+    }
+
+    private static string GenerateToken()
+    {
+        Span<byte> bytes = stackalloc byte[32];
+        RandomNumberGenerator.Fill(bytes);
+        return Convert.ToBase64String(bytes).Replace('+', '-').Replace('/', '_').TrimEnd('=');
+    }
+
+    private static string HashToken(string token)
+    {
+        var bytes = Encoding.UTF8.GetBytes(token);
+        var hash = SHA256.HashData(bytes);
+        return Convert.ToHexString(hash);
+    }
+
+    private static string GenerateTemporaryPassword() => $"Tmp!{Guid.NewGuid():N}";
 }

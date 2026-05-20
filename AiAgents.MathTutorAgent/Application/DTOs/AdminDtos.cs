@@ -42,6 +42,14 @@ public record CreateStudentDto
     public string Email { get; init; } = string.Empty;
 }
 
+public record CreateStudentResultDto
+{
+    public StudentDto Student { get; init; } = new();
+    public bool AccountCreated { get; init; }
+    public bool InviteSent { get; init; }
+    public string? InviteLink { get; init; }
+}
+
 public record UpdateStudentDto
 {
     public string Name { get; init; } = string.Empty;

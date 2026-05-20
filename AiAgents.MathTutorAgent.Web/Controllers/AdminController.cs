@@ -15,7 +15,8 @@ public class AdminController(
     IAdminService adminService,
     StudentProfileService studentProfileService,
     MlTrainingService mlTrainingService,
-    MathContentLocalizationService localizationService)
+    MathContentLocalizationService localizationService,
+    IConfiguration configuration)
     : ControllerBase
 {
     // ========== QUESTIONS CRUD ==========
@@ -172,8 +173,8 @@ public class AdminController(
     {
         try
         {
-            var student = await adminService.CreateStudentAsync(request, ct);
-            return Ok(student);
+            var result = await adminService.CreateStudentAsync(request, GetAppBaseUrl(), ct);
+            return Ok(result);
         }
         catch (InvalidOperationException ex)
         {
@@ -223,5 +224,16 @@ public class AdminController(
     {
         var stats = await studentProfileService.GetDashboardStatsAsync(ct);
         return Ok(stats);
+    }
+
+    private string GetAppBaseUrl()
+    {
+        var configuredBaseUrl = configuration["App:PublicBaseUrl"];
+        if (!string.IsNullOrWhiteSpace(configuredBaseUrl))
+        {
+            return configuredBaseUrl.Trim().TrimEnd('/');
+        }
+
+        return "http://localhost:5297";
     }
 }
