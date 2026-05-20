@@ -178,6 +178,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     needs: format
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository }}
     permissions:
       actions: read
       contents: read
@@ -263,7 +264,7 @@ jobs:
         run: |
           if [[ "${{ needs.format.result }}" != "success" ]] || \
              [[ "${{ needs.build-test.result }}" != "success" ]] || \
-             [[ "${{ needs.codeql.result }}" != "success" ]] || \
+             [[ "${{ needs.codeql.result }}" != "success" && "${{ needs.codeql.result }}" != "skipped" ]] || \
              [[ "${{ needs.dependencies.result }}" != "success" ]]; then
             echo "::error::One or more required CI checks failed"
             echo "format:       ${{ needs.format.result }}"
