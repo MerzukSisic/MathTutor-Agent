@@ -10,6 +10,12 @@ public class SmtpEmailService(
     ILogger<SmtpEmailService> logger)
     : IEmailService
 {
+    private static readonly Action<ILogger, string, Exception?> LogInsecureSmtpConfigurationMessage =
+        LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(2102, nameof(LogInsecureSmtpConfigurationMessage)),
+            "Email sending skipped because SMTP TLS is disabled. Set Email:UseSsl=true. Recipient: {To}");
+
     private static readonly Action<ILogger, string, string, Exception?> LogEmailDisabledMessage =
         LoggerMessage.Define<string, string>(
             LogLevel.Information,
@@ -33,6 +39,12 @@ public class SmtpEmailService(
             return;
         }
 
+        if (!emailSettings.UseSsl)
+        {
+            LogInsecureSmtpConfigurationMessage(logger, to, null);
+            return;
+        }
+
         using var message = new MailMessage
         {
             From = new MailAddress(emailSettings.FromEmail, emailSettings.FromName),
@@ -44,7 +56,7 @@ public class SmtpEmailService(
 
         using var client = new SmtpClient(emailSettings.SmtpHost, emailSettings.SmtpPort)
         {
-            EnableSsl = emailSettings.UseSsl,
+            EnableSsl = true,
             Credentials = new NetworkCredential(emailSettings.SmtpUsername, emailSettings.SmtpPassword)
         };
 

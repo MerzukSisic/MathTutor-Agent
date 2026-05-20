@@ -12,6 +12,7 @@ using AiAgents.MathTutorAgent.Web.Services;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
@@ -149,13 +150,25 @@ builder.Services.AddScoped(sp =>
 {
     var navigationManager = sp.GetRequiredService<NavigationManager>();
     var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
+    var antiforgery = sp.GetRequiredService<IAntiforgery>();
     var client = new HttpClient { BaseAddress = new Uri(navigationManager.BaseUri) };
+    var httpContext = httpContextAccessor.HttpContext;
 
     // Forward the browser's auth cookie so server-side HttpClient calls pass auth checks.
-    var cookieHeader = httpContextAccessor.HttpContext?.Request.Headers.Cookie.ToString();
+    var cookieHeader = httpContext?.Request.Headers.Cookie.ToString();
     if (!string.IsNullOrEmpty(cookieHeader))
     {
         client.DefaultRequestHeaders.Add("Cookie", cookieHeader);
+    }
+
+    // Add antiforgery header for unsafe API verbs (POST/PUT/DELETE) used by server-side components.
+    if (httpContext is not null)
+    {
+        var tokens = antiforgery.GetAndStoreTokens(httpContext);
+        if (!string.IsNullOrWhiteSpace(tokens.RequestToken))
+        {
+            client.DefaultRequestHeaders.Add("RequestVerificationToken", tokens.RequestToken);
+        }
     }
 
     return client;

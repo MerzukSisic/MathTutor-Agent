@@ -12,6 +12,7 @@ namespace AiAgents.MathTutorAgent.Web.Controllers;
 [ApiController]
 [Route("api/agent")]
 [Authorize]
+[AutoValidateAntiforgeryToken]
 public class AgentController(
     WorkQueueService queueService,
     MathContentLocalizationService localizationService) : ControllerBase

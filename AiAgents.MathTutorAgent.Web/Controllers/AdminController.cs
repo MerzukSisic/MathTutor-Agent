@@ -11,6 +11,7 @@ namespace AiAgents.MathTutorAgent.Web.Controllers;
 [ApiController]
 [Route("api/admin")]
 [Authorize(Roles = UserRoles.Admin)]
+[AutoValidateAntiforgeryToken]
 public class AdminController(
     IAdminService adminService,
     StudentProfileService studentProfileService,
