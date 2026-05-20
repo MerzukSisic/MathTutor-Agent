@@ -41,6 +41,9 @@ public class AgentBackgroundService(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         LogServiceStartedMessage(logger, null);
+        var minIdleDelaySeconds = Math.Max(1, _options.IdleDelaySeconds);
+        var maxIdleDelaySeconds = Math.Max(minIdleDelaySeconds, _options.MaxIdleDelaySeconds);
+        var currentIdleDelaySeconds = minIdleDelaySeconds;
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -53,10 +56,12 @@ public class AgentBackgroundService(
 
                 if (result == null)
                 {
-                    await Task.Delay(TimeSpan.FromSeconds(_options.IdleDelaySeconds), stoppingToken);
+                    await Task.Delay(TimeSpan.FromSeconds(currentIdleDelaySeconds), stoppingToken);
+                    currentIdleDelaySeconds = Math.Min(maxIdleDelaySeconds, currentIdleDelaySeconds * 2);
                 }
                 else
                 {
+                    currentIdleDelaySeconds = minIdleDelaySeconds;
                     await hubContext.Clients.Group(AgentHub.GetStudentGroup(result.StudentId)).SendAsync(
                         "AgentTick",
                         result,
@@ -72,6 +77,7 @@ public class AgentBackgroundService(
             catch (Exception ex)
             {
                 LogTickErrorMessage(logger, ex);
+                currentIdleDelaySeconds = minIdleDelaySeconds;
                 await Task.Delay(TimeSpan.FromSeconds(_options.ErrorDelaySeconds), stoppingToken);
             }
         }

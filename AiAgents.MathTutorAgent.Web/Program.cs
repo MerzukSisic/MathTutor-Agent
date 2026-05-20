@@ -12,11 +12,13 @@ using AiAgents.MathTutorAgent.Web.Services;
 using FluentValidation;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Radzen;
 using Serilog;
+using Serilog.Events;
 using System.Threading.RateLimiting;
 using System.Globalization;
 
@@ -24,6 +26,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // ========== LOGGING ==========
 Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore.Database.Command", LogEventLevel.Warning)
     .WriteTo.Console(
         outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
         formatProvider: CultureInfo.InvariantCulture)
@@ -91,6 +94,20 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
+
+var dataProtectionBuilder = builder.Services
+    .AddDataProtection()
+    .SetApplicationName("MathTutorAgent");
+
+var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"]
+    ?? Environment.GetEnvironmentVariable("DATA_PROTECTION_KEYS_PATH");
+if (!string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+{
+    var resolvedPath = dataProtectionKeysPath.Trim();
+    Directory.CreateDirectory(resolvedPath);
+    dataProtectionBuilder.PersistKeysToFileSystem(new DirectoryInfo(resolvedPath));
+}
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
@@ -215,23 +232,14 @@ builder.Services.AddHostedService<AgentBackgroundService>();
 // ========== CORS (optional - if needed for external API calls) ==========
 builder.Services.AddCors(options =>
 {
-    var allowedOrigins = builder.Configuration
-        .GetSection("Cors:AllowedOrigins")
-        .Get<string[]>() ?? [];
+    var allowedOrigins = ResolveAllowedCorsOrigins(builder.Configuration);
 
     options.AddDefaultPolicy(policy =>
     {
-        if (allowedOrigins.Length == 0)
-        {
-            policy.WithOrigins("http://localhost:5297", "https://localhost:7152")
-                .AllowAnyMethod()
-                .AllowAnyHeader();
-            return;
-        }
-
         policy.WithOrigins(allowedOrigins)
             .AllowAnyMethod()
-            .AllowAnyHeader();
+            .AllowAnyHeader()
+            .AllowCredentials();
     });
 });
 
@@ -303,8 +311,8 @@ app.UseMiddleware<GlobalExceptionMiddleware>();
 
 app.UseHttpsRedirection();
 app.UseStaticFiles();
-app.UseAntiforgery();
 app.UseCors(); // If CORS is needed
+app.UseAntiforgery();
 app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -412,4 +420,57 @@ static string NormalizePostgresConnectionString(string rawConnectionString)
     }
 
     return builder.ToString();
+}
+
+static string[] ResolveAllowedCorsOrigins(IConfiguration configuration)
+{
+    var origins = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "http://localhost:5297",
+        "https://localhost:7152"
+    };
+
+    var configuredOrigins = configuration
+        .GetSection("Cors:AllowedOrigins")
+        .Get<string[]>() ?? [];
+
+    foreach (var item in configuredOrigins)
+    {
+        AddOriginIfValid(origins, item);
+    }
+
+    var rawOrigins = configuration["Cors:AllowedOrigins"];
+    if (!string.IsNullOrWhiteSpace(rawOrigins))
+    {
+        foreach (var item in rawOrigins.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+        {
+            AddOriginIfValid(origins, item);
+        }
+    }
+
+    var appBaseUrl = configuration["App:PublicBaseUrl"];
+    AddOriginIfValid(origins, appBaseUrl);
+
+    return origins.ToArray();
+}
+
+static void AddOriginIfValid(ISet<string> target, string? value)
+{
+    if (string.IsNullOrWhiteSpace(value))
+    {
+        return;
+    }
+
+    if (!Uri.TryCreate(value.Trim(), UriKind.Absolute, out var uri))
+    {
+        return;
+    }
+
+    if (!string.Equals(uri.Scheme, Uri.UriSchemeHttp, StringComparison.OrdinalIgnoreCase) &&
+        !string.Equals(uri.Scheme, Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase))
+    {
+        return;
+    }
+
+    target.Add($"{uri.Scheme}://{uri.Authority}");
 }
