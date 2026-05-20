@@ -40,11 +40,16 @@ jobs:
       - name: Restore tools
         run: dotnet tool restore || true
 
-      - name: Verify format (non-blocking for now)
+      - name: Auto-fix format
         continue-on-error: true
         run: |
-          dotnet format ${{ env.SOLUTION_PATH }} --verify-no-changes --verbosity minimal \
-            --report ./format-report.json || (echo "::error::Run 'dotnet format' locally and commit changes." && exit 1)
+          dotnet format ${{ env.SOLUTION_PATH }} --verbosity minimal --severity error
+
+      - name: Verify format (error-level only)
+        continue-on-error: true
+        run: |
+          dotnet format ${{ env.SOLUTION_PATH }} --verify-no-changes --verbosity minimal --severity error \
+            --report ./format-report.json || (echo "::error::Formatting drift detected. Run 'dotnet format --severity error' and commit changes." && exit 1)
 
       - name: Format status note
         if: always()
