@@ -142,7 +142,7 @@ public class MathTutoringActuator(
     private async Task<MathTickResult> HandleSubmitAnswerAsync(WorkItem workItem, CancellationToken ct)
     {
         SubmitAnswerPayloadDto? payload;
-        
+
         try
         {
             payload = JsonSerializer.Deserialize<SubmitAnswerPayloadDto>(workItem.PayloadJson);
@@ -185,7 +185,7 @@ public class MathTutoringActuator(
         {
             var errorMessage = string.Join("; ", errors);
             logger.LogWarning("Validation failed for WorkItem {WorkItemId}: {Errors}", workItem.Id, errorMessage);
-            
+
             return new MathTickResult
             {
                 WorkItemId = workItem.Id,
@@ -213,7 +213,7 @@ public class MathTutoringActuator(
         {
             tags.Add("TIMEOUT");
         }
-        
+
         var attempt = await assessmentService.SaveAttemptAsync(
             workItem.StudentId,
             payload.QuestionId,
@@ -261,7 +261,7 @@ public class MathTutoringActuator(
     private async Task<MathTickResult> HandleExplainAsync(WorkItem workItem, CancellationToken ct)
     {
         ExplainPayloadDto? payload;
-        
+
         try
         {
             payload = JsonSerializer.Deserialize<ExplainPayloadDto>(workItem.PayloadJson);
@@ -319,7 +319,7 @@ public class MathTutoringActuator(
     private async Task<MathTickResult> HandleUploadImageAsync(WorkItem workItem, CancellationToken ct)
     {
         UploadImagePayloadDto? payload;
-        
+
         try
         {
             payload = JsonSerializer.Deserialize<UploadImagePayloadDto>(workItem.PayloadJson);

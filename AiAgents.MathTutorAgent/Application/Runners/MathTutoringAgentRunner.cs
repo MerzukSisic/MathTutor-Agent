@@ -30,7 +30,7 @@ public class MathTutoringAgentRunner(
     public override async Task<MathTickResult?> StepAsync(CancellationToken cancellationToken)
     {
         WorkItem? workItem = null;
-        
+
         try
         {
             // SENSE
@@ -56,7 +56,7 @@ public class MathTutoringAgentRunner(
         catch (Exception ex)
         {
             logger.LogError(ex, "Error in agent tick for WorkItem {WorkItemId}", workItem?.Id ?? 0);
-            
+
             // CRITICAL: Mark as failed so it doesn't stay stuck in Processing
             if (workItem != null)
             {

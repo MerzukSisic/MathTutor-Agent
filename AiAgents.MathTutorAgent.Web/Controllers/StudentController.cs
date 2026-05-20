@@ -64,9 +64,9 @@ public class StudentController(StudentProfileService profileService, PdfExportSe
         {
             var profile = await profileService.GetProfileAsync(studentId, lang, HttpContext.RequestAborted);
             var stats = await profileService.GetStudySessionStatsAsync(
-                studentId, 
-                DateTime.UtcNow.AddMonths(-1), 
-                DateTime.UtcNow, 
+                studentId,
+                DateTime.UtcNow.AddMonths(-1),
+                DateTime.UtcNow,
                 lang,
                 HttpContext.RequestAborted);
 

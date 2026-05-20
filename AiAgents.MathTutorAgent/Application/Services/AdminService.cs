@@ -153,8 +153,8 @@ public class AdminService(
         var completedWorkItems = await context.WorkItems
             .CountAsync(w => w.Status == Domain.Enums.WorkStatus.Done, ct);
 
-        var successRate = totalWorkItems > 0 
-            ? (double)completedWorkItems / totalWorkItems * 100 
+        var successRate = totalWorkItems > 0
+            ? (double)completedWorkItems / totalWorkItems * 100
             : 0;
 
         var processedItems = await context.WorkItems

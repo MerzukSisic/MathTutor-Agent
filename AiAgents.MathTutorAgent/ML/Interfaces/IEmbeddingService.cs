@@ -9,7 +9,7 @@ public interface IEmbeddingService
     /// Generate embedding vector from text
     /// </summary>
     Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken ct = default);
-    
+
     /// <summary>
     /// Batch generate embeddings
     /// </summary>

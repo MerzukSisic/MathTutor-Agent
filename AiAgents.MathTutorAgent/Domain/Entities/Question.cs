@@ -9,7 +9,7 @@ public class Question
     public string CorrectAnswer { get; set; } = string.Empty;
     public string? SolutionSteps { get; set; }
     public List<string> CommonMistakes { get; set; } = new();
-    
+
     // Navigation
     public Topic Topic { get; set; } = null!;
     public List<Attempt> Attempts { get; set; } = new();

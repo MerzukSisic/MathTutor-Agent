@@ -16,22 +16,22 @@ public class StubEmbeddingService : IEmbeddingService
     {
         // Generate deterministic "fake" embedding based on text hash
         // In production: call Azure OpenAI ada-002 or use local sentence-transformers model
-        
+
         var hash = MD5.HashData(Encoding.UTF8.GetBytes(text));
         var embedding = new float[EmbeddingDimension];
-        
+
         for (int i = 0; i < EmbeddingDimension; i++)
         {
             embedding[i] = (hash[i % hash.Length] / 255.0f) * 2.0f - 1.0f; // Normalize to [-1, 1]
         }
-        
+
         // Normalize vector
         var magnitude = (float)Math.Sqrt(embedding.Sum(x => x * x));
         for (int i = 0; i < EmbeddingDimension; i++)
         {
             embedding[i] /= magnitude;
         }
-        
+
         return Task.FromResult(embedding);
     }
 

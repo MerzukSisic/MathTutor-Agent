@@ -10,7 +10,7 @@ public class ImageNote
     public string Summary { get; set; } = string.Empty;
     public List<string> Tags { get; set; } = new();
     public string? EmbeddingRef { get; set; }
-    
+
     // Navigation
     public Student Student { get; set; } = null!;
 }

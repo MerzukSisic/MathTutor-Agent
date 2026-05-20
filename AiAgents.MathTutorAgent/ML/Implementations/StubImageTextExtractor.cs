@@ -12,7 +12,7 @@ public class StubImageTextExtractor : IImageTextExtractor
     {
         // Stub: return placeholder data
         // In production: use Azure Computer Vision API, Tesseract, or Mathpix API
-        
+
         var result = new ImageExtractionResult
         {
             ExtractedText = "[OCR Placeholder] Mathematical equation or text from image",

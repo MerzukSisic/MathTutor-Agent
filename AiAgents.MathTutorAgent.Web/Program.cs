@@ -30,7 +30,7 @@ Log.Logger = new LoggerConfiguration()
     .WriteTo.Console(
         outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
         formatProvider: CultureInfo.InvariantCulture)
-    .WriteTo.File("logs/mathtutor-.log", 
+    .WriteTo.File("logs/mathtutor-.log",
         rollingInterval: RollingInterval.Day,
         outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] {Message:lj}{NewLine}{Exception}",
         formatProvider: CultureInfo.InvariantCulture)
@@ -176,7 +176,7 @@ builder.Services.AddDbContext<MathTutorDbContext>(options =>
             errorCodesToAdd: null);
         pgOptions.CommandTimeout(60);
     });
-    
+
     // Log SQL queries in development
     if (builder.Environment.IsDevelopment())
     {
@@ -280,13 +280,13 @@ await using (var scope = app.Services.CreateAsyncScope())
 
         Log.Information("📦 Applying database migrations...");
         await context.Database.MigrateAsync();
-        
+
         Log.Information("🌱 Seeding database...");
         await DatabaseSeeder.SeedAsync(context);
 
         Log.Information("🎲 Generating Bogus synthetic dataset (if enabled)...");
         await BogusTrainingDataSeeder.SeedAsync(context);
-        
+
         Log.Information("✅ Database ready!");
     }
     catch (Exception ex)

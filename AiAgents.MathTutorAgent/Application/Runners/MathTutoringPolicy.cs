@@ -9,15 +9,15 @@ public class MathTutoringPolicy : IPolicy<WorkItem, MathAction>
     public Task<MathAction> DecideAsync(WorkItem percept, CancellationToken ct)
     {
         // GUARD RAILS: Validate payload exists for actions that need it
-        var needsPayload = percept.Type == WorkItemType.SubmitAnswer 
-                           || percept.Type == WorkItemType.Explain 
+        var needsPayload = percept.Type == WorkItemType.SubmitAnswer
+                           || percept.Type == WorkItemType.Explain
                            || percept.Type == WorkItemType.UploadImage;
 
         if (needsPayload && string.IsNullOrWhiteSpace(percept.PayloadJson))
         {
             return Task.FromResult(new MathAction(
-                percept, 
-                MathActionType.RejectInvalid, 
+                percept,
+                MathActionType.RejectInvalid,
                 "Missing required payload"));
         }
 

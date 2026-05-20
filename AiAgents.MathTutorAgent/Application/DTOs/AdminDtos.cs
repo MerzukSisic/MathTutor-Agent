@@ -61,11 +61,11 @@ public record PerformanceMetricsDto
     public int TotalStudents { get; init; }
     public int TotalQuestions { get; init; }
     public int TotalAttempts { get; init; }
-    
+
     // DODANO za Admin.razor:
     public int TotalWorkItems { get; init; }
     public int CompletedWorkItems { get; init; }
     public double SuccessRate { get; init; }  // Renamed from WorkItemSuccessRate
-    
+
     public double AverageProcessingTimeMs { get; init; }
 }

@@ -12,7 +12,7 @@ public class WorkItem
     public string? ResultJson { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ProcessedAt { get; set; }
-    
+
     // Navigation
     public Student Student { get; set; } = null!;
 }

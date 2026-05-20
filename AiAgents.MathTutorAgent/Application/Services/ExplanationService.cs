@@ -9,15 +9,15 @@ public class ExplanationService(
     MathContentLocalizationService localizationService)
 {
     public async Task<ExplanationDto> RetrieveAndComposeExplanationAsync(
-        int studentId, 
-        int? questionId, 
-        int? topicId, 
+        int studentId,
+        int? questionId,
+        int? topicId,
         string? errorTag,
         string? languageCode = null,
         CancellationToken ct = default)
     {
         var references = new List<ReferenceDto>();
-        
+
         // 1. Get actual question text
         string questionText = "";
         if (questionId.HasValue)
@@ -28,7 +28,7 @@ public class ExplanationService(
                 questionText = question.QuestionText;
             }
         }
-        
+
         // 2. Get topic info (backup)
         string topicName = "";
         if (topicId.HasValue)
@@ -39,10 +39,10 @@ public class ExplanationService(
                 topicName = topic.Name;
             }
         }
-        
+
         // 3. ✅ KEYWORD-BASED MATCHING from QUESTION TEXT
         var (explanation, example) = GetExplanationByKeywords(questionText, topicName);
-        
+
         // 4. Try to find matching chunks from KnowledgeBase (simple keyword search)
         var keywords = ExtractKeywords(questionText);
         if (keywords.Any())
@@ -100,7 +100,7 @@ public class ExplanationService(
                 .OrderBy(c => idOrder[c.Id])
                 .Take(2)
                 .ToList();
-            
+
             foreach (var chunk in matchedChunks)
             {
                 references.Add(new ReferenceDto
@@ -112,7 +112,7 @@ public class ExplanationService(
                 });
             }
         }
-        
+
         return new ExplanationDto
         {
             Explanation = localizationService.LocalizeExplanationText(explanation, languageCode),
@@ -120,204 +120,204 @@ public class ExplanationService(
             Sources = references
         };
     }
-    
+
     /// <summary>
     /// ✅ MAIN LOGIC: Match keywords from question to specific explanations
     /// </summary>
     private (string explanation, string example) GetExplanationByKeywords(string questionText, string topicName)
     {
         var lower = questionText.ToLower();
-        
+
         // ========== GEOMETRY - SPECIFIC KEYWORDS ==========
-        
+
         // VERTICES (vrhovi)
         if (lower.Contains("vertices") || lower.Contains("vertex") || lower.Contains("vrh") || lower.Contains("vrhova"))
         {
             if (lower.Contains("cube"))
                 return ("A cube has 8 vertices (corners where edges meet). Count the 4 vertices on top and 4 on bottom.",
                        "Example: Imagine a dice - it has 8 corners where you could put your finger.");
-            
+
             if (lower.Contains("triangle"))
                 return ("A triangle has 3 vertices (corners). Each vertex is where two sides meet.",
                        "Example: Draw a triangle - count the 3 corner points.");
-            
+
             if (lower.Contains("square") || lower.Contains("rectangle"))
                 return ("A square/rectangle has 4 vertices (corners). Each corner is where two sides meet at a right angle.",
                        "Example: A piece of paper has 4 corners.");
-            
+
             return ("Vertices are the corner points where edges meet. Count each corner point of the shape.",
                    "Example: A triangle has 3 vertices, a square has 4, a cube has 8.");
         }
-        
+
         // SIDES (stranice)
         if (lower.Contains("sides") || lower.Contains("side") || lower.Contains("stranic") || lower.Contains("strana"))
         {
             if (lower.Contains("triangle"))
                 return ("A triangle has 3 sides. Each side is a straight line connecting two vertices.",
                        "Example: Count the edges of a triangle - you'll find 3 straight lines.");
-            
+
             if (lower.Contains("square"))
                 return ("A square has 4 equal sides. All sides have the same length.",
                        "Example: A chess board square has 4 equal sides.");
-            
+
             if (lower.Contains("pentagon"))
                 return ("A pentagon has 5 sides. Think of the Pentagon building in USA - it has 5 sides.",
                        "Example: Draw a shape with 5 straight edges - that's a pentagon.");
-            
+
             if (lower.Contains("cube"))
                 return ("A cube has 6 faces (sides). Each face is a square. Think top, bottom, left, right, front, back.",
                        "Example: A dice has 6 faces, numbered 1 through 6.");
-            
+
             return ("Count the straight edges around the perimeter of the shape.",
                    "Example: Triangle=3 sides, Square=4 sides, Pentagon=5 sides.");
         }
-        
+
         // ANGLES (uglovi)
         if (lower.Contains("angle") || lower.Contains("sum of angle") || lower.Contains("ugao") || lower.Contains("uglova"))
         {
             if (lower.Contains("triangle"))
                 return ("The sum of angles in ANY triangle is always 180°. To find a missing angle: subtract the known angles from 180°.",
                        "Example: Triangle with angles 60° and 70°. Missing angle = 180° - 60° - 70° = 50°.");
-            
+
             if (lower.Contains("square") || lower.Contains("rectangle"))
                 return ("Each angle in a square/rectangle is 90° (right angle). Total sum is 360°.",
                        "Example: All 4 corners of a piece of paper are 90° angles.");
-            
+
             return ("Sum of angles in a polygon = (n-2) × 180° where n is the number of sides.",
                    "Example: For triangle (n=3): (3-2) × 180° = 180°.");
         }
-        
+
         // ========== ARITHMETIC ==========
-        
+
         if (lower.Contains("+") || lower.Contains("add") || lower.Contains("plus") || lower.Contains("sum") || lower.Contains("saberi") || lower.Contains("zbir"))
         {
             return ("Addition combines numbers. Start with the first number and count up by the second number.",
                    "Example: 5 + 3 = 8. Start at 5, count: 6, 7, 8.");
         }
-        
+
         if (lower.Contains("-") || lower.Contains("subtract") || lower.Contains("minus") || lower.Contains("difference") || lower.Contains("oduzmi") || lower.Contains("razlika"))
         {
             return ("Subtraction finds the difference. Start with the larger number and count down.",
                    "Example: 10 - 4 = 6. Start at 10, count back: 9, 8, 7, 6.");
         }
-        
+
         if (lower.Contains("×") || lower.Contains("*") || lower.Contains("multiply") || lower.Contains("times") || lower.Contains("pomno") || lower.Contains("umno"))
         {
             return ("Multiplication is repeated addition. 3 × 4 means add 3 four times: 3+3+3+3=12.",
                    "Example: 6 × 7 = 42. Think: 6 groups of 7, or add 7 six times.");
         }
-        
+
         if (lower.Contains("÷") || lower.Contains("/") || lower.Contains("divide") || lower.Contains("podijeli") || lower.Contains("dijeli"))
         {
             return ("Division splits a number into equal parts. Ask 'how many groups fit?'",
                    "Example: 20 ÷ 4 = 5. How many 4s fit in 20? Count: 4, 8, 12, 16, 20 = 5 groups.");
         }
-        
+
         if (lower.Contains("fraction") || lower.Contains("razlom") || lower.Contains("1/") || lower.Contains("/2") || lower.Contains("/3") || lower.Contains("/4"))
         {
             return ("Fractions show parts of a whole. Numerator (top) = how many parts. Denominator (bottom) = total parts. To add fractions, find common denominator first.",
                    "Example: 1/2 + 1/4 = 2/4 + 1/4 = 3/4 (convert to same denominator).");
         }
-        
+
         if (lower.Contains("percent") || lower.Contains("procenat") || lower.Contains("postot") || lower.Contains("%"))
         {
             return ("Percent means 'per hundred'. To find X% of Y, convert to decimal and multiply: (X/100) × Y.",
                    "Example: 25% of 80 = 0.25 × 80 = 20.");
         }
-        
+
         // ========== ALGEBRA ==========
-        
+
         if ((lower.Contains("solve") || lower.Contains("riješi") || lower.Contains("resi")) && (lower.Contains("x") || lower.Contains("equation") || lower.Contains("jednačin")))
         {
             return ("To solve equations, isolate the variable using inverse operations. Whatever you do to one side, do to the other.",
                    "Example: 2x + 5 = 13 → Subtract 5: 2x = 8 → Divide by 2: x = 4.");
         }
-        
+
         if (lower.Contains("simplify") || lower.Contains("pojednostavi") || (lower.Contains("x") && (lower.Contains("+") || lower.Contains("-"))))
         {
             return ("To simplify expressions, combine like terms (terms with the same variable).",
                    "Example: 2x + 3x = 5x (add coefficients). 5a - 2a = 3a.");
         }
-        
+
         if (lower.Contains("expand") || lower.Contains("factor") || lower.Contains("razvij") || lower.Contains("faktori") || lower.Contains("(x"))
         {
             return ("To expand, use FOIL (First, Outer, Inner, Last). To factor, find common factors or patterns.",
                    "Example: (x+3)(x+2) = x² + 2x + 3x + 6 = x² + 5x + 6.");
         }
-        
+
         // ========== LOGIC & SETS ==========
-        
+
         if (lower.Contains("∈") || lower.Contains("element") || lower.Contains("member"))
         {
             return ("∈ means 'is an element of'. Check if the item is listed in the set.",
                    "Example: Is 3 ∈ {1,2,3}? Yes, 3 is in the list.");
         }
-        
+
         if (lower.Contains("∪") || lower.Contains("union"))
         {
             return ("Union (∪) combines all elements from both sets, no duplicates.",
                    "Example: {1,2} ∪ {2,3} = {1,2,3} (2 appears once).");
         }
-        
+
         if (lower.Contains("∩") || lower.Contains("intersection"))
         {
             return ("Intersection (∩) finds elements common to BOTH sets.",
                    "Example: {1,2} ∩ {2,3} = {2} (only 2 is in both).");
         }
-        
+
         if (lower.Contains("tautology") || lower.Contains("∨ ¬"))
         {
             return ("A tautology is always true. Example: p ∨ ¬p (something is true OR false, always true).",
                    "Example: p ∨ ¬p. If p=True: True ∨ False = True. If p=False: False ∨ True = True. Always true!");
         }
-        
+
         // ========== PYTHAGOREAN ==========
-        
+
         if (lower.Contains("pythagorean") || lower.Contains("hypotenuse") || (lower.Contains("right triangle") && lower.Contains("leg")))
         {
             return ("Pythagorean theorem: a² + b² = c² where c is hypotenuse (longest side) and a,b are legs. Only for RIGHT triangles!",
                    "Example: Legs 3 and 4 → 3² + 4² = 9 + 16 = 25 → c² = 25 → c = 5.");
         }
-        
+
         // ========== PERIMETER & AREA ==========
-        
+
         if (lower.Contains("perimeter"))
         {
             return ("Perimeter is the distance around a shape. Add all the sides.",
                    "Example: Rectangle 5×3 → Perimeter = 5+3+5+3 = 16 or 2(5+3) = 16.");
         }
-        
+
         if (lower.Contains("area"))
         {
             if (lower.Contains("rectangle") || lower.Contains("square"))
                 return ("Area of rectangle = length × width. Area of square = side × side.",
                        "Example: Rectangle 5×3 → Area = 5 × 3 = 15.");
-            
+
             if (lower.Contains("triangle"))
                 return ("Area of triangle = (base × height) ÷ 2.",
                        "Example: Base=6, Height=4 → Area = (6×4)÷2 = 12.");
-            
+
             if (lower.Contains("circle"))
                 return ("Area of circle = πr² where r is radius. Circumference = 2πr.",
                        "Example: Radius=3 → Area = 3.14 × 3² = 3.14 × 9 = 28.26.");
-            
+
             return ("Area is the space inside a shape. Use the formula for that specific shape.",
                    "Example: Rectangle=L×W, Triangle=(B×H)÷2, Circle=πr².");
         }
-        
+
         // ========== FALLBACK: USE TOPIC NAME ==========
-        
+
         if (!string.IsNullOrEmpty(topicName))
         {
             return GetFallbackByTopic(topicName);
         }
-        
+
         // ========== ABSOLUTE FALLBACK ==========
-        
+
         return ("Break the problem into smaller steps. Identify what you know, then apply the appropriate method.",
                "Example: Read carefully, identify the operation needed, solve step by step.");
     }
-    
+
     /// <summary>
     /// Extract keywords from question text
     /// </summary>
@@ -325,13 +325,13 @@ public class ExplanationService(
     {
         var keywords = new List<string>();
         var lower = questionText.ToLower();
-        
+
         // Math operations
         if (lower.Contains("add") || lower.Contains("saberi") || lower.Contains("+")) keywords.Add("addition");
         if (lower.Contains("subtract") || lower.Contains("oduzmi") || lower.Contains("-")) keywords.Add("subtraction");
         if (lower.Contains("multiply") || lower.Contains("pomno") || lower.Contains("×")) keywords.Add("multiplication");
         if (lower.Contains("divide") || lower.Contains("dijeli") || lower.Contains("÷")) keywords.Add("division");
-        
+
         // Shapes
         if (lower.Contains("triangle") || lower.Contains("trougao") || lower.Contains("trokut")) keywords.Add("triangle");
         if (lower.Contains("square") || lower.Contains("kvadrat")) keywords.Add("square");
@@ -339,7 +339,7 @@ public class ExplanationService(
         if (lower.Contains("circle") || lower.Contains("krug")) keywords.Add("circle");
         if (lower.Contains("cube") || lower.Contains("kocka")) keywords.Add("cube");
         if (lower.Contains("pentagon") || lower.Contains("petougao") || lower.Contains("petokut")) keywords.Add("pentagon");
-        
+
         // Geometry terms
         if (lower.Contains("angle") || lower.Contains("ugao") || lower.Contains("uglova")) keywords.Add("angles");
         if (lower.Contains("side") || lower.Contains("stranic")) keywords.Add("sides");
@@ -347,18 +347,18 @@ public class ExplanationService(
         if (lower.Contains("perimeter") || lower.Contains("obim")) keywords.Add("perimeter");
         if (lower.Contains("area") || lower.Contains("površin") || lower.Contains("povrsin")) keywords.Add("area");
         if (lower.Contains("pythagorean") || lower.Contains("pitagor")) keywords.Add("pythagorean");
-        
+
         // Algebra
         if (lower.Contains("solve") || lower.Contains("riješi") || lower.Contains("resi")) keywords.Add("equations");
         if (lower.Contains("simplify") || lower.Contains("pojednostavi")) keywords.Add("expressions");
-        
+
         // Logic
         if (lower.Contains("set") || lower.Contains("skup")) keywords.Add("sets");
         if (lower.Contains("tautology") || lower.Contains("tautolog")) keywords.Add("tautology");
-        
+
         return keywords;
     }
-    
+
     /// <summary>
     /// Fallback explanations by topic name
     /// </summary>
@@ -366,31 +366,31 @@ public class ExplanationService(
     {
         return topicName switch
         {
-            "Addition" => ("Addition combines numbers. Start with first number, count up.", 
+            "Addition" => ("Addition combines numbers. Start with first number, count up.",
                           "Example: 5+3=8. Start at 5, count: 6,7,8."),
-            
-            "Subtraction" => ("Subtraction finds difference. Start with larger number, count down.", 
+
+            "Subtraction" => ("Subtraction finds difference. Start with larger number, count down.",
                              "Example: 10-4=6. Start at 10, count: 9,8,7,6."),
-            
-            "Multiplication" => ("Multiplication is repeated addition.", 
+
+            "Multiplication" => ("Multiplication is repeated addition.",
                                 "Example: 3×4 = 3+3+3+3 = 12."),
-            
-            "Division" => ("Division splits into equal parts.", 
+
+            "Division" => ("Division splits into equal parts.",
                           "Example: 20÷4=5. How many 4s in 20? Count: 4,8,12,16,20 = 5 groups."),
-            
-            "Fractions" => ("Fractions show parts of whole. Top=parts you have, Bottom=total parts.", 
+
+            "Fractions" => ("Fractions show parts of whole. Top=parts you have, Bottom=total parts.",
                            "Example: 1/2 + 1/4 = 2/4 + 1/4 = 3/4."),
-            
-            "Linear Equations" => ("Isolate variable using inverse operations.", 
+
+            "Linear Equations" => ("Isolate variable using inverse operations.",
                                   "Example: 2x+5=13 → 2x=8 → x=4."),
-            
-            "Basic Shapes" => ("Know properties: triangles have 3 sides, squares have 4 equal sides.", 
+
+            "Basic Shapes" => ("Know properties: triangles have 3 sides, squares have 4 equal sides.",
                               "Example: Sum of triangle angles = 180°."),
-            
-            "Pythagorean Theorem" => ("In right triangle: a²+b²=c² where c is hypotenuse.", 
+
+            "Pythagorean Theorem" => ("In right triangle: a²+b²=c² where c is hypotenuse.",
                                      "Example: Legs 3,4 → c²=9+16=25 → c=5."),
-            
-            _ => ("Review the foundational principles for this concept. Practice similar problems.", 
+
+            _ => ("Review the foundational principles for this concept. Practice similar problems.",
                  "Example: Break problem into steps, solve each carefully.")
         };
     }

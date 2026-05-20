@@ -7,7 +7,7 @@ public class KnowledgeDocument
     public string Author { get; set; } = string.Empty;
     public string FilePath { get; set; } = string.Empty;
     public DateTime UploadedAt { get; set; } = DateTime.UtcNow;
-    
+
     // Navigation
     public List<KnowledgeChunk> Chunks { get; set; } = new();
 }

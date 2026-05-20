@@ -25,8 +25,8 @@ public class StudentProfileService(
 
         var totalAttempts = student.Attempts.Count;
         var correctAttempts = student.Attempts.Count(a => a.IsCorrect);
-        var averageTime = student.Attempts.Any() 
-            ? student.Attempts.Average(a => a.TimeMs) / 1000.0 
+        var averageTime = student.Attempts.Any()
+            ? student.Attempts.Average(a => a.TimeMs) / 1000.0
             : 0;
 
         var topicProgress = student.TopicStates

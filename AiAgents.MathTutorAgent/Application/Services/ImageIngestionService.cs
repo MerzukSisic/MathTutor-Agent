@@ -13,8 +13,8 @@ public class ImageIngestionService(
     private readonly string _imageStoragePath = "wwwroot/uploads/images";
 
     public async Task<ImageNote> IngestImageAsync(
-        int studentId, 
-        byte[] imageBytes, 
+        int studentId,
+        byte[] imageBytes,
         string fileName,
         CancellationToken ct = default)
     {
@@ -41,7 +41,7 @@ public class ImageIngestionService(
 
         // 4. ✅ FIX: Now set EmbeddingRef using actual ID
         imageNote.EmbeddingRef = $"image_{imageNote.Id}";
-        
+
         // 5. Generate embedding for semantic search
         var textForEmbedding = $"{extractionResult.ExtractedText} {extractionResult.Summary}";
         var embedding = await embeddingService.GenerateEmbeddingAsync(textForEmbedding, ct);
@@ -61,7 +61,7 @@ public class ImageIngestionService(
         var uniqueFileName = $"{Guid.NewGuid()}_{sanitizedFileName}";
         var fullPath = Path.Combine(_imageStoragePath, uniqueFileName);
         await File.WriteAllBytesAsync(fullPath, imageBytes, ct);
-        
+
         // ✅ FIX: Return relative path for web serving
         return $"/uploads/images/{uniqueFileName}";
     }

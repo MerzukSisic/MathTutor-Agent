@@ -8,7 +8,7 @@ public class KnowledgeChunk
     public string ChunkText { get; set; } = string.Empty;
     public List<string> Tags { get; set; } = new();
     public string? EmbeddingRef { get; set; } // Reference to vector store
-    
+
     // Navigation
     public KnowledgeDocument Document { get; set; } = null!;
 }
