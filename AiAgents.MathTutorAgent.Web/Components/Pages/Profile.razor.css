@@ -369,6 +369,32 @@
     box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.2);
 }
 
+.profile-container.theme-dark .topic-item.active {
+    background: linear-gradient(180deg, #1a2d48 0%, #1c3453 100%);
+    border-color: #38bdf8;
+    box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.28), 0 14px 28px rgba(2, 6, 23, 0.45);
+}
+
+.profile-container.theme-dark .topic-item.active .topic-name {
+    color: #f8fbff;
+}
+
+.profile-container.theme-dark .topic-item.active .topic-area {
+    color: #67e8f9;
+}
+
+.profile-container.theme-dark .topic-item.active .topic-score {
+    color: #7dd3fc;
+}
+
+.profile-container.theme-dark .topic-item.active .topic-meta {
+    color: #c3d2e8;
+}
+
+.profile-container.theme-dark .topic-item.active .topic-progress-bar {
+    background: #2f4667;
+}
+
 .topic-header {
     display: flex;
     justify-content: space-between;
@@ -620,6 +646,14 @@
 .area-row.active td {
     color: #0e7490;
     font-weight: 700;
+}
+
+.profile-container.theme-dark .area-row.active {
+    background: #1a2d48;
+}
+
+.profile-container.theme-dark .area-row.active td {
+    color: #dff4ff;
 }
 
 .question-row:nth-child(even) {

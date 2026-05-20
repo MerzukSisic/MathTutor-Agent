@@ -3,6 +3,7 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject UiPreferencesService UiPrefs
+@inject NotificationService Notifications
 @implements IDisposable
 
 <PageTitle>@($"{L("Dodaj pitanje", "Add Question")} - MathTutor AI")</PageTitle>
@@ -16,16 +17,6 @@
             </div>
             <button class="qbtn ghost" @onclick="GoBack">← @L("Nazad", "Back")</button>
         </div>
-
-        @if (!string.IsNullOrWhiteSpace(errorMessage))
-        {
-            <div class="q-alert error">@errorMessage</div>
-        }
-
-        @if (!string.IsNullOrWhiteSpace(successMessage))
-        {
-            <div class="q-alert success">@successMessage</div>
-        }
 
         <div class="qform-grid">
             <label>
@@ -45,7 +36,7 @@
                 }
             </label>
 
-            <label>
+            <label class="q-difficulty-field">
                 @L("Težina (1-5)", "Difficulty (1-5)")
                 <div class="qselect-wrap">
                     <select class="qinput qselect" @bind="difficulty" disabled="@isSubmitting">
@@ -108,8 +99,6 @@
     private bool showTopicError;
     private bool showQuestionTextError;
     private bool showCorrectAnswerError;
-    private string? errorMessage;
-    private string? successMessage;
     private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
     protected override void OnInitialized()
@@ -130,7 +119,7 @@
         }
         catch
         {
-            errorMessage = L("Učitavanje tema nije uspjelo. Osvježi stranicu.", "Failed to load topics. Please refresh.");
+            NotifyError(L("Učitavanje tema nije uspjelo. Osvježi stranicu.", "Failed to load topics. Please refresh."));
         }
     }
 
@@ -156,15 +145,13 @@
 
     private async Task CreateQuestion()
     {
-        errorMessage = null;
-        successMessage = null;
         showTopicError = false;
         showQuestionTextError = false;
         showCorrectAnswerError = false;
 
         if (!ValidateForm())
         {
-            errorMessage = L("Ispravi greške u formi.", "Please fix validation errors in the form.");
+            NotifyWarning(L("Ispravi greške u formi.", "Please fix validation errors in the form."));
             return;
         }
 
@@ -185,17 +172,17 @@
             var response = await Http.PostAsJsonAsync("/api/admin/questions", dto);
             if (!response.IsSuccessStatusCode)
             {
-                errorMessage = $"{L("Kreiranje pitanja nije uspjelo", "Failed to create question")} ({response.StatusCode}).";
+                NotifyError($"{L("Kreiranje pitanja nije uspjelo", "Failed to create question")} ({response.StatusCode}).");
                 return;
             }
 
-            successMessage = L("Pitanje je uspješno kreirano. Preusmjeravam...", "Question created successfully. Redirecting...");
+            NotifySuccess(L("Uspješno ste kreirali pitanje.", "You successfully created the question."));
             await Task.Delay(800);
             Navigation.NavigateTo("/admin?status=question-created");
         }
         catch (Exception ex)
         {
-            errorMessage = ex.Message;
+            NotifyError(ex.Message);
         }
         finally
         {
@@ -212,4 +199,13 @@
     {
         UiPrefs.Changed -= HandleLanguageChanged;
     }
+
+    private void NotifySuccess(string detail)
+        => Notifications.Notify(NotificationSeverity.Success, L("Uspješno", "Success"), detail, 4500);
+
+    private void NotifyWarning(string detail)
+        => Notifications.Notify(NotificationSeverity.Warning, L("Provjeri unos", "Check input"), detail, 4500);
+
+    private void NotifyError(string detail)
+        => Notifications.Notify(NotificationSeverity.Error, L("Neuspješno", "Failed"), detail, 6000);
 }

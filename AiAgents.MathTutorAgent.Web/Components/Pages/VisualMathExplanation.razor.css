@@ -133,3 +133,45 @@
     display: flex;
     gap: 0.18rem;
 }
+
+.theme-dark .visual-explain {
+    border-color: #355175;
+    background: linear-gradient(180deg, #13253d, #101f34);
+}
+
+.theme-dark .visual-explain h4,
+.theme-dark .ve-op {
+    color: #e5edf8;
+}
+
+.theme-dark .ve-chip,
+.theme-dark .ve-group {
+    border-color: #355175;
+    background: #12263f;
+    color: #e5edf8;
+}
+
+.theme-dark .ve-group.answer,
+.theme-dark .ve-chip.answer {
+    border-color: #1f8e56;
+    background: #113227;
+    color: #8af0bb;
+}
+
+.theme-dark .ve-group-label {
+    color: #7dd3fc;
+}
+
+.theme-dark .ve-block p,
+.theme-dark .ve-steps {
+    color: #c3d2e8;
+}
+
+.theme-dark .ve-step {
+    background: #1f2f4c;
+    color: #dbeafe;
+}
+
+.theme-dark .ve-arrow {
+    color: #67e8f9;
+}

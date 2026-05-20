@@ -252,3 +252,52 @@
         grid-template-columns: 1fr;
     }
 }
+
+.theme-dark .area-visual-guide {
+    border-color: #355175;
+    background: linear-gradient(180deg, #13253d, #101f34);
+}
+
+.theme-dark .avg-head h4,
+.theme-dark .avg-op,
+.theme-dark .avg-arrow {
+    color: #e5edf8;
+}
+
+.theme-dark .avg-tag {
+    color: #7dd3fc;
+    background: #16314f;
+    border-color: #38bdf8;
+}
+
+.theme-dark .avg-card p,
+.theme-dark .avg-group strong,
+.theme-dark .avg-center {
+    color: #c3d2e8;
+}
+
+.theme-dark .avg-chip,
+.theme-dark .avg-group,
+.theme-dark .avg-pan,
+.theme-dark .avg-step,
+.theme-dark .proof-node,
+.theme-dark .logic-cell {
+    background: #12263f;
+    border-color: #355175;
+    color: #e5edf8;
+}
+
+.theme-dark .logic-cell.true {
+    background: #113227;
+    border-color: #1f8e56;
+}
+
+.theme-dark .logic-cell.false {
+    background: #3b1e2a;
+    border-color: #9f3650;
+}
+
+.theme-dark .logic-cell.result {
+    background: #1f2f4c;
+    border-color: #486a97;
+}

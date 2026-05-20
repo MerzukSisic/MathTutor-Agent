@@ -3,6 +3,7 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject UiPreferencesService UiPrefs
+@inject NotificationService Notifications
 @implements IDisposable
 
 <PageTitle>@($"{L("Uredi pitanje", "Edit Question")} - MathTutor AI")</PageTitle>
@@ -23,16 +24,6 @@
         }
         else
         {
-            @if (!string.IsNullOrWhiteSpace(errorMessage))
-            {
-                <div class="q-alert error">@errorMessage</div>
-            }
-
-            @if (!string.IsNullOrWhiteSpace(successMessage))
-            {
-                <div class="q-alert success">@successMessage</div>
-            }
-
             <div class="qform-grid">
                 <label>
                     @L("Tema", "Topic")
@@ -47,7 +38,7 @@
                     </div>
                 </label>
 
-                <label>
+                <label class="q-difficulty-field">
                     @L("Težina (1-5)", "Difficulty (1-5)")
                     <div class="qselect-wrap">
                         <select class="qinput qselect" @bind="difficulty" disabled="@isSubmitting">
@@ -104,8 +95,6 @@
     private string? solutionSteps;
     private string commonMistakesRaw = string.Empty;
 
-    private string? errorMessage;
-    private string? successMessage;
     private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
     protected override void OnInitialized()
@@ -123,7 +112,7 @@
 
             if (selected == null)
             {
-                errorMessage = L("Pitanje nije pronađeno.", "Question not found.");
+                NotifyError(L("Pitanje nije pronađeno.", "Question not found."));
                 return;
             }
 
@@ -134,7 +123,7 @@
         }
         catch (Exception ex)
         {
-            errorMessage = ex.Message;
+            NotifyError(ex.Message);
         }
         finally
         {
@@ -161,12 +150,9 @@
 
     private async Task UpdateQuestion()
     {
-        errorMessage = null;
-        successMessage = null;
-
         if (!IsValid())
         {
-            errorMessage = L("Popuni sva obavezna polja.", "Please fill all required fields.");
+            NotifyWarning(L("Popuni sva obavezna polja.", "Please fill all required fields."));
             return;
         }
 
@@ -187,17 +173,17 @@
             var response = await Http.PutAsJsonAsync($"/api/admin/questions/{Id}", dto);
             if (!response.IsSuccessStatusCode)
             {
-                errorMessage = $"{L("Ažuriranje pitanja nije uspjelo", "Failed to update question")} ({response.StatusCode}).";
+                NotifyError($"{L("Ažuriranje pitanja nije uspjelo", "Failed to update question")} ({response.StatusCode}).");
                 return;
             }
 
-            successMessage = L("Pitanje je uspješno ažurirano. Preusmjeravam...", "Question updated successfully. Redirecting...");
+            NotifySuccess(L("Uspješno ste editovali pitanje.", "You successfully edited the question."));
             await Task.Delay(800);
             Navigation.NavigateTo("/admin?status=question-updated");
         }
         catch (Exception ex)
         {
-            errorMessage = ex.Message;
+            NotifyError(ex.Message);
         }
         finally
         {
@@ -214,4 +200,13 @@
     {
         UiPrefs.Changed -= HandleLanguageChanged;
     }
+
+    private void NotifySuccess(string detail)
+        => Notifications.Notify(NotificationSeverity.Success, L("Uspješno", "Success"), detail, 4500);
+
+    private void NotifyWarning(string detail)
+        => Notifications.Notify(NotificationSeverity.Warning, L("Provjeri unos", "Check input"), detail, 4500);
+
+    private void NotifyError(string detail)
+        => Notifications.Notify(NotificationSeverity.Error, L("Neuspješno", "Failed"), detail, 6000);
 }

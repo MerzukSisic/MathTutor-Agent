@@ -187,3 +187,71 @@
         font-size: 0.92rem;
     }
 }
+
+.theme-dark .crossmath-challenge {
+    border-color: #355175;
+    background: linear-gradient(180deg, #13253d, #101f34);
+}
+
+.theme-dark .crossmath-head h3 {
+    color: #e5edf8;
+}
+
+.theme-dark .crossmath-head p,
+.theme-dark .crossmath-bank p {
+    color: #b4c5dc;
+}
+
+.theme-dark .crossmath-size {
+    border-color: #38bdf8;
+    background: #16314f;
+    color: #7dd3fc;
+}
+
+.theme-dark .crossmath-row {
+    background: #12263f;
+    border-color: #355175;
+}
+
+.theme-dark .math-cell.fixed,
+.theme-dark .math-cell.hidden,
+.theme-dark .crossmath-bank {
+    background: #0f1f36;
+    border-color: #355175;
+    color: #e5edf8;
+}
+
+.theme-dark .math-op {
+    color: #dbeafe;
+}
+
+.theme-dark .row-target {
+    color: #93c5fd;
+}
+
+.theme-dark .row-status.pending {
+    color: #94a3b8;
+}
+
+.theme-dark .bank-item {
+    border-color: #38bdf8;
+    background: #16314f;
+    color: #7dd3fc;
+}
+
+.theme-dark .progress {
+    color: #67e8f9;
+}
+
+.theme-dark .btn-clear-cell,
+.theme-dark .btn-reset-board {
+    border-color: #355175;
+    background: #12263f;
+    color: #dbeafe;
+}
+
+.theme-dark .crossmath-success {
+    border-color: #1f8e56;
+    background: #113227;
+    color: #8af0bb;
+}
