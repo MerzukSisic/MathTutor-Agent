@@ -182,7 +182,9 @@
                     data.TryGetProperty("message", out var msgEl);
                     msg = msgEl.ValueKind == JsonValueKind.String ? msgEl.GetString() : null;
                 }
-                errorMessage = string.IsNullOrWhiteSpace(msg) ? L("Registracija nije uspjela. Probaj drugi email.", "Registration failed. Try another email.") : msg;
+                errorMessage = string.IsNullOrWhiteSpace(msg)
+                    ? L("Registracija nije uspjela. Probaj drugi email.", "Registration failed. Try another email.")
+                    : LocalizeServerMessage(msg);
                 return;
             }
 
@@ -224,5 +226,20 @@
     public void Dispose()
     {
         UiPrefs.Changed -= HandleLanguageChanged;
+    }
+
+    private string LocalizeServerMessage(string message)
+    {
+        if (UiPrefs.Language == UiLanguage.En)
+        {
+            return message;
+        }
+
+        if (message.Contains("Email already in use", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Email je već zauzet. Ako te je nastavnik pozvao, klikni 'Zaboravljena lozinka' i postavi svoju šifru.";
+        }
+
+        return message;
     }
 }

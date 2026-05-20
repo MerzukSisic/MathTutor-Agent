@@ -33,7 +33,11 @@ public class AuthService(
         var email = StringNormalizer.NormalizeEmail(request.Email);
         if (await context.UserAccounts.AnyAsync(u => u.Email == email, ct))
         {
-            return new AuthResultDto { Success = false, Message = "Email already in use." };
+            return new AuthResultDto
+            {
+                Success = false,
+                Message = "Email already in use. If your teacher invited you, use Forgot Password to set your password."
+            };
         }
 
         await using var tx = await context.Database.BeginTransactionAsync(ct);
@@ -58,7 +62,7 @@ public class AuthService(
             Email = email,
             PasswordHash = passwordHashingService.HashPassword(request.Password),
             Role = UserRoles.Student,
-            EmailConfirmed = !emailService.IsEnabled,
+            EmailConfirmed = true,
             StudentId = student.Id,
             CreatedAt = DateTime.UtcNow
         };
@@ -75,9 +79,7 @@ public class AuthService(
         return new AuthResultDto
         {
             Success = true,
-            Message = emailService.IsEnabled
-                ? "Account created. Please check your email to confirm your account."
-                : "Account created successfully.",
+            Message = "Account created successfully.",
             User = ToDto(account)
         };
     }
