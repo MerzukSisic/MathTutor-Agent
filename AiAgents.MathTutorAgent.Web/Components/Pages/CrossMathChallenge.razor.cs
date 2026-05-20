@@ -138,10 +138,10 @@ public partial class CrossMathChallenge
         return new[] { first }.Concat(divisors).ToArray();
     }
 
-    private static int Evaluate(IReadOnlyList<int> row, CrossMathOperationMode mode)
+    private static int Evaluate(int[] row, CrossMathOperationMode mode)
     {
         var acc = row[0];
-        for (var i = 1; i < row.Count; i++)
+        for (var i = 1; i < row.Length; i++)
         {
             acc = mode switch
             {

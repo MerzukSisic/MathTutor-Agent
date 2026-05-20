@@ -12,11 +12,35 @@ public class AgentBackgroundService(
     ILogger<AgentBackgroundService> logger)
     : BackgroundService
 {
+    private static readonly Action<ILogger, Exception?> LogServiceStartedMessage =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(2000, nameof(LogServiceStartedMessage)),
+            "AgentBackgroundService started");
+
+    private static readonly Action<ILogger, int, object?, Exception?> LogWorkItemProcessedMessage =
+        LoggerMessage.Define<int, object?>(
+            LogLevel.Information,
+            new EventId(2001, nameof(LogWorkItemProcessedMessage)),
+            "Processed work item {WorkItemId}: {Outcome}");
+
+    private static readonly Action<ILogger, Exception?> LogTickErrorMessage =
+        LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(2002, nameof(LogTickErrorMessage)),
+            "Error in agent tick");
+
+    private static readonly Action<ILogger, Exception?> LogServiceStoppedMessage =
+        LoggerMessage.Define(
+            LogLevel.Information,
+            new EventId(2003, nameof(LogServiceStoppedMessage)),
+            "AgentBackgroundService stopped");
+
     private readonly AgentBackgroundOptions _options = optionsAccessor.Value;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        logger.LogInformation("AgentBackgroundService started");
+        LogServiceStartedMessage(logger, null);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -38,8 +62,7 @@ public class AgentBackgroundService(
                         result,
                         stoppingToken);
 
-                    logger.LogInformation("Processed work item {WorkItemId}: {Outcome}",
-                        result.WorkItemId, result.Outcome);
+                    LogWorkItemProcessedMessage(logger, result.WorkItemId, result.Outcome, null);
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
@@ -48,11 +71,11 @@ public class AgentBackgroundService(
             }
             catch (Exception ex)
             {
-                logger.LogError(ex, "Error in agent tick");
+                LogTickErrorMessage(logger, ex);
                 await Task.Delay(TimeSpan.FromSeconds(_options.ErrorDelaySeconds), stoppingToken);
             }
         }
 
-        logger.LogInformation("AgentBackgroundService stopped");
+        LogServiceStoppedMessage(logger, null);
     }
 }

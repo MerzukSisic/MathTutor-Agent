@@ -10,6 +10,18 @@ public class SmtpEmailService(
     ILogger<SmtpEmailService> logger)
     : IEmailService
 {
+    private static readonly Action<ILogger, string, string, Exception?> LogEmailDisabledMessage =
+        LoggerMessage.Define<string, string>(
+            LogLevel.Information,
+            new EventId(2100, nameof(LogEmailDisabledMessage)),
+            "Email disabled. Skipping message to {To}. Subject: {Subject}");
+
+    private static readonly Action<ILogger, string, Exception?> LogEmailSentMessage =
+        LoggerMessage.Define<string>(
+            LogLevel.Information,
+            new EventId(2101, nameof(LogEmailSentMessage)),
+            "Email sent to {To}");
+
     private readonly EmailSettings emailSettings = settings.Value;
     public bool IsEnabled => emailSettings.Enabled;
 
@@ -17,7 +29,7 @@ public class SmtpEmailService(
     {
         if (!emailSettings.Enabled)
         {
-            logger.LogInformation("Email disabled. Skipping message to {To}. Subject: {Subject}", to, subject);
+            LogEmailDisabledMessage(logger, to, subject, null);
             return;
         }
 
@@ -37,6 +49,6 @@ public class SmtpEmailService(
         };
 
         await client.SendMailAsync(message, ct);
-        logger.LogInformation("Email sent to {To}", to);
+        LogEmailSentMessage(logger, to, null);
     }
 }

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Globalization;
 using AiAgents.MathTutorAgent.Application.DTOs;
 using AiAgents.MathTutorAgent.Web.Services;
 using Microsoft.AspNetCore.Components;
@@ -10,6 +11,11 @@ namespace AiAgents.MathTutorAgent.Web.Components.Pages;
 
 public partial class Quiz
 {
+    private static readonly JsonSerializerOptions CaseInsensitiveJsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
     [Parameter] public int StudentId { get; set; }
     private static readonly Regex ArithmeticOperationRegex = new(@"(\d+)\s*([+\-])\s*(\d+)", RegexOptions.Compiled);
     private static readonly Regex GeometryCountRegex = new(
@@ -74,7 +80,7 @@ public partial class Quiz
                 {
                     currentQuestion = JsonSerializer.Deserialize<QuestionDto>(
                         questionJson.GetRawText(),
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        CaseInsensitiveJsonOptions);
                 }
 
                 questionStartTime = DateTime.UtcNow;
@@ -91,7 +97,7 @@ public partial class Quiz
                 {
                     feedback = JsonSerializer.Deserialize<FeedbackDto>(
                         feedbackJson.GetRawText(),
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        CaseInsensitiveJsonOptions);
                 }
 
                 isSubmitting = false;
@@ -105,7 +111,7 @@ public partial class Quiz
                 {
                     explanation = JsonSerializer.Deserialize<ExplanationDto>(
                         explanationJson.GetRawText(),
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                        CaseInsensitiveJsonOptions);
                 }
 
                 await InvokeAsync(StateHasChanged);
@@ -227,9 +233,9 @@ public partial class Quiz
             return;
         }
 
-        var a = int.Parse(match.Groups[1].Value);
+        var a = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
         var op = match.Groups[2].Value;
-        var b = int.Parse(match.Groups[3].Value);
+        var b = int.Parse(match.Groups[3].Value, CultureInfo.InvariantCulture);
 
         if (op == "+")
         {
@@ -386,7 +392,9 @@ public partial class Quiz
 
     private void HandleGeometrySelectionChanged(int selectedCount)
     {
-        userAnswer = selectedCount <= 0 ? string.Empty : selectedCount.ToString();
+        userAnswer = selectedCount <= 0
+            ? string.Empty
+            : selectedCount.ToString(CultureInfo.InvariantCulture);
     }
 
     private async Task HandleMilestoneChallengeCompleted()
@@ -553,7 +561,7 @@ public partial class Quiz
             return;
         }
 
-        userAnswer = GetVisualResult().ToString();
+        userAnswer = GetVisualResult().ToString(CultureInfo.InvariantCulture);
     }
 
     private void StartCountdown()
@@ -619,9 +627,11 @@ public partial class Quiz
         {
             await hubConnection.DisposeAsync();
         }
+
+        GC.SuppressFinalize(this);
     }
 
-    private class FeedbackDto
+    private sealed class FeedbackDto
     {
         public bool IsCorrect { get; set; }
         public bool IsTimedOut { get; set; }

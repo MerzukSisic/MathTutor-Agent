@@ -14,18 +14,23 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Radzen;
 using Serilog;
 using System.Threading.RateLimiting;
+using System.Globalization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ========== LOGGING ==========
 Log.Logger = new LoggerConfiguration()
-    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.Console(
+        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+        formatProvider: CultureInfo.InvariantCulture)
     .WriteTo.File("logs/mathtutor-.log", 
         rollingInterval: RollingInterval.Day,
-        outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+        outputTemplate: "[{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} {Level:u3}] {Message:lj}{NewLine}{Exception}",
+        formatProvider: CultureInfo.InvariantCulture)
     .CreateLogger();
 
 builder.Host.UseSerilog();
@@ -142,8 +147,9 @@ builder.Services.AddScoped(sp =>
 // ========== DATABASE ==========
 builder.Services.AddDbContext<MathTutorDbContext>(options =>
 {
-    var postgresConnectionString = builder.Configuration.GetConnectionString("PostgresConnection")
+    var rawPostgresConnectionString = builder.Configuration.GetConnectionString("PostgresConnection")
         ?? throw new InvalidOperationException("PostgreSQL connection string not found. Configure ConnectionStrings:PostgresConnection.");
+    var postgresConnectionString = NormalizePostgresConnectionString(rawPostgresConnectionString);
 
     options.UseNpgsql(postgresConnectionString, pgOptions =>
     {
@@ -336,4 +342,74 @@ catch (Exception ex)
 finally
 {
     Log.CloseAndFlush();
+}
+
+static string NormalizePostgresConnectionString(string rawConnectionString)
+{
+    var connectionString = rawConnectionString.Trim().Trim('"', '\'');
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        throw new InvalidOperationException(
+            "ConnectionStrings:PostgresConnection is empty. Provide a valid PostgreSQL connection string.");
+    }
+
+    if (!connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) &&
+        !connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+    {
+        return connectionString;
+    }
+
+    if (!Uri.TryCreate(connectionString, UriKind.Absolute, out var uri))
+    {
+        throw new InvalidOperationException(
+            "ConnectionStrings:PostgresConnection is not a valid postgres:// URL.");
+    }
+
+    var userInfoParts = uri.UserInfo.Split(':', 2, StringSplitOptions.None);
+    if (userInfoParts.Length != 2 || string.IsNullOrWhiteSpace(userInfoParts[0]))
+    {
+        throw new InvalidOperationException(
+            "ConnectionStrings:PostgresConnection URL is missing username/password.");
+    }
+
+    var builder = new NpgsqlConnectionStringBuilder
+    {
+        Host = uri.Host,
+        Port = uri.IsDefaultPort ? 5432 : uri.Port,
+        Database = uri.AbsolutePath.Trim('/'),
+        Username = Uri.UnescapeDataString(userInfoParts[0]),
+        Password = Uri.UnescapeDataString(userInfoParts[1]),
+        Pooling = true
+    };
+
+    if (string.IsNullOrWhiteSpace(builder.Database))
+    {
+        throw new InvalidOperationException(
+            "ConnectionStrings:PostgresConnection URL must include a database name in the path.");
+    }
+
+    var query = uri.Query.TrimStart('?');
+    foreach (var pair in query.Split('&', StringSplitOptions.RemoveEmptyEntries))
+    {
+        var parts = pair.Split('=', 2, StringSplitOptions.None);
+        var key = Uri.UnescapeDataString(parts[0]).Trim().ToLowerInvariant();
+        var value = parts.Length > 1 ? Uri.UnescapeDataString(parts[1]).Trim() : string.Empty;
+
+        if (key is "sslmode" && Enum.TryParse<SslMode>(value, ignoreCase: true, out var sslMode))
+        {
+            builder.SslMode = sslMode;
+        }
+        else if (key is "pooling" && bool.TryParse(value, out var pooling))
+        {
+            builder.Pooling = pooling;
+        }
+        else if (key is "maxpoolsize" or "maximum pool size" &&
+                 int.TryParse(value, out var maxPoolSize) &&
+                 maxPoolSize > 0)
+        {
+            builder.MaxPoolSize = maxPoolSize;
+        }
+    }
+
+    return builder.ToString();
 }

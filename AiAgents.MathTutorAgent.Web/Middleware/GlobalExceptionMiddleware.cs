@@ -5,6 +5,12 @@ namespace AiAgents.MathTutorAgent.Web.Middleware;
 
 public class GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
 {
+    private static readonly Action<ILogger, Exception?> LogUnhandledExceptionMessage =
+        LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(2200, nameof(LogUnhandledExceptionMessage)),
+            "Unhandled exception occurred");
+
     public async Task InvokeAsync(HttpContext context)
     {
         try
@@ -13,7 +19,7 @@ public class GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExcep
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Unhandled exception occurred");
+            LogUnhandledExceptionMessage(logger, ex);
             await HandleExceptionAsync(context, ex);
         }
     }

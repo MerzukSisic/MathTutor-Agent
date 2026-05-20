@@ -16,6 +16,7 @@ env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
   DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
   BUILD_CONFIGURATION: Release
   SOLUTION_PATH: AiAgents.MathTutor.sln
 
@@ -134,7 +135,7 @@ jobs:
         with:
           name: test-results
           path: ./TestResults
-          if-no-files-found: warn
+          if-no-files-found: ignore
           retention-days: 14
 
       - name: Upload coverage HTML
@@ -143,7 +144,7 @@ jobs:
         with:
           name: coverage-report
           path: ./CoverageReport
-          if-no-files-found: warn
+          if-no-files-found: ignore
           retention-days: 14
 
       - name: Publish test results

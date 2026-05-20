@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Globalization;
 using AiAgents.MathTutorAgent.Application.DTOs;
 using AiAgents.MathTutorAgent.Application.Services;
 using AiAgents.MathTutorAgent.Domain.Entities;
@@ -146,7 +147,7 @@ public class AuthController(
     {
         var claims = new List<Claim>
         {
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.NameIdentifier, user.Id.ToString(CultureInfo.InvariantCulture)),
             new(ClaimTypes.Name, user.FullName),
             new(ClaimTypes.Email, user.Email),
             new(ClaimTypes.Role, user.Role),
@@ -155,7 +156,7 @@ public class AuthController(
 
         if (user.StudentId.HasValue)
         {
-            claims.Add(new Claim("student_id", user.StudentId.Value.ToString()));
+            claims.Add(new Claim("student_id", user.StudentId.Value.ToString(CultureInfo.InvariantCulture)));
         }
 
         var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
