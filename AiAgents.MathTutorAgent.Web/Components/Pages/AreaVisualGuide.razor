@@ -105,12 +105,30 @@
 
             case "prealgebra":
                 <div class="avg-card">
-                    <p>@L("Posmatraj nepoznatu kao kutiju i drži obje strane jednačine u ravnoteži.", "Think of the unknown as a box and keep both sides balanced.")</p>
-                    <div class="avg-balance">
-                        <div class="avg-pan">📦 + 3</div>
-                        <div class="avg-center">⚖️</div>
-                        <div class="avg-pan">8</div>
-                    </div>
+                    @if (normalizedTopic == "orderofoperations")
+                    {
+                        <p>@L("Redoslijed: prvo zagrade, zatim množenje/dijeljenje, pa sabiranje/oduzimanje.", "Order: parentheses first, then multiplication/division, then addition/subtraction.")</p>
+
+                        @if (TryParseParenthesizedMultiplication(QuestionText, out var left, out var right, out var factor, out var grouped, out var final))
+                        {
+                            <div class="avg-steps">
+                                <span class="avg-step">(@left + @right) × @factor</span>
+                                <span class="avg-arrow">→</span>
+                                <span class="avg-step">@grouped × @factor</span>
+                                <span class="avg-arrow">→</span>
+                                <span class="avg-step answer">@final</span>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p>@L("Posmatraj nepoznatu kao kutiju i drži obje strane jednačine u ravnoteži.", "Think of the unknown as a box and keep both sides balanced.")</p>
+                        <div class="avg-balance">
+                            <div class="avg-pan">📦 + 3</div>
+                            <div class="avg-center">⚖️</div>
+                            <div class="avg-pan">8</div>
+                        </div>
+                    }
                 </div>
                 break;
 
@@ -185,11 +203,13 @@
     [Parameter] public string? QuestionText { get; set; }
 
     private string normalizedArea = string.Empty;
+    private string normalizedTopic = string.Empty;
     private string L(string bs, string en) => UiPrefs.Language == UiLanguage.Bs ? bs : en;
 
     protected override void OnParametersSet()
     {
         normalizedArea = NormalizeArea(AreaName);
+        normalizedTopic = NormalizeTopic(TopicName);
     }
 
     private static string NormalizeArea(string? area)
@@ -212,6 +232,16 @@
             "proofs" or "dokazi" => "proofs",
             _ => string.Empty
         };
+    }
+
+    private static string NormalizeTopic(string? topic)
+    {
+        if (string.IsNullOrWhiteSpace(topic))
+        {
+            return string.Empty;
+        }
+
+        return topic.Replace(" ", string.Empty).ToLowerInvariant();
     }
 
     private static string OperatorToText(char op)
@@ -288,5 +318,39 @@
             '/' => b > 0 && a % b == 0 && a <= 20 && b <= 5 && result <= 10,
             _ => false
         };
+    }
+
+    private static bool TryParseParenthesizedMultiplication(
+        string? text,
+        out int left,
+        out int right,
+        out int factor,
+        out int grouped,
+        out int final)
+    {
+        left = 0;
+        right = 0;
+        factor = 0;
+        grouped = 0;
+        final = 0;
+
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return false;
+        }
+
+        var match = Regex.Match(text, @"\(\s*(\d+)\s*\+\s*(\d+)\s*\)\s*([xX*×])\s*(\d+)");
+        if (!match.Success)
+        {
+            return false;
+        }
+
+        left = int.Parse(match.Groups[1].Value);
+        right = int.Parse(match.Groups[2].Value);
+        factor = int.Parse(match.Groups[4].Value);
+        grouped = left + right;
+        final = grouped * factor;
+
+        return final >= 0;
     }
 }

@@ -126,7 +126,7 @@ public class ExplanationService(
     /// </summary>
     private (string explanation, string example) GetExplanationByKeywords(string questionText, string topicName)
     {
-        var lower = questionText.ToLower();
+        var lower = questionText.ToLowerInvariant();
 
         // ========== GEOMETRY - SPECIFIC KEYWORDS ==========
 
@@ -188,6 +188,12 @@ public class ExplanationService(
         }
 
         // ========== ARITHMETIC ==========
+
+        if (IsOrderOfOperationsPrompt(lower))
+        {
+            return ("When an expression has multiple operations, follow order of operations: parentheses first, then multiplication/division, then addition/subtraction from left to right.",
+                   "Example: (7 + 3) × 4 → first 7 + 3 = 10, then 10 × 4 = 40.");
+        }
 
         if (lower.Contains("+") || lower.Contains("add") || lower.Contains("plus") || lower.Contains("sum") || lower.Contains("saberi") || lower.Contains("zbir"))
         {
@@ -324,7 +330,9 @@ public class ExplanationService(
     private List<string> ExtractKeywords(string questionText)
     {
         var keywords = new List<string>();
-        var lower = questionText.ToLower();
+        var lower = questionText.ToLowerInvariant();
+
+        if (IsOrderOfOperationsPrompt(lower)) keywords.Add("order_of_operations");
 
         // Math operations
         if (lower.Contains("add") || lower.Contains("saberi") || lower.Contains("+")) keywords.Add("addition");
@@ -378,6 +386,9 @@ public class ExplanationService(
             "Division" => ("Division splits into equal parts.",
                           "Example: 20÷4=5. How many 4s in 20? Count: 4,8,12,16,20 = 5 groups."),
 
+            "Order of Operations" => ("When an expression has multiple operations, follow this order: parentheses first, then multiplication/division, then addition/subtraction.",
+                                     "Example: (7 + 3) × 4 → 10 × 4 = 40."),
+
             "Fractions" => ("Fractions show parts of whole. Top=parts you have, Bottom=total parts.",
                            "Example: 1/2 + 1/4 = 2/4 + 1/4 = 3/4."),
 
@@ -393,5 +404,31 @@ public class ExplanationService(
             _ => ("Review the foundational principles for this concept. Practice similar problems.",
                  "Example: Break problem into steps, solve each carefully.")
         };
+    }
+
+    private static bool IsOrderOfOperationsPrompt(string lower)
+    {
+        if (string.IsNullOrWhiteSpace(lower))
+        {
+            return false;
+        }
+
+        if (!lower.Any(char.IsDigit))
+        {
+            return false;
+        }
+
+        if (lower.Contains("order of operations") || lower.Contains("redoslijed operacija") || lower.Contains("prioritet operacija"))
+        {
+            return true;
+        }
+
+        var operatorCount = 0;
+        if (lower.Contains('+')) operatorCount++;
+        if (lower.Contains('-')) operatorCount++;
+        if (lower.Contains('*') || lower.Contains('×')) operatorCount++;
+        if (lower.Contains('/') || lower.Contains('÷')) operatorCount++;
+
+        return lower.Contains('(') || lower.Contains(')') || operatorCount >= 2;
     }
 }
