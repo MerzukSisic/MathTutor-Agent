@@ -18,6 +18,7 @@ public partial class Quiz
 
     [Parameter] public int StudentId { get; set; }
     private static readonly Regex ArithmeticOperationRegex = new(@"(\d+)\s*([+\-])\s*(\d+)", RegexOptions.Compiled);
+    private static readonly Regex ArithmeticOperatorSymbolRegex = new(@"[+\-*/×÷]", RegexOptions.Compiled);
     private static readonly Regex GeometryCountRegex = new(
         @"(?:how\s+many\s+(?<target>sides|vertices)\s+does\s+(?:an?\s+)?(?<shape>[a-z\-\s]+?)\s+have\??)|(?:koliko\s+(?<targetbs>stranica|vrhova)\s+ima\s+(?:[a-zčćžšđ]+\s+)?(?<shapebs>[a-zčćžšđ\-\s]+)\??)",
         RegexOptions.IgnoreCase | RegexOptions.Compiled);
@@ -230,6 +231,14 @@ public partial class Quiz
         visualPractice = null;
 
         if (currentQuestion == null || !currentQuestion.IsFirstQuestionInTopicForStudent)
+        {
+            return;
+        }
+
+        // Avoid misleading visuals for compound expressions such as "7 + 3 * 4".
+        // Mini practice supports only one binary operation.
+        var operatorCount = ArithmeticOperatorSymbolRegex.Matches(currentQuestion.QuestionText).Count;
+        if (operatorCount != 1)
         {
             return;
         }

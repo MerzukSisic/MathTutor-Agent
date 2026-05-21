@@ -40,8 +40,6 @@ public class AuthService(
             };
         }
 
-        await using var tx = await context.Database.BeginTransactionAsync(ct);
-
         Student? student = await context.Students
             .FirstOrDefaultAsync(s => s.Email == email, ct);
         if (student == null)
@@ -53,7 +51,6 @@ public class AuthService(
                 CreatedAt = DateTime.UtcNow
             };
             context.Students.Add(student);
-            await context.SaveChangesAsync(ct);
         }
 
         var account = new UserAccount
@@ -63,13 +60,12 @@ public class AuthService(
             PasswordHash = passwordHashingService.HashPassword(request.Password),
             Role = UserRoles.Student,
             EmailConfirmed = true,
-            StudentId = student.Id,
+            Student = student,
             CreatedAt = DateTime.UtcNow
         };
 
         context.UserAccounts.Add(account);
         await context.SaveChangesAsync(ct);
-        await tx.CommitAsync(ct);
 
         if (emailService.IsEnabled)
         {
